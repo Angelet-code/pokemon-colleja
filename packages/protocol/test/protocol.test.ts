@@ -9,14 +9,19 @@ import {
 import {
   type ClientMessage,
   ClientMessageSchema,
+  CreateOpponentRequestSchema,
   CreateTeamRequestSchema,
+  ImportOpponentRequestSchema,
   ImportTeamRequestSchema,
   PokemonSetSchema,
   parseClientMessage,
   RandomTeamRequestSchema,
+  SavedOpponentSchema,
   type ServerMessage,
   ServerMessageSchema,
+  StartBattleSchema,
   TeamSchema,
+  UpdateOpponentRequestSchema,
   UpdateTeamRequestSchema,
   ValidateTeamRequestSchema,
 } from '@colleja/protocol';
@@ -208,5 +213,30 @@ describe('saved teams', () => {
     expect(ImportTeamRequestSchema.safeParse({ text: 'Garchomp', mode: 'singles' }).success).toBe(
       false,
     );
+  });
+
+  it('round-trips a saved opponent (a team plus its difficulty) and its bodies', () => {
+    const opponent = JSON.parse(JSON.stringify({ ...team, botLevel: 1 }));
+    expect(SavedOpponentSchema.parse(opponent)).toEqual(opponent);
+    const { id: _id, ...content } = opponent;
+    expect(CreateOpponentRequestSchema.parse({ opponent: content })).toEqual({ opponent: content });
+    expect(UpdateOpponentRequestSchema.parse({ opponent: content })).toEqual({
+      opponent: content,
+    });
+    const fromText = { text: 'Garchomp', name: 'Rival', mode: 'singles', botLevel: 2 };
+    expect(ImportOpponentRequestSchema.parse(fromText)).toEqual(fromText);
+
+    expect(SavedOpponentSchema.safeParse({ ...opponent, botLevel: 3 }).success).toBe(false);
+    expect(SavedOpponentSchema.safeParse({ ...team }).success).toBe(false);
+    expect(SavedOpponentSchema.safeParse({ ...opponent, id: '../x' }).success).toBe(false);
+  });
+
+  it('accepts a saved opponent in battle:start only with a safe id', () => {
+    const saved = { ...start, opponent: { kind: 'saved', opponentId: team.id } };
+    expect(StartBattleSchema.parse(saved)).toEqual(saved);
+    expect(parseClientMessage(JSON.stringify(saved))).toEqual({ ok: true, message: saved });
+    for (const opponent of [{ kind: 'saved' }, { kind: 'saved', opponentId: '../etc' }]) {
+      expect(StartBattleSchema.safeParse({ ...start, opponent }).success).toBe(false);
+    }
   });
 });

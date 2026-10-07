@@ -4,6 +4,7 @@
  */
 export * from './battle';
 export * from './common';
+export * from './opponents';
 export * from './rest';
 export * from './teams';
 

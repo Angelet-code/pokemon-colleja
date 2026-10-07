@@ -1,12 +1,13 @@
-/** REST API (`/api/*`): metadata here, teams in `teams.ts`. */
+/** REST API (`/api/*`): metadata here, teams in `teams.ts`, opponents in `opponents.ts`. */
 import { BOT_LEVELS, DEFAULT_BOT_LEVEL } from '@colleja/bot';
 import { meta } from '@colleja/data';
 import { API_PREFIX, type MetaResponse } from '@colleja/protocol';
 import type { FastifyInstance } from 'fastify';
-import type { TeamRepository } from '../teams/team-repository';
+import type { Repositories } from '../storage/repositories';
+import { registerOpponentRoutes } from './opponents';
 import { registerTeamRoutes } from './teams';
 
-export function registerApi(app: FastifyInstance, teams: TeamRepository): void {
+export function registerApi(app: FastifyInstance, repositories: Repositories): void {
   app.get(
     `${API_PREFIX}/meta`,
     async (): Promise<MetaResponse> => ({
@@ -18,5 +19,6 @@ export function registerApi(app: FastifyInstance, teams: TeamRepository): void {
     }),
   );
 
-  registerTeamRoutes(app, teams);
+  registerTeamRoutes(app, repositories.teams);
+  registerOpponentRoutes(app, repositories.opponents);
 }

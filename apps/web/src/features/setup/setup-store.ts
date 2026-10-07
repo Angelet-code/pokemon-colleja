@@ -10,7 +10,9 @@ export interface SetupForm {
   teamSource: 'saved' | 'text';
   teamId: string;
   team: string;
-  opponentKind: 'random' | 'team';
+  /** The bot's team: random, a saved opponent or pasted as text. */
+  opponentKind: 'random' | 'saved' | 'team';
+  opponentId: string;
   opponentTeam: string;
   botLevel: BotLevelValue;
   teamPreview: boolean;
@@ -29,6 +31,7 @@ export const DEFAULT_FORM: SetupForm = {
   teamId: '',
   team: '',
   opponentKind: 'random',
+  opponentId: '',
   opponentTeam: '',
   botLevel: 2,
   teamPreview: true,
@@ -53,11 +56,21 @@ export function toStartMessage(form: SetupForm): StartBattleMessage {
     type: 'battle:start',
     mode: form.mode,
     ...(form.teamSource === 'saved' ? { teamId: form.teamId } : { team: form.team }),
-    opponent:
-      form.opponentKind === 'team' ? { kind: 'team', team: form.opponentTeam } : { kind: 'random' },
+    opponent: opponentOf(form),
     botLevel: form.botLevel,
     options: { teamPreview: form.teamPreview, openTeamSheets: form.openTeamSheets },
     ...(form.seed.trim() ? { seed: form.seed.trim() } : {}),
     ...(form.playerName.trim() ? { playerName: form.playerName.trim() } : {}),
   };
+}
+
+function opponentOf(form: SetupForm): StartBattleMessage['opponent'] {
+  switch (form.opponentKind) {
+    case 'saved':
+      return { kind: 'saved', opponentId: form.opponentId };
+    case 'team':
+      return { kind: 'team', team: form.opponentTeam };
+    default:
+      return { kind: 'random' };
+  }
 }

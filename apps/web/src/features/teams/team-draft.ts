@@ -31,16 +31,35 @@ import {
   type StandardSet,
   type StatId,
 } from '@colleja/data';
-import type { TeamContent } from '@colleja/protocol';
+import {
+  type BotLevelValue,
+  type OpponentContent,
+  TEAM_LIMITS,
+  type TeamContent,
+} from '@colleja/protocol';
 
-export type TeamDraft = TeamContent;
+/** A team being edited. `botLevel` is only set when it is a saved opponent's team. */
+export type TeamDraft = TeamContent & { botLevel?: BotLevelValue };
 
 /** Nature of a new member: neutral, so the stats show the plain spread. */
 export const DEFAULT_NATURE = 'serious';
 export const DEFAULT_TEAM_NAME = 'Equipo nuevo';
+export const DEFAULT_OPPONENT_NAME = 'Rival nuevo';
+/** Difficulty of a new opponent: the strongest level, like the default rival (product decision). */
+export const DEFAULT_OPPONENT_LEVEL: BotLevelValue = 2;
 
 export function newDraft(mode: GameMode, name = DEFAULT_TEAM_NAME): TeamDraft {
   return { name, mode, ruleset: DEFAULT_RULESET, members: [] };
+}
+
+/** Name of a copy ("Lluvia (copia)"), within the name limit. */
+export function copyName(name: string, suffix = '(copia)'): string {
+  return `${name} ${suffix}`.slice(0, TEAM_LIMITS.name);
+}
+
+/** An empty opponent: a team plus the default difficulty. */
+export function newOpponentDraft(mode: GameMode, name = DEFAULT_OPPONENT_NAME): TeamDraft {
+  return { ...newDraft(mode, name), botLevel: DEFAULT_OPPONENT_LEVEL };
 }
 
 export function teamSize(draft: TeamDraft): number {
@@ -281,10 +300,17 @@ function normalize(draft: TeamDraft): TeamDraft {
     ruleset: draft.ruleset,
     members: draft.members,
     ...(notes ? { notes } : {}),
+    ...(draft.botLevel === undefined ? {} : { botLevel: draft.botLevel }),
   };
 }
 
-/** What is sent to the server: trimmed name and notes. */
+/** What is sent to the server for a team: trimmed name and notes. */
 export function toContent(draft: TeamDraft): TeamContent {
-  return normalize(draft);
+  const { botLevel: _level, ...content } = normalize(draft);
+  return content;
+}
+
+/** What is sent to the server for an opponent: the team plus its difficulty. */
+export function toOpponentContent(draft: TeamDraft): OpponentContent {
+  return { ...toContent(draft), botLevel: draft.botLevel ?? DEFAULT_OPPONENT_LEVEL };
 }

@@ -1,6 +1,9 @@
-import type { ApiError } from '@colleja/protocol';
+import { type ApiError, SavedIdSchema } from '@colleja/protocol';
 import type { FastifyReply } from 'fastify';
-import type { z } from 'zod';
+import { z } from 'zod';
+
+/** `:id` of a saved team or opponent. */
+export const IdParamsSchema = z.object({ id: SavedIdSchema });
 
 /** Validates a JSON body (or params); on failure answers 400 with the problems and returns `null`. */
 export function parseBody<T extends z.ZodType>(

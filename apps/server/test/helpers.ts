@@ -27,8 +27,26 @@ export function tempTeamsDir(): string {
   return mkdtempSync(join(tmpdir(), 'colleja-teams-'));
 }
 
-export function testServer(teamsDir = tempTeamsDir()): Promise<FastifyInstance> {
-  return buildServer({ spritesDir: null, webDir: null, sweepIntervalMs: 0, teamsDir });
+/** A temporary folder for saved opponents. */
+export function tempOpponentsDir(): string {
+  return mkdtempSync(join(tmpdir(), 'colleja-opponents-'));
+}
+
+/** A server without sprites, web or timers, saving into temporary folders. */
+export function testServer({
+  teamsDir = tempTeamsDir(),
+  opponentsDir = tempOpponentsDir(),
+}: {
+  teamsDir?: string;
+  opponentsDir?: string;
+} = {}): Promise<FastifyInstance> {
+  return buildServer({
+    spritesDir: null,
+    webDir: null,
+    sweepIntervalMs: 0,
+    teamsDir,
+    opponentsDir,
+  });
 }
 
 export function startMessage(

@@ -18,6 +18,7 @@ import {
   SideIdSchema,
   TeamTextSchema,
 } from './common';
+import { OpponentIdSchema } from './opponents';
 import { TeamIdSchema } from './teams';
 
 /** WebSocket endpoint path. */
@@ -32,6 +33,8 @@ export const OpponentSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('random') }),
   /** A team pasted in Showdown export format. */
   z.object({ kind: z.literal('team'), team: TeamTextSchema }),
+  /** A saved opponent (`/api/opponents`). Its difficulty is applied by the client in `botLevel`. */
+  z.object({ kind: z.literal('saved'), opponentId: OpponentIdSchema }),
 ]);
 
 export const StartBattleSchema = z

@@ -13,12 +13,7 @@
  * Saved teams may be illegal drafts: every response carries their `problems`.
  */
 import { randomBytes } from 'node:crypto';
-import {
-  DEFAULT_RULESET,
-  fitTeamToLimits,
-  formatShowdownTeam,
-  parseShowdownTeam,
-} from '@colleja/core';
+import { DEFAULT_RULESET, formatShowdownTeam } from '@colleja/core';
 import {
   API_PREFIX,
   CreateTeamRequestSchema,
@@ -27,7 +22,6 @@ import {
   RandomTeamRequestSchema,
   type RandomTeamResponse,
   TeamContentSchema,
-  TeamIdSchema,
   type TeamResponse,
   type TeamSummary,
   UpdateTeamRequestSchema,
@@ -36,13 +30,12 @@ import {
 } from '@colleja/protocol';
 import { generateTeam } from '@colleja/teamgen';
 import type { FastifyInstance } from 'fastify';
-import { z } from 'zod';
+import { importMembers, summarize } from '../teams/saved-teams';
 import { readTeam, teamProblems } from '../teams/team-problems';
 import type { StoredTeam, TeamRepository } from '../teams/team-repository';
-import { notFound, parseBody } from './parse-body';
+import { IdParamsSchema, notFound, parseBody } from './parse-body';
 
 const TEAMS = `${API_PREFIX}/teams`;
-const IdParamsSchema = z.object({ id: TeamIdSchema });
 const NOT_FOUND = 'Ese equipo no existe.';
 
 export function registerTeamRoutes(app: FastifyInstance, teams: TeamRepository): void {
@@ -75,16 +68,14 @@ export function registerTeamRoutes(app: FastifyInstance, teams: TeamRepository):
   app.post(`${TEAMS}/import`, async (request, reply) => {
     const body = parseBody(ImportTeamRequestSchema, request.body, reply);
     if (!body) return reply;
-    const parsed = parseShowdownTeam(body.text);
-    const fitted = fitTeamToLimits(parsed.sets, body.mode);
+    const { members, adjustments } = importMembers(body.text, body.mode);
     const content = parseBody(
       TeamContentSchema,
-      { name: body.name, mode: body.mode, ruleset: DEFAULT_RULESET, members: fitted.sets },
+      { name: body.name, mode: body.mode, ruleset: DEFAULT_RULESET, members },
       reply,
     );
     if (!content) return reply;
-    const stored = await teams.create(content);
-    return reply.code(201).send(toResponse(stored, [...parsed.problems, ...fitted.adjustments]));
+    return reply.code(201).send(toResponse(await teams.create(content), adjustments));
   });
 
   app.get(`${TEAMS}/:id`, async (request, reply) => {
@@ -115,14 +106,5 @@ function toResponse({ team, updatedAt }: StoredTeam, adjustments: string[] = [])
 }
 
 function toSummary({ team, updatedAt }: StoredTeam): TeamSummary {
-  const problems = teamProblems(team.members, team.mode);
-  return {
-    id: team.id,
-    name: team.name,
-    mode: team.mode,
-    species: team.members.map((member) => member.species),
-    valid: problems.length === 0,
-    problems,
-    updatedAt,
-  };
+  return summarize(team, updatedAt);
 }

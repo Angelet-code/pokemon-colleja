@@ -3,9 +3,13 @@ import {
   API_PREFIX,
   type ApiError,
   type GameModeValue,
+  type ImportOpponentRequest,
   type ImportTeamRequest,
+  type ListOpponentsResponse,
   type ListTeamsResponse,
   type MetaResponse,
+  type OpponentContent,
+  type OpponentResponse,
   type RandomTeamResponse,
   type TeamContent,
   type TeamResponse,
@@ -67,4 +71,16 @@ export const api = {
     request<TeamResponse>(`/teams/${encodeURIComponent(id)}`, json('PUT', { team })),
   deleteTeam: (id: string) =>
     request<void>(`/teams/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+
+  // Saved opponents
+  listOpponents: () => request<ListOpponentsResponse>('/opponents'),
+  getOpponent: (id: string) => request<OpponentResponse>(`/opponents/${encodeURIComponent(id)}`),
+  createOpponent: (opponent: OpponentContent) =>
+    request<OpponentResponse>('/opponents', json('POST', { opponent })),
+  importOpponent: (body: ImportOpponentRequest) =>
+    request<OpponentResponse>('/opponents/import', json('POST', body)),
+  updateOpponent: (id: string, opponent: OpponentContent) =>
+    request<OpponentResponse>(`/opponents/${encodeURIComponent(id)}`, json('PUT', { opponent })),
+  deleteOpponent: (id: string) =>
+    request<void>(`/opponents/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 };

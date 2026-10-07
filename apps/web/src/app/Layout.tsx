@@ -25,6 +25,7 @@ export function Layout() {
               Combate
             </NavItem>
             <NavItem to="/equipos">Equipos</NavItem>
+            <NavItem to="/rivales">Rivales</NavItem>
           </nav>
           <div className="ml-auto flex items-center gap-2">
             <span className="hidden text-xs text-muted sm:inline">Nombres</span>

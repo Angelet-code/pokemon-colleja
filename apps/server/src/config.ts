@@ -8,6 +8,9 @@ export const SPRITES_DIR = fileURLToPath(new URL('assets/sprites/', REPO_ROOT));
 /** Saved teams, one JSON file each (not versioned, like the rest of `storage/`). */
 export const TEAMS_DIR = fileURLToPath(new URL('storage/teams/', REPO_ROOT));
 
+/** Saved opponents (team plus difficulty), one JSON file each. */
+export const OPPONENTS_DIR = fileURLToPath(new URL('storage/opponents/', REPO_ROOT));
+
 /** Production build of the web app (`npm run build`). */
 export const WEB_DIST_DIR = fileURLToPath(new URL('apps/web/dist/', REPO_ROOT));
 

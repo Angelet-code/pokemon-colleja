@@ -83,7 +83,7 @@ describe('/api/teams', () => {
 
   beforeEach(async () => {
     dir = tempTeamsDir();
-    app = await testServer(dir);
+    app = await testServer({ teamsDir: dir });
     await app.ready();
   });
 
@@ -173,7 +173,7 @@ describe('/api/teams', () => {
   it('keeps the teams after a restart', async () => {
     const { team } = (await create({ team: content() })).json<TeamResponse>();
     await app.close();
-    app = await testServer(dir);
+    app = await testServer({ teamsDir: dir });
     const read = await app.inject({ method: 'GET', url: `/api/teams/${team.id}` });
     expect(read.json<TeamResponse>().team).toEqual(team);
   });

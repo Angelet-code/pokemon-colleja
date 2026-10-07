@@ -8,9 +8,11 @@ import fastifyStatic from '@fastify/static';
 import fastifyWebsocket from '@fastify/websocket';
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
 import { BattleManager, type BattleManagerOptions } from './battles/battle-manager';
-import { SPRITES_DIR, TEAMS_DIR, WEB_DIST_DIR } from './config';
+import { OPPONENTS_DIR, SPRITES_DIR, TEAMS_DIR, WEB_DIST_DIR } from './config';
+import { FileOpponentRepository } from './opponents/opponent-repository';
 import { registerApi } from './routes/api';
 import { registerBattleSocket } from './routes/battle-socket';
+import type { Repositories } from './storage/repositories';
 import { FileTeamRepository } from './teams/team-repository';
 
 export interface ServerOptions extends BattleManagerOptions {
@@ -23,18 +25,22 @@ export interface ServerOptions extends BattleManagerOptions {
   sweepIntervalMs?: number;
   /** Folder of the saved teams (default `storage/teams/`; tests use a temporary one). */
   teamsDir?: string;
+  /** Folder of the saved opponents (default `storage/opponents/`; tests use a temporary one). */
+  opponentsDir?: string;
 }
 
 export async function buildServer(options: ServerOptions = {}): Promise<FastifyInstance> {
   const app = Fastify({ logger: options.logger ?? false });
-  const teams = new FileTeamRepository(options.teamsDir ?? TEAMS_DIR, {
-    onInvalid: (file, reason) =>
-      app.log.warn({ file, reason }, 'Equipo guardado ilegible: se ignora'),
-  });
-  const battles = new BattleManager(teams, options);
+  const onInvalid = (file: string, reason: string) =>
+    app.log.warn({ file, reason }, 'Fichero guardado ilegible: se ignora');
+  const repositories: Repositories = {
+    teams: new FileTeamRepository(options.teamsDir ?? TEAMS_DIR, { onInvalid }),
+    opponents: new FileOpponentRepository(options.opponentsDir ?? OPPONENTS_DIR, { onInvalid }),
+  };
+  const battles = new BattleManager(repositories, options);
 
   await app.register(fastifyWebsocket);
-  registerApi(app, teams);
+  registerApi(app, repositories);
   registerBattleSocket(app, battles);
 
   const spritesDir = options.spritesDir === undefined ? SPRITES_DIR : options.spritesDir;

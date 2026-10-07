@@ -6,8 +6,8 @@ import { BattleSession, TeamValidationError } from '@colleja/engine';
 import type { StartBattleMessage } from '@colleja/protocol';
 import { generateTeam } from '@colleja/teamgen';
 import { DEFAULT_IDLE_TIMEOUT_MS, DEFAULT_PLAYER_NAME } from '../config';
+import type { Repositories } from '../storage/repositories';
 import { readTeam, TeamProblemsError, teamProblems } from '../teams/team-problems';
-import type { TeamRepository } from '../teams/team-repository';
 import { BattleRoom } from './battle-room';
 
 export interface BattleManagerOptions {
@@ -20,7 +20,7 @@ export class BattleManager {
   private readonly idleTimeoutMs: number;
 
   constructor(
-    private readonly teams: TeamRepository,
+    private readonly storage: Repositories,
     options: BattleManagerOptions = {},
   ) {
     this.idleTimeoutMs = options.idleTimeoutMs ?? DEFAULT_IDLE_TIMEOUT_MS;
@@ -39,7 +39,7 @@ export class BattleManager {
     const seed = message.seed ?? randomBytes(4).toString('hex');
 
     const player = await this.playerTeam(message);
-    const rival = this.rivalTeam(message, seed);
+    const rival = await this.rivalTeam(message, seed);
 
     const level = botLevelInfo(botLevel);
     let session: BattleSession;
@@ -97,7 +97,7 @@ export class BattleManager {
   /** The player's team, pasted or saved (a saved team can be used in either mode). */
   private async playerTeam(message: StartBattleMessage): Promise<PokemonSet[]> {
     if (message.teamId !== undefined) {
-      const stored = await this.teams.get(message.teamId);
+      const stored = await this.storage.teams.get(message.teamId);
       if (!stored) {
         throw new TeamProblemsError('Ese equipo guardado no existe.', [
           'Puede que se haya borrado. Elige otro en la lista.',
@@ -116,11 +116,32 @@ export class BattleManager {
     return player.team;
   }
 
-  private rivalTeam(message: StartBattleMessage, seed: string): PokemonSet[] {
-    if (message.opponent.kind === 'random') {
-      return generateTeam(message.mode, { seed: `${seed}:rival` });
+  /**
+   * The bot's team: random, pasted or a saved opponent. The difficulty always comes from
+   * `botLevel` (the client fills it in with the saved opponent's own).
+   */
+  private async rivalTeam(message: StartBattleMessage, seed: string): Promise<PokemonSet[]> {
+    const { opponent, mode } = message;
+    if (opponent.kind === 'random') {
+      return generateTeam(mode, { seed: `${seed}:rival` });
     }
-    const rival = readTeam(message.opponent.team, message.mode);
+    if (opponent.kind === 'saved') {
+      const stored = await this.storage.opponents.get(opponent.opponentId);
+      if (!stored) {
+        throw new TeamProblemsError('Ese rival guardado no existe.', [
+          'Puede que se haya borrado. Elige otro en la lista.',
+        ]);
+      }
+      const problems = teamProblems(stored.opponent.members, mode);
+      if (problems.length > 0) {
+        throw new TeamProblemsError(
+          `El rival «${stored.opponent.name}» no se puede usar.`,
+          problems,
+        );
+      }
+      return stored.opponent.members;
+    }
+    const rival = readTeam(opponent.team, mode);
     if (rival.problems.length > 0) {
       throw new TeamProblemsError('El equipo rival no se puede usar.', rival.problems);
     }

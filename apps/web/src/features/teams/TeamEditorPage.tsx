@@ -1,7 +1,10 @@
 /**
- * Team editor (`/equipos/nuevo` and `/equipos/:id`): members on the left, the selected
- * member's sheet on the right (one at a time on narrow screens). Problems are checked live
- * with core; saving is explicit and the server adds Showdown's validator.
+ * Team editor: members on the left, the selected member's sheet on the right (one at a time on
+ * narrow screens). Problems are checked live with core; saving is explicit and the server adds
+ * Showdown's validator.
+ *
+ * It edits your teams (`/equipos/nuevo`, `/equipos/:id`) and the saved opponents
+ * (`/rivales/nuevo`, `/rivales/:id`, with their difficulty), depending on the `destination`.
  */
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -16,11 +19,14 @@ import { Dialog } from '../../components/Dialog';
 import { Button, Panel, Segmented } from '../../components/ui';
 import { useSettings } from '../../stores/settings';
 import { useSetup } from '../setup/setup-store';
+import { BotLevelSelect } from './components/BotLevelSelect';
 import { MemberList } from './components/MemberList';
 import { SetEditor } from './components/SetEditor';
 import { ExportDialog, ImportDialog } from './components/TextDialogs';
+import type { EditorDestination } from './editor-destination';
 import {
   addMember,
+  DEFAULT_OPPONENT_LEVEL,
   draftIssues,
   exportTeam,
   importText,
@@ -28,19 +34,26 @@ import {
   moveMember,
   removeMember,
   replaceMembers,
+  type TeamDraft,
   teamSize,
   updateMember,
 } from './team-draft';
 import { isDirty, useIsDirty, useTeamEditor } from './team-editor-store';
 
-/** Navigation state set after creating a team, so the editor does not reload it. */
+/** Navigation state of the editor routes. */
 export interface EditorLocationState {
+  /** Set after creating a draft, so the editor does not reload it. */
   created?: boolean;
   /** Notes of an import made from the list (lines not read, limits applied). */
   importNotes?: string[];
+  /** New drafts only: start from this team (generated or copied) as unsaved changes. */
+  initial?: TeamDraft;
 }
 
-export function TeamEditorPage() {
+/** Stable empty state, so effects depending on it do not run on every render. */
+const NO_STATE: EditorLocationState = {};
+
+export function TeamEditorPage({ destination }: { destination: EditorDestination }) {
   const { id } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -50,17 +63,19 @@ export function TeamEditorPage() {
   const [dialog, setDialog] = useState<'export' | 'import' | null>(null);
   const [notes, setNotes] = useState<string[]>([]);
   const [mobileSheet, setMobileSheet] = useState(false);
-  const routeState = (location.state ?? {}) as EditorLocationState;
+  const routeState = (location.state ?? NO_STATE) as EditorLocationState;
 
-  // Load (or start) the team of the route. After creating one the store already has it.
+  // Load (or start) the draft of the route. After creating one the store already has it.
   useEffect(() => {
+    const store = useTeamEditor.getState();
     if (!id) {
-      useTeamEditor.getState().startNew(useSetup.getState().mode);
+      const { initial } = routeState;
+      store.startNew(destination, initial?.mode ?? useSetup.getState().mode, initial);
       return;
     }
-    if (routeState.created && useTeamEditor.getState().teamId === id) return;
-    void useTeamEditor.getState().load(id);
-  }, [id, routeState.created]);
+    if (routeState.created && store.savedId === id && store.destination === destination) return;
+    void store.load(destination, id);
+  }, [destination, id, routeState]);
 
   useEffect(() => {
     if (routeState.importNotes) setNotes(routeState.importNotes);
@@ -76,6 +91,7 @@ export function TeamEditorPage() {
   });
 
   const { draft, selected } = editor;
+  const { texts } = destination;
   const issues = useMemo(() => draftIssues(draft), [draft]);
   const size = teamSize(draft);
   // Showdown's verdict is only meaningful for the saved version.
@@ -84,28 +100,39 @@ export function TeamEditorPage() {
     : editor.serverProblems.filter((problem) => problem.startsWith('Validador de Showdown'));
 
   async function save() {
-    const wasNew = editor.teamId === null;
+    const wasNew = editor.savedId === null;
     const savedId = await editor.save();
     if (savedId && wasNew) {
-      navigate(`/equipos/${savedId}`, { replace: true, state: { created: true } });
+      const state: EditorLocationState = { created: true };
+      navigate(`${destination.path}/${savedId}`, { replace: true, state });
     }
   }
 
   function goToBattle() {
-    if (!editor.teamId) return;
-    useSetup.getState().update({ teamSource: 'saved', teamId: editor.teamId, mode: draft.mode });
+    const { savedId } = editor;
+    if (!savedId) return;
+    useSetup.getState().update(
+      destination.kind === 'teams'
+        ? { teamSource: 'saved', teamId: savedId, mode: draft.mode }
+        : {
+            opponentKind: 'saved',
+            opponentId: savedId,
+            botLevel: draft.botLevel ?? DEFAULT_OPPONENT_LEVEL,
+            mode: draft.mode,
+          },
+    );
     navigate('/');
   }
 
-  if (editor.status === 'loading') return <p className="text-muted">Cargando el equipo…</p>;
+  if (editor.status === 'loading') return <p className="text-muted">{texts.loading}</p>;
   if (editor.loadError) {
     return (
       <div className="mx-auto flex max-w-md flex-col items-start gap-3">
         <p role="alert" className="text-bad">
           {editor.loadError}
         </p>
-        <Link to="/equipos" className="text-accent hover:underline">
-          ← Volver a mis equipos
+        <Link to={destination.path} className="text-accent hover:underline">
+          {texts.back}
         </Link>
       </div>
     );
@@ -116,11 +143,11 @@ export function TeamEditorPage() {
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-4">
       <div className="flex flex-wrap items-end gap-3">
-        <Link to="/equipos" className="text-sm text-muted hover:text-text">
-          ← Mis equipos
+        <Link to={destination.path} className="text-sm text-muted hover:text-text">
+          {texts.back}
         </Link>
         <label className="flex min-w-48 flex-1 flex-col gap-1">
-          <span className="text-xs font-medium text-muted">Nombre del equipo</span>
+          <span className="text-xs font-medium text-muted">{texts.nameLabel}</span>
           <input
             value={draft.name}
             maxLength={60}
@@ -143,21 +170,29 @@ export function TeamEditorPage() {
             { value: 'doubles', label: 'Dobles', title: 'Modo preferido (vale para los dos)' },
           ]}
         />
+        {destination.kind === 'opponents' && (
+          <BotLevelSelect
+            value={draft.botLevel ?? DEFAULT_OPPONENT_LEVEL}
+            onChange={(botLevel) => editor.edit((current) => ({ ...current, botLevel }))}
+          />
+        )}
         <div className="flex flex-wrap gap-2">
           <Button onClick={() => setDialog('import')}>Importar</Button>
           <Button onClick={() => setDialog('export')} disabled={draft.members.length === 0}>
             Exportar
           </Button>
-          {editor.teamId && !dirty && (
-            <Button onClick={goToBattle} disabled={total > 0} title="Ir al inicio con este equipo">
-              Usar en combate
+          {editor.savedId && !dirty && (
+            <Button onClick={goToBattle} disabled={total > 0} title={texts.useTitle}>
+              {texts.use}
             </Button>
           )}
           <Button
             variant="primary"
             onClick={save}
             disabled={
-              editor.status === 'saving' || (!dirty && editor.teamId !== null) || !draft.name.trim()
+              editor.status === 'saving' ||
+              (!dirty && editor.savedId !== null) ||
+              !draft.name.trim()
             }
           >
             {editor.status === 'saving' ? 'Guardando…' : 'Guardar'}
@@ -165,7 +200,7 @@ export function TeamEditorPage() {
         </div>
       </div>
 
-      <StatusLine dirty={dirty} saved={editor.teamId !== null} problems={total} />
+      <StatusLine dirty={dirty} saved={editor.savedId !== null} problems={total} texts={texts} />
 
       {editor.saveError && (
         <div
@@ -321,7 +356,7 @@ export function TeamEditorPage() {
             </>
           }
         >
-          <p className="text-sm">Si sales ahora, perderás los cambios de este equipo.</p>
+          <p className="text-sm">{texts.leaveWarning}</p>
         </Dialog>
       )}
     </div>
@@ -332,20 +367,22 @@ function StatusLine({
   dirty,
   saved,
   problems,
+  texts,
 }: {
   dirty: boolean;
   saved: boolean;
   problems: number;
+  texts: EditorDestination['texts'];
 }) {
   return (
     <p className="flex flex-wrap gap-3 text-sm" aria-live="polite">
       <span className={dirty ? 'text-warn' : 'text-muted'}>
-        {dirty ? 'Cambios sin guardar' : saved ? 'Guardado' : 'Equipo nuevo sin guardar'}
+        {dirty ? 'Cambios sin guardar' : saved ? 'Guardado' : texts.unsaved}
       </span>
       <span className={problems > 0 ? 'text-bad' : 'text-good'}>
         {problems > 0
           ? `${problems} problema${problems === 1 ? '' : 's'} (se puede guardar como borrador; para combatir tiene que ser legal)`
-          : 'Equipo legal'}
+          : texts.legal}
       </span>
     </p>
   );

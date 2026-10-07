@@ -1,5 +1,5 @@
 /** Start screen: mode, your team, the rival, the difficulty and the practice options. */
-import type { MetaResponse, TeamSummary } from '@colleja/protocol';
+import type { MetaResponse, OpponentSummary, TeamSummary } from '@colleja/protocol';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { Button, Checkbox, Panel, Segmented } from '../../components/ui';
@@ -35,6 +35,7 @@ export function SetupPage() {
   const [starting, setStarting] = useState(false);
   const [generating, setGenerating] = useState<'team' | 'rival' | null>(null);
   const [savedTeams, setSavedTeams] = useState<TeamSummary[] | null>(null);
+  const [savedOpponents, setSavedOpponents] = useState<OpponentSummary[] | null>(null);
 
   const teamCheck = useTeamCheck(form.team, form.mode);
   const rivalCheck = useTeamCheck(form.opponentTeam, form.mode);
@@ -63,6 +64,10 @@ export function SetupPage() {
       .listTeams()
       .then(({ teams }) => !cancelled && setSavedTeams(teams))
       .catch(() => !cancelled && setSavedTeams([]));
+    api
+      .listOpponents()
+      .then(({ opponents }) => !cancelled && setSavedOpponents(opponents))
+      .catch(() => !cancelled && setSavedOpponents([]));
     return () => {
       cancelled = true;
       clearTimeout(timer);
@@ -74,9 +79,14 @@ export function SetupPage() {
     form.teamSource === 'saved'
       ? savedTeam?.valid === true
       : teamCheck.sets.length > 0 && teamCheck.problems.length === 0;
+  const savedOpponent = savedOpponents?.find((opponent) => opponent.id === form.opponentId) ?? null;
   const rivalReady =
     form.opponentKind === 'random' ||
-    (rivalCheck.sets.length > 0 && rivalCheck.problems.length === 0);
+    (form.opponentKind === 'saved'
+      ? savedOpponent?.valid === true
+      : rivalCheck.sets.length > 0 && rivalCheck.problems.length === 0);
+  const levelName = (level: number) =>
+    meta?.botLevels.find((info) => info.level === level)?.name ?? `Nivel ${level}`;
 
   async function randomTeam(target: 'team' | 'rival') {
     setGenerating(target);
@@ -147,8 +157,18 @@ export function SetupPage() {
               <SavedTeamPicker
                 teams={savedTeams}
                 value={form.teamId}
-                onChange={(teamId) => form.update({ teamId })}
-                pickSize={pickSize}
+                onChange={(team) => form.update({ teamId: team.id })}
+                legend={`Equipo guardado (6 Pokémon; en combate eliges ${pickSize})`}
+                name="saved-team"
+                empty={
+                  <>
+                    No tienes equipos guardados.{' '}
+                    <Link to="/equipos/nuevo" className="text-accent hover:underline">
+                      Crea uno
+                    </Link>{' '}
+                    o pega uno en formato de Showdown.
+                  </>
+                }
               />
             ) : (
               <TeamInput
@@ -186,18 +206,42 @@ export function SetupPage() {
               onChange={(opponentKind) => form.update({ opponentKind })}
               options={[
                 { value: 'random', label: 'Aleatorio' },
+                { value: 'saved', label: 'Guardado' },
                 { value: 'team', label: 'Pegado' },
               ]}
             />
           }
         >
           <div className="p-4">
-            {form.opponentKind === 'random' ? (
+            {form.opponentKind === 'random' && (
               <p className="text-sm text-muted">
                 El bot llevará un equipo aleatorio y legal generado a partir de los sets estándar
                 (con una megapiedra como mucho).
               </p>
-            ) : (
+            )}
+            {form.opponentKind === 'saved' && (
+              <SavedTeamPicker
+                teams={savedOpponents}
+                value={form.opponentId}
+                // Picking an opponent applies its difficulty (it can still be changed).
+                onChange={(opponent) =>
+                  form.update({ opponentId: opponent.id, botLevel: opponent.botLevel })
+                }
+                legend="Rival guardado (se aplica su dificultad)"
+                name="saved-opponent"
+                detail={(opponent) => levelName(opponent.botLevel)}
+                empty={
+                  <>
+                    No tienes rivales guardados.{' '}
+                    <Link to="/rivales" className="text-accent hover:underline">
+                      Genera uno
+                    </Link>{' '}
+                    y guárdalo.
+                  </>
+                }
+              />
+            )}
+            {form.opponentKind === 'team' && (
               <TeamInput
                 label="Export de Showdown del rival"
                 value={form.opponentTeam}
@@ -245,6 +289,21 @@ export function SetupPage() {
               );
             })}
             {!meta && !serverError && <p className="text-sm text-muted">Cargando…</p>}
+            {form.opponentKind === 'saved' &&
+              savedOpponent &&
+              savedOpponent.botLevel !== form.botLevel && (
+                <p className="text-xs text-muted">
+                  «{savedOpponent.name}» se guardó con la dificultad{' '}
+                  {levelName(savedOpponent.botLevel)}.{' '}
+                  <button
+                    type="button"
+                    className="text-accent hover:underline"
+                    onClick={() => form.update({ botLevel: savedOpponent.botLevel })}
+                  >
+                    Usar esa
+                  </button>
+                </p>
+              )}
           </fieldset>
         </Panel>
 
@@ -322,6 +381,13 @@ export function SetupPage() {
             ) : (
               'Pega un equipo legal para empezar.'
             )}
+          </p>
+        )}
+        {teamReady && !rivalReady && (
+          <p className="text-center text-xs text-muted">
+            {form.opponentKind === 'saved'
+              ? 'Elige un rival guardado legal.'
+              : 'Pega un equipo rival legal o elige otro tipo de rival.'}
           </p>
         )}
       </aside>

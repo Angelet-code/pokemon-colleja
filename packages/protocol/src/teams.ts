@@ -18,8 +18,10 @@ export const TEAM_LIMITS = {
   notes: 2000,
 } as const;
 
-/** Ids are used as file names: only letters, digits and dashes (UUIDs). */
-export const TeamIdSchema = z.string().regex(/^[A-Za-z0-9-]{1,64}$/, 'Id de equipo no válido.');
+/** Ids of saved things are used as file names: only letters, digits and dashes (UUIDs). */
+export const SavedIdSchema = z.string().regex(/^[A-Za-z0-9-]{1,64}$/, 'Id no válido.');
+
+export const TeamIdSchema = SavedIdSchema;
 
 /** Showdown-style id (`garchomp`, `lifeorb`): lowercase letters and digits. */
 const DataIdSchema = z.string().regex(/^[a-z0-9]{1,40}$/, 'Id no válido.');

@@ -1,36 +1,36 @@
-/** Picks one of the teams saved in the teambuilder (only legal ones can battle). */
+/**
+ * Picks one of the saved teams (your team) or saved opponents (the bot's). Only legal ones
+ * can battle; the others are shown with their problems.
+ */
 import type { TeamSummary } from '@colleja/protocol';
-import { Link } from 'react-router';
+import type { ReactNode } from 'react';
 import { PokemonIcon } from '../../components/PokemonIcon';
 
-export function SavedTeamPicker({
+export function SavedTeamPicker<T extends TeamSummary>({
   teams,
   value,
   onChange,
-  pickSize,
+  legend,
+  name,
+  empty,
+  detail,
 }: {
-  teams: TeamSummary[] | null;
+  teams: T[] | null;
   value: string;
-  onChange: (id: string) => void;
-  pickSize: number;
+  onChange: (team: T) => void;
+  legend: string;
+  /** Name of the radio group. */
+  name: string;
+  /** Shown when there is nothing saved. */
+  empty: ReactNode;
+  /** Extra text next to the state (e.g. the difficulty of an opponent). */
+  detail?: (team: T) => string;
 }) {
-  if (teams === null) return <p className="text-sm text-muted">Cargando equipos…</p>;
-  if (teams.length === 0) {
-    return (
-      <p className="text-sm text-muted">
-        No tienes equipos guardados.{' '}
-        <Link to="/equipos/nuevo" className="text-accent hover:underline">
-          Crea uno
-        </Link>{' '}
-        o pega uno en formato de Showdown.
-      </p>
-    );
-  }
+  if (teams === null) return <p className="text-sm text-muted">Cargando…</p>;
+  if (teams.length === 0) return <p className="text-sm text-muted">{empty}</p>;
   return (
     <fieldset className="flex flex-col gap-2">
-      <legend className="mb-2 text-sm font-medium">
-        Equipo guardado (6 Pokémon; en combate eliges {pickSize})
-      </legend>
+      <legend className="mb-2 text-sm font-medium">{legend}</legend>
       {teams.map((team) => {
         const selected = team.id === value;
         return (
@@ -42,12 +42,12 @@ export function SavedTeamPicker({
           >
             <input
               type="radio"
-              name="saved-team"
+              name={name}
               value={team.id}
               aria-label={team.name}
               className="sr-only"
               checked={selected}
-              onChange={() => onChange(team.id)}
+              onChange={() => onChange(team)}
             />
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-semibold">{team.name}</span>
@@ -56,6 +56,7 @@ export function SavedTeamPicker({
                   ? 'Legal'
                   : `${team.problems.length} problema${team.problems.length === 1 ? '' : 's'}: edítalo para poder combatir`}
               </span>
+              {detail && <span className="text-xs text-muted"> · {detail(team)}</span>}
             </span>
             <span className="flex flex-wrap justify-end gap-0.5">
               {team.species.map((species, index) => (
