@@ -12,5 +12,6 @@ export * from './team/showdown-format';
 export * from './team/stat-points';
 export * from './team/stats';
 export * from './team/team-check';
+export * from './team/team-limits';
 export * from './team/types';
 export * from './util/random';

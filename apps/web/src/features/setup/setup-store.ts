@@ -6,6 +6,9 @@ import { safeStorage } from '../../stores/settings';
 
 export interface SetupForm {
   mode: GameModeValue;
+  /** Your team: one saved in the teambuilder or pasted as text. */
+  teamSource: 'saved' | 'text';
+  teamId: string;
   team: string;
   opponentKind: 'random' | 'team';
   opponentTeam: string;
@@ -22,6 +25,8 @@ interface SetupState extends SetupForm {
 
 export const DEFAULT_FORM: SetupForm = {
   mode: 'singles',
+  teamSource: 'text',
+  teamId: '',
   team: '',
   opponentKind: 'random',
   opponentTeam: '',
@@ -47,7 +52,7 @@ export function toStartMessage(form: SetupForm): StartBattleMessage {
   return {
     type: 'battle:start',
     mode: form.mode,
-    team: form.team,
+    ...(form.teamSource === 'saved' ? { teamId: form.teamId } : { team: form.team }),
     opponent:
       form.opponentKind === 'team' ? { kind: 'team', team: form.opponentTeam } : { kind: 'random' },
     botLevel: form.botLevel,

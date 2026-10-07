@@ -6,7 +6,8 @@ import { BattleSession, TeamValidationError } from '@colleja/engine';
 import type { StartBattleMessage } from '@colleja/protocol';
 import { generateTeam } from '@colleja/teamgen';
 import { DEFAULT_IDLE_TIMEOUT_MS, DEFAULT_PLAYER_NAME } from '../config';
-import { readTeam, TeamProblemsError } from '../teams';
+import { readTeam, TeamProblemsError, teamProblems } from '../teams/team-problems';
+import type { TeamRepository } from '../teams/team-repository';
 import { BattleRoom } from './battle-room';
 
 export interface BattleManagerOptions {
@@ -18,7 +19,10 @@ export class BattleManager {
   private readonly rooms = new Map<string, BattleRoom>();
   private readonly idleTimeoutMs: number;
 
-  constructor(options: BattleManagerOptions = {}) {
+  constructor(
+    private readonly teams: TeamRepository,
+    options: BattleManagerOptions = {},
+  ) {
     this.idleTimeoutMs = options.idleTimeoutMs ?? DEFAULT_IDLE_TIMEOUT_MS;
   }
 
@@ -30,14 +34,11 @@ export class BattleManager {
    * Builds a battle from a `battle:start` message. Throws `TeamProblemsError` (Spanish message
    * plus problems) when a team cannot be used.
    */
-  create(message: StartBattleMessage): BattleRoom {
+  async create(message: StartBattleMessage): Promise<BattleRoom> {
     const { mode, botLevel } = message;
     const seed = message.seed ?? randomBytes(4).toString('hex');
 
-    const player = readTeam(message.team, mode);
-    if (player.problems.length > 0) {
-      throw new TeamProblemsError('Tu equipo no se puede usar.', player.problems);
-    }
+    const player = await this.playerTeam(message);
     const rival = this.rivalTeam(message, seed);
 
     const level = botLevelInfo(botLevel);
@@ -48,7 +49,7 @@ export class BattleManager {
         seed,
         options: message.options,
         players: {
-          p1: { name: message.playerName ?? DEFAULT_PLAYER_NAME, team: player.team },
+          p1: { name: message.playerName ?? DEFAULT_PLAYER_NAME, team: player },
           p2: { name: `Bot ${level.name}`, team: rival },
         },
       });
@@ -91,6 +92,28 @@ export class BattleManager {
 
   disposeAll(): void {
     for (const id of [...this.rooms.keys()]) this.delete(id);
+  }
+
+  /** The player's team, pasted or saved (a saved team can be used in either mode). */
+  private async playerTeam(message: StartBattleMessage): Promise<PokemonSet[]> {
+    if (message.teamId !== undefined) {
+      const stored = await this.teams.get(message.teamId);
+      if (!stored) {
+        throw new TeamProblemsError('Ese equipo guardado no existe.', [
+          'Puede que se haya borrado. Elige otro en la lista.',
+        ]);
+      }
+      const problems = teamProblems(stored.team.members, message.mode);
+      if (problems.length > 0) {
+        throw new TeamProblemsError(`Tu equipo «${stored.team.name}» no se puede usar.`, problems);
+      }
+      return stored.team.members;
+    }
+    const player = readTeam(message.team ?? '', message.mode);
+    if (player.problems.length > 0) {
+      throw new TeamProblemsError('Tu equipo no se puede usar.', player.problems);
+    }
+    return player.team;
   }
 
   private rivalTeam(message: StartBattleMessage, seed: string): PokemonSet[] {

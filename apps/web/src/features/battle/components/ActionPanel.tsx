@@ -20,6 +20,7 @@ import { moveName, speciesName, typeName } from '@colleja/narration';
 import { useEffect, useMemo, useState } from 'react';
 import { PokemonIcon } from '../../../components/PokemonIcon';
 import { Button, Panel } from '../../../components/ui';
+import { moveDetails } from '../../../lib/move-labels';
 import { typeColor } from '../../../lib/type-colors';
 import { useSettings } from '../../../stores/settings';
 import {
@@ -34,12 +35,6 @@ import {
   toChoice,
 } from '../choice-draft';
 import { hpPercent } from '../format';
-
-const CATEGORY_LABEL: Record<string, string> = {
-  Physical: 'Físico',
-  Special: 'Especial',
-  Status: 'Estado',
-};
 
 export function ActionPanel({
   request,
@@ -250,13 +245,7 @@ function MoveButton({
 }) {
   const data = getMove(option.move.id);
   const color = typeColor(data?.type);
-  const details = [
-    data && CATEGORY_LABEL[data.category],
-    data?.basePower ? `Potencia ${data.basePower}` : null,
-    data && typeof data.accuracy === 'number' ? `Precisión ${data.accuracy} %` : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  const details = moveDetails(option.move.id);
   const description = getDescription('moves', option.move.id);
   return (
     <button

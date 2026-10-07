@@ -5,6 +5,7 @@
 export * from './battle';
 export * from './common';
 export * from './rest';
+export * from './teams';
 
 import { type ClientMessage, ClientMessageSchema } from './battle';
 

@@ -1,4 +1,6 @@
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { RandomAgent } from '@colleja/bot';
 import { type AgentContext, isActionable, type PokemonSet } from '@colleja/core';
 import type { GameMode } from '@colleja/data';
@@ -20,8 +22,13 @@ export function fixtureText(name: 'equipo-a' | 'equipo-b'): string {
   );
 }
 
-export function testServer(): Promise<FastifyInstance> {
-  return buildServer({ spritesDir: null, webDir: null, sweepIntervalMs: 0 });
+/** A temporary folder for saved teams (tests never touch `storage/`). */
+export function tempTeamsDir(): string {
+  return mkdtempSync(join(tmpdir(), 'colleja-teams-'));
+}
+
+export function testServer(teamsDir = tempTeamsDir()): Promise<FastifyInstance> {
+  return buildServer({ spritesDir: null, webDir: null, sweepIntervalMs: 0, teamsDir });
 }
 
 export function startMessage(

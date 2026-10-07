@@ -18,6 +18,7 @@ import {
   SideIdSchema,
   TeamTextSchema,
 } from './common';
+import { TeamIdSchema } from './teams';
 
 /** WebSocket endpoint path. */
 export const BATTLE_SOCKET_PATH = '/ws';
@@ -33,16 +34,24 @@ export const OpponentSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('team'), team: TeamTextSchema }),
 ]);
 
-export const StartBattleSchema = z.object({
-  type: z.literal('battle:start'),
-  mode: GameModeSchema,
-  team: TeamTextSchema,
-  opponent: OpponentSchema,
-  botLevel: BotLevelSchema,
-  options: BattleOptionsSchema,
-  seed: SeedSchema.optional(),
-  playerName: z.string().trim().min(1).max(18).optional(),
-});
+export const StartBattleSchema = z
+  .object({
+    type: z.literal('battle:start'),
+    mode: GameModeSchema,
+    /** The player's team as Showdown export text… */
+    team: TeamTextSchema.optional(),
+    /** …or the id of a saved team (exactly one of the two). */
+    teamId: TeamIdSchema.optional(),
+    opponent: OpponentSchema,
+    botLevel: BotLevelSchema,
+    options: BattleOptionsSchema,
+    seed: SeedSchema.optional(),
+    playerName: z.string().trim().min(1).max(18).optional(),
+  })
+  .refine((message) => (message.team === undefined) !== (message.teamId === undefined), {
+    message: 'Indica tu equipo: el texto o un equipo guardado (uno de los dos).',
+    path: ['team'],
+  });
 
 export const ClientMessageSchema = z.discriminatedUnion('type', [
   StartBattleSchema,

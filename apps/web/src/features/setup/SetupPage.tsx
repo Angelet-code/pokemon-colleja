@@ -1,10 +1,11 @@
 /** Start screen: mode, your team, the rival, the difficulty and the practice options. */
-import type { MetaResponse } from '@colleja/protocol';
+import type { MetaResponse, TeamSummary } from '@colleja/protocol';
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { Button, Checkbox, Panel, Segmented } from '../../components/ui';
 import { ApiRequestError, api } from '../../lib/api';
 import { type BattleError, useBattle } from '../battle/battle-store';
+import { SavedTeamPicker } from './SavedTeamPicker';
 import { toStartMessage, useSetup } from './setup-store';
 import { TeamInput, useTeamCheck } from './TeamInput';
 
@@ -33,6 +34,7 @@ export function SetupPage() {
   const [startError, setStartError] = useState<BattleError | null>(null);
   const [starting, setStarting] = useState(false);
   const [generating, setGenerating] = useState<'team' | 'rival' | null>(null);
+  const [savedTeams, setSavedTeams] = useState<TeamSummary[] | null>(null);
 
   const teamCheck = useTeamCheck(form.team, form.mode);
   const rivalCheck = useTeamCheck(form.opponentTeam, form.mode);
@@ -57,13 +59,21 @@ export function SetupPage() {
         });
     };
     load(1);
+    api
+      .listTeams()
+      .then(({ teams }) => !cancelled && setSavedTeams(teams))
+      .catch(() => !cancelled && setSavedTeams([]));
     return () => {
       cancelled = true;
       clearTimeout(timer);
     };
   }, []);
 
-  const teamReady = teamCheck.sets.length > 0 && teamCheck.problems.length === 0;
+  const savedTeam = savedTeams?.find((team) => team.id === form.teamId) ?? null;
+  const teamReady =
+    form.teamSource === 'saved'
+      ? savedTeam?.valid === true
+      : teamCheck.sets.length > 0 && teamCheck.problems.length === 0;
   const rivalReady =
     form.opponentKind === 'random' ||
     (rivalCheck.sets.length > 0 && rivalCheck.problems.length === 0);
@@ -117,29 +127,52 @@ export function SetupPage() {
           </p>
         )}
 
-        <Panel title="Tu equipo">
-          <div className="p-4">
-            <TeamInput
-              label={`Export de Showdown (6 Pokémon; en combate eliges ${pickSize})`}
-              value={form.team}
-              onChange={(team) => form.update({ team })}
-              check={teamCheck}
-              placeholder={TEAM_PLACEHOLDER}
-              actions={
-                <>
-                  <Button onClick={() => randomTeam('team')} disabled={generating !== null}>
-                    {generating === 'team' ? 'Generando…' : 'Equipo aleatorio'}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    onClick={() => form.update({ team: '' })}
-                    disabled={!form.team}
-                  >
-                    Borrar
-                  </Button>
-                </>
-              }
+        <Panel
+          title="Tu equipo"
+          actions={
+            <Segmented
+              label="Origen de tu equipo"
+              size="sm"
+              value={form.teamSource}
+              onChange={(teamSource) => form.update({ teamSource })}
+              options={[
+                { value: 'saved', label: 'Guardado' },
+                { value: 'text', label: 'Pegado' },
+              ]}
             />
+          }
+        >
+          <div className="p-4">
+            {form.teamSource === 'saved' ? (
+              <SavedTeamPicker
+                teams={savedTeams}
+                value={form.teamId}
+                onChange={(teamId) => form.update({ teamId })}
+                pickSize={pickSize}
+              />
+            ) : (
+              <TeamInput
+                label={`Export de Showdown (6 Pokémon; en combate eliges ${pickSize})`}
+                value={form.team}
+                onChange={(team) => form.update({ team })}
+                check={teamCheck}
+                placeholder={TEAM_PLACEHOLDER}
+                actions={
+                  <>
+                    <Button onClick={() => randomTeam('team')} disabled={generating !== null}>
+                      {generating === 'team' ? 'Generando…' : 'Equipo aleatorio'}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => form.update({ team: '' })}
+                      disabled={!form.team}
+                    >
+                      Borrar
+                    </Button>
+                  </>
+                }
+              />
+            )}
           </div>
         </Panel>
 
@@ -277,7 +310,19 @@ export function SetupPage() {
           {starting ? 'Preparando el combate…' : 'Empezar combate'}
         </Button>
         {!teamReady && (
-          <p className="text-center text-xs text-muted">Pega un equipo legal para empezar.</p>
+          <p className="text-center text-xs text-muted">
+            {form.teamSource === 'saved' ? (
+              <>
+                Elige un equipo guardado legal o{' '}
+                <Link to="/equipos" className="text-accent hover:underline">
+                  créalo
+                </Link>
+                .
+              </>
+            ) : (
+              'Pega un equipo legal para empezar.'
+            )}
+          </p>
         )}
       </aside>
     </div>

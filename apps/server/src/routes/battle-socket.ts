@@ -8,7 +8,7 @@ import {
 import type { FastifyInstance } from 'fastify';
 import type { BattleManager } from '../battles/battle-manager';
 import type { BattleRoom, MessageSink } from '../battles/battle-room';
-import { TeamProblemsError } from '../teams';
+import { TeamProblemsError } from '../teams/team-problems';
 
 export function registerBattleSocket(app: FastifyInstance, manager: BattleManager): void {
   app.get(BATTLE_SOCKET_PATH, { websocket: true }, (socket) => {
@@ -25,7 +25,7 @@ export function registerBattleSocket(app: FastifyInstance, manager: BattleManage
         if (room) manager.delete(room.id);
         room = null;
         try {
-          room = manager.create(message);
+          room = await manager.create(message);
         } catch (error) {
           if (!(error instanceof TeamProblemsError)) throw error;
           send({

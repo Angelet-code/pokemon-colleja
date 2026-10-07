@@ -9,10 +9,15 @@ import {
 import {
   type ClientMessage,
   ClientMessageSchema,
+  CreateTeamRequestSchema,
+  ImportTeamRequestSchema,
+  PokemonSetSchema,
   parseClientMessage,
   RandomTeamRequestSchema,
   type ServerMessage,
   ServerMessageSchema,
+  TeamSchema,
+  UpdateTeamRequestSchema,
   ValidateTeamRequestSchema,
 } from '@colleja/protocol';
 import { describe, expect, it } from 'vitest';
@@ -31,6 +36,7 @@ describe('client → server', () => {
   const messages: ClientMessage[] = [
     start,
     { ...start, opponent: { kind: 'team', team: 'Incineroar @ Sitrus Berry' }, seed: undefined },
+    { ...start, team: undefined, teamId: '0b5c3a52-8a3e-4c7e-9d0f-2f1f0e6b7a11' },
     { type: 'battle:choose', battleId: 'b1', choice: teamChoice([2, 1, 3, 4]) },
     {
       type: 'battle:choose',
@@ -68,6 +74,9 @@ describe('client → server', () => {
       { ...start, botLevel: 7 },
       { ...start, team: '   ' },
       { ...start, opponent: { kind: 'team' } },
+      { ...start, teamId: 'abc' },
+      { ...start, team: undefined },
+      { ...start, team: undefined, teamId: '../secreto' },
       { type: 'battle:choose', battleId: 'b1', choice: { type: 'actions', actions: [] } },
       { type: 'battle:choose', battleId: 'b1', choice: actionsChoice(moveAction(5)) },
       {
@@ -145,5 +154,59 @@ describe('REST bodies', () => {
     expect(ValidateTeamRequestSchema.safeParse({ mode: 'singles' }).success).toBe(false);
     expect(RandomTeamRequestSchema.safeParse({ mode: 'doubles' }).success).toBe(true);
     expect(RandomTeamRequestSchema.safeParse({ mode: 'doubles', seed: '' }).success).toBe(false);
+  });
+});
+
+describe('saved teams', () => {
+  const garchomp = {
+    species: 'garchomp',
+    nickname: 'Chompy',
+    item: 'lifeorb',
+    ability: 'roughskin',
+    nature: 'jolly',
+    statPoints: { hp: 2, atk: 32, def: 0, spa: 0, spd: 0, spe: 32 },
+    moves: ['earthquake', 'dragonclaw', 'rockslide', 'protect'],
+    gender: 'F' as const,
+    shiny: true,
+  };
+  const team = {
+    id: '0b5c3a52-8a3e-4c7e-9d0f-2f1f0e6b7a11',
+    name: 'Arena',
+    mode: 'doubles' as const,
+    ruleset: 'champions-regmc' as const,
+    members: [garchomp, { ...garchomp, species: 'incineroar', nickname: undefined }],
+    notes: 'Probando',
+  };
+
+  it('round-trips a team and the CRUD bodies', () => {
+    const json = JSON.parse(JSON.stringify(team));
+    expect(TeamSchema.parse(json)).toEqual(json);
+    const { id: _id, ...content } = json;
+    expect(CreateTeamRequestSchema.parse({ team: content })).toEqual({ team: content });
+    expect(UpdateTeamRequestSchema.parse({ team: content })).toEqual({ team: content });
+    const fromText = { text: 'Garchomp', name: 'Pegado', mode: 'singles' };
+    expect(ImportTeamRequestSchema.parse(fromText)).toEqual(fromText);
+    // An empty draft is a valid team to save (legality is reported, not enforced).
+    expect(TeamSchema.safeParse({ ...team, members: [] }).success).toBe(true);
+  });
+
+  it('rejects Stat Points out of range, too many moves or members and unsafe ids', () => {
+    const bad: unknown[] = [
+      { ...garchomp, statPoints: { ...garchomp.statPoints, atk: 33 } },
+      { ...garchomp, statPoints: { ...garchomp.statPoints, hp: -1 } },
+      { ...garchomp, statPoints: { ...garchomp.statPoints, hp: 1.5 } },
+      { ...garchomp, moves: [...garchomp.moves, 'swordsdance'] },
+      { ...garchomp, species: 'Garchomp' },
+      { ...garchomp, nickname: 'x'.repeat(19) },
+    ];
+    for (const set of bad) {
+      expect(PokemonSetSchema.safeParse(set).success, JSON.stringify(set)).toBe(false);
+    }
+    expect(TeamSchema.safeParse({ ...team, members: Array(7).fill(garchomp) }).success).toBe(false);
+    expect(TeamSchema.safeParse({ ...team, id: '../etc/passwd' }).success).toBe(false);
+    expect(TeamSchema.safeParse({ ...team, name: '  ' }).success).toBe(false);
+    expect(ImportTeamRequestSchema.safeParse({ text: 'Garchomp', mode: 'singles' }).success).toBe(
+      false,
+    );
   });
 });

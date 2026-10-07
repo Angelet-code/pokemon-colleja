@@ -8,9 +8,10 @@ import fastifyStatic from '@fastify/static';
 import fastifyWebsocket from '@fastify/websocket';
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
 import { BattleManager, type BattleManagerOptions } from './battles/battle-manager';
-import { SPRITES_DIR, WEB_DIST_DIR } from './config';
+import { SPRITES_DIR, TEAMS_DIR, WEB_DIST_DIR } from './config';
 import { registerApi } from './routes/api';
 import { registerBattleSocket } from './routes/battle-socket';
+import { FileTeamRepository } from './teams/team-repository';
 
 export interface ServerOptions extends BattleManagerOptions {
   logger?: FastifyServerOptions['logger'];
@@ -20,14 +21,20 @@ export interface ServerOptions extends BattleManagerOptions {
   webDir?: string | null;
   /** How often idle battles are swept (ms). `0` disables the timer (tests). */
   sweepIntervalMs?: number;
+  /** Folder of the saved teams (default `storage/teams/`; tests use a temporary one). */
+  teamsDir?: string;
 }
 
 export async function buildServer(options: ServerOptions = {}): Promise<FastifyInstance> {
   const app = Fastify({ logger: options.logger ?? false });
-  const battles = new BattleManager(options);
+  const teams = new FileTeamRepository(options.teamsDir ?? TEAMS_DIR, {
+    onInvalid: (file, reason) =>
+      app.log.warn({ file, reason }, 'Equipo guardado ilegible: se ignora'),
+  });
+  const battles = new BattleManager(teams, options);
 
   await app.register(fastifyWebsocket);
-  registerApi(app);
+  registerApi(app, teams);
   registerBattleSocket(app, battles);
 
   const spritesDir = options.spritesDir === undefined ? SPRITES_DIR : options.spritesDir;

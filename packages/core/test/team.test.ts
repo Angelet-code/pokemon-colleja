@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import {
   championsStats,
   checkTeam,
+  checkTeamIssues,
   emptyStatTable,
+  fitTeamToLimits,
   formatShowdownTeam,
   getStatCalculator,
   getStatPointLimits,
@@ -186,6 +188,72 @@ describe('client-side team checks', () => {
       'Pokémon 2 (Charizard): PS: 33 Stat Points (máximo 32 por stat).',
       'Cláusula de especie: Incineroar y Incineroar son el mismo Pokémon.',
       'Cláusula de objeto: Baya Zidra está repetido.',
+    ]);
+  });
+
+  it('says which member and field causes each problem', () => {
+    const [incineroar, charizard, ...rest] = fixture('equipo-a');
+    if (!incineroar || !charizard) throw new Error('missing');
+    const issues = checkTeamIssues(
+      [
+        { ...incineroar, ability: 'levitate' },
+        { ...charizard, item: incineroar.item },
+        incineroar,
+        ...rest.slice(0, 3),
+      ],
+      'singles',
+    );
+    expect(issues.map(({ kind, member, field }) => ({ kind, member, field }))).toEqual([
+      { kind: 'set', member: 0, field: 'ability' },
+      { kind: 'clause', member: 2, field: 'species' },
+      { kind: 'clause', member: 1, field: 'item' },
+      { kind: 'clause', member: 2, field: 'item' },
+    ]);
+  });
+
+  it('marks every extra holder of a repeated item but reports the clause once', () => {
+    const sets = fixture('equipo-a');
+    const item = sets[0]?.item;
+    const repeated = sets.map((set, index) => (index < 3 ? { ...set, item } : set));
+    const issues = checkTeamIssues(repeated, 'singles').filter((issue) => issue.field === 'item');
+    expect(issues.map((issue) => issue.member)).toEqual([1, 2]);
+    expect(checkTeam(repeated, 'singles')).toEqual([
+      'Cláusula de objeto: Baya Zidra está repetido.',
+    ]);
+  });
+});
+
+describe('team limits', () => {
+  it('leaves sets that fit untouched', () => {
+    const sets = fixture('equipo-a');
+    expect(fitTeamToLimits(sets, 'singles')).toEqual({ sets, adjustments: [] });
+  });
+
+  it('fits imported text to 6 members, 4 moves, legal spreads and short nicknames', () => {
+    const [first, ...rest] = fixture('equipo-a');
+    if (!first) throw new Error('missing');
+    const { sets, adjustments } = fitTeamToLimits(
+      [
+        {
+          ...first,
+          nickname: 'Un mote larguísimo de verdad',
+          moves: [...first.moves, 'protect', 'protect'],
+          statPoints: sp(252, 252, 4, 0, 0, 0),
+        },
+        ...rest,
+        first,
+      ],
+      'singles',
+    );
+    expect(sets).toHaveLength(6);
+    expect(sets[0]?.moves).toHaveLength(4);
+    expect(sets[0]?.statPoints).toEqual(sp(32, 32, 2, 0, 0, 0));
+    expect(sets[0]?.nickname).toHaveLength(18);
+    expect(adjustments).toEqual([
+      'Solo se conservan los 6 primeros Pokémon.',
+      'Pokémon 1 (Incineroar): se conservan 4 movimientos (máximo 4, sin repetir).',
+      'Pokémon 1 (Incineroar): Stat Points recortados al máximo (66 en total, 32 por stat).',
+      'Pokémon 1 (Incineroar): mote recortado a 18 caracteres.',
     ]);
   });
 });

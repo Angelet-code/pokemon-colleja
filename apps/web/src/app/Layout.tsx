@@ -1,4 +1,4 @@
-import { Link, Outlet } from 'react-router';
+import { Link, NavLink, Outlet } from 'react-router';
 import { Segmented } from '../components/ui';
 import { useSettings } from '../stores/settings';
 
@@ -20,6 +20,12 @@ export function Layout() {
           <span className="hidden rounded bg-panel-2 px-1.5 py-0.5 text-xs text-muted md:inline">
             Champions · Reg M-C
           </span>
+          <nav aria-label="Secciones" className="ml-2 flex gap-1">
+            <NavItem to="/" end>
+              Combate
+            </NavItem>
+            <NavItem to="/equipos">Equipos</NavItem>
+          </nav>
           <div className="ml-auto flex items-center gap-2">
             <span className="hidden text-xs text-muted sm:inline">Nombres</span>
             <Segmented
@@ -48,6 +54,22 @@ export function Layout() {
         <Outlet />
       </main>
     </div>
+  );
+}
+
+function NavItem({ to, end, children }: { to: string; end?: boolean; children: string }) {
+  return (
+    <NavLink
+      to={to}
+      end={end}
+      className={({ isActive }) =>
+        `rounded-lg px-2.5 py-1 text-sm font-medium transition hover:bg-panel-2 ${
+          isActive ? 'bg-panel-2 text-text' : 'text-muted hover:text-text'
+        }`
+      }
+    >
+      {children}
+    </NavLink>
   );
 }
 
