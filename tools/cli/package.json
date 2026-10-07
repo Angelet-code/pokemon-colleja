@@ -1,0 +1,17 @@
+{
+  "name": "@colleja/cli",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Combate de Pokémon Champions en la terminal contra el bot (individuales y dobles).",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/play.ts",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@colleja/bot": "*",
+    "@colleja/core": "*",
+    "@colleja/data": "*",
+    "@colleja/engine": "*"
+  }
+}

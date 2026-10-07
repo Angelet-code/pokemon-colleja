@@ -1,0 +1,16 @@
+{
+  "name": "@colleja/core",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Dominio puro de Pokémon Champions: sets, equipos, stats, import/export, elecciones y vista del combate. Apto para navegador.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@colleja/data": "*"
+  }
+}

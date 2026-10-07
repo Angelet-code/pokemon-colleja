@@ -1,0 +1,21 @@
+{
+  "name": "@colleja/engine",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Motor de combate: adaptador de Showdown, validación de equipos y sesiones con rebobinado y replays (solo Node).",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@colleja/core": "*",
+    "@colleja/data": "*",
+    "@colleja/showdown": "*"
+  },
+  "devDependencies": {
+    "@colleja/bot": "*"
+  }
+}

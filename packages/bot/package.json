@@ -1,0 +1,20 @@
+{
+  "name": "@colleja/bot",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Bots rivales. Nivel 0: aleatorio. Apto para navegador (solo depende de core).",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@colleja/core": "*",
+    "@colleja/data": "*"
+  },
+  "devDependencies": {
+    "@colleja/engine": "*"
+  }
+}
