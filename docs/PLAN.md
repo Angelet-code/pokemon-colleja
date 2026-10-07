@@ -14,6 +14,7 @@ Documentación de soporte:
 | [adr/0001-motor-de-combate.md](adr/0001-motor-de-combate.md) | Decisión: envolver el simulador de Showdown |
 | [adr/0002-pipeline-de-datos.md](adr/0002-pipeline-de-datos.md) | Decisión: datos generados y versionados, español desde PokeAPI |
 | [guias/datos.md](guias/datos.md) | Guía del pipeline de datos, sprites y overrides |
+| [fases/](fases/) | **Briefs de traspaso** de cada fase pendiente: objetivo, diseño, hechos verificados, criterios de "hecho". Empieza por [fases/fase-3.md](fases/fase-3.md) |
 
 ---
 
@@ -192,7 +193,7 @@ Mapeo de reglas a formatos de Showdown, centralizado en el adaptador:
 | singles + champions-regmc | `gen9championsbssregmc` |
 | doubles + champions-regmc | `gen9championsvgc2026regmc` |
 
-Los ajustes de práctica (sin vista previa, equipo abierto…) se aplican como reglas personalizadas del formato, por ejemplo `formatid@@@!Team Preview`. Esto se verifica en la fase 3.
+Los ajustes de práctica (sin vista previa, equipo abierto…) se aplicaban en principio como reglas personalizadas del formato. **Verificado al cerrar la fase 2:** la sintaxis `@@@` funciona, pero el motor sigue pidiendo elegir equipo mientras exista `pickedTeamSize`. Por eso "sin vista previa" se resuelve respondiendo automáticamente con el orden por defecto. Detalles en [fases/fase-3.md](fases/fase-3.md).
 
 El adaptador **valida siempre** los dos equipos con `TeamValidator` antes de crear el combate. `BattleStream` no valida, y es el validador quien aplica `Adjust Level Down = 50` y la legalidad de Champions (comprobado en la fase 1).
 
@@ -294,7 +295,7 @@ Tamaños orientativos: S (pocas sesiones) · M · L.
 | **0. Investigación y plan** | — | Esta documentación | ✅ |
 | **1. Cimientos** ✅ | S | `git init`, monorepo, TS/Biome/Vitest, submódulo de Showdown fijado y compilado, CLAUDE.md del proyecto | ✅ `npm run smoke`: 22 combates (fixtures VGC/BSS + aleatorios) sin errores. 14 tests, deterministas por semilla |
 | **2. Datos** ✅ | M | Pipeline de datos, i18n ES, sets estándar, overrides, script de descarga de sprites | ✅ Datos deterministas: 231 especies, 82 Megas, 166 objetos y unos 950 sets validados. Test de consistencia con el motor |
-| **3. Dominio + motor** | M | `core` (stats SP, import/export, validación) y `engine` (BattleEngine, sesión, semillas, rebobinar). CLI para jugar en terminal | **Primer combate jugable** (en terminal). Misma semilla + mismas entradas = mismo log |
+| **3. Dominio + motor** ⏭️ | M | `core` (stats SP, import/export, validación) y `engine` (BattleEngine, sesión, semillas, rebobinar). CLI para jugar en terminal. Brief: [fases/fase-3.md](fases/fase-3.md) | **Primer combate jugable** (en terminal). Misma semilla + mismas entradas = mismo log |
 | **4. Bot** | M | Niveles 0–2, elección en vista previa, `teamgen`, arena | El nivel 2 gana al menos el 80 % de 500 combates contra el nivel 0 en cada modo, sin elecciones inválidas |
 | **5. Servidor + UI de combate** | L | Fastify + WS, app React, pantalla de combate de individuales y luego de dobles. Importación de equipo pegado | Combate completo en el navegador en ambos modos |
 | **6. Teambuilder** | L | Editor completo con SP, validación y persistencia | Crear un equipo legal desde cero y usarlo en combate |
@@ -336,7 +337,7 @@ Las mecánicas en sí **no se re-testean**: son responsabilidad del motor (Showd
 | Riesgo | Mitigación |
 |---|---|
 | Cambios de API o protocolo de Showdown al actualizar el commit | Adaptador único, tests de integración y actualizaciones deliberadas |
-| `@pkmn/client` va con datos de Champions de junio (le faltan las Megas de M-C) | Comprobarlo al principio de la fase 3. Plan B: alimentar el cliente con nuestro dex generado |
+| `@pkmn/client` va con datos de Champions de junio (le faltan las Megas de M-C) | Comprobarlo al principio de la fase 5 (la UI); el CLI de la fase 3 no lo necesita. Plan B: estado de cliente propio a partir de las peticiones y de `@colleja/data` |
 | Filtro de red (Sophos) | Usar solo npm y GitHub. Sprites y nombres desde repos de GitHub |
 | Licencias: el arte es © Nintendo/TPC, y los sets de Smogon tienen copyright | Uso personal, assets fuera de git, sets base desde el repo MIT de Showdown |
 | Crecimiento del alcance | MVP cerrado (fases 1–5) y el resto planificado por fases |

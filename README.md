@@ -40,6 +40,10 @@ Descarga los sprites (renders de Champions, iconos y objetos) a `assets/`, que n
 
 Los datos del juego ya vienen generados en `packages/data/generated/`. Para regenerarlos tras actualizar Showdown o PokeAPI: `npm run data:build`. Más detalle en la [guía de datos](docs/guias/datos.md).
 
+## Cómo contribuir / continuar
+
+El proyecto avanza por fases. Cada fase pendiente tiene un **brief de traspaso** en [docs/fases/](docs/fases/), con objetivo, diseño, hechos verificados y criterios de "hecho". Las reglas del repositorio y el protocolo para cerrar una fase están en [AGENTS.md](AGENTS.md), que también leen los asistentes de IA (Claude Code lo carga a través de `CLAUDE.md`). La CI de GitHub ejecuta `npm run check` en cada push.
+
 ## Documentación
 
 - [Plan del proyecto](docs/PLAN.md): arquitectura, stack, hoja de ruta y decisiones

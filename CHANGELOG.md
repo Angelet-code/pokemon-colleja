@@ -4,6 +4,19 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ## [Sin publicar]
 
+### Preparación del traspaso (2026-10-07)
+
+#### Añadido
+
+- `docs/fases/fase-3.md`: brief de traspaso de la fase 3 (objetivo, diseño recomendado, tests, criterios de "hecho") con hechos del motor **verificados**:
+  - El motor sigue pidiendo elegir equipo aunque se quite la regla Team Preview.
+  - Sintaxis de las reglas `@@@`.
+  - Formato de `inputLog` para rebobinar.
+  - `toJSON`/`fromJSON`.
+- `AGENTS.md` reorganizado como punto de entrada: cómo continuar una fase, protocolo de cierre de fase, preferencias del usuario y puesta en marcha.
+- CI en GitHub Actions: `npm run check` en cada push y en cada PR.
+- Recomendaciones y ajustes de VS Code (Biome, Vitest).
+
 ### Fase 2 — Pipeline de datos (2026-10-07)
 
 #### Añadido

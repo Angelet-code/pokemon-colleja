@@ -1,0 +1,17 @@
+{
+  "editor.defaultFormatter": "biomejs.biome",
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.organizeImports.biome": "explicit"
+  },
+  "[json]": { "editor.defaultFormatter": "biomejs.biome" },
+  "[typescript]": { "editor.defaultFormatter": "biomejs.biome" },
+  "files.exclude": {
+    "vendor/pokemon-showdown/node_modules": true,
+    "vendor/pokemon-showdown/dist": true
+  },
+  "search.exclude": {
+    "packages/data/generated": true,
+    "vendor": true
+  }
+}
