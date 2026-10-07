@@ -6,7 +6,7 @@ Simulador de combates de **Pokémon Champions** para practicar en individuales y
 
 ## Estado
 
-✅ Fase 0 (investigación y plan) · ✅ Fase 1 (cimientos) · ✅ Fase 2 (datos) · ✅ Fase 3 (dominio + motor + combate en terminal) · ✅ Fase 4 (bot de 3 niveles, equipos aleatorios, arena) · ✅ Fase 5 (servidor + UI de combate: **MVP**) · ⏭️ Fase 6 (teambuilder). Ver [CHANGELOG](CHANGELOG.md).
+✅ Fase 0 (investigación y plan) · ✅ Fase 1 (cimientos) · ✅ Fase 2 (datos) · ✅ Fase 3 (dominio + motor + combate en terminal) · ✅ Fase 4 (bot de 3 niveles, equipos aleatorios, arena) · ✅ Fase 5 (servidor + UI de combate: **MVP**) · ✅ Fase 6 (teambuilder y equipos guardados) · ⏭️ Fase 7 (rivales editables). Ver [CHANGELOG](CHANGELOG.md).
 
 ## Puesta en marcha
 
@@ -24,7 +24,9 @@ npm install
 npm run dev
 ```
 
-Arranca el servidor local y la web: abre **http://127.0.0.1:5173**, pega tu equipo en formato export de Showdown (o genera uno aleatorio), elige rival, dificultad y modo, y juega en el navegador. Hay vista previa, Mega, objetivos en dobles, deshacer, rebobinar a cualquier turno, rendirse y descarga del replay. El log se escribe en español con los textos de Showdown, y puedes ver los nombres en inglés. Para servir la versión compilada: `npm start` (http://127.0.0.1:3001). Más en la [guía de la web](docs/guias/web.md).
+Arranca el servidor local y la web: abre **http://127.0.0.1:5173**, elige uno de tus equipos guardados o pega uno en formato export de Showdown (o genera uno aleatorio), elige rival, dificultad y modo, y juega en el navegador. Hay vista previa, Mega, objetivos en dobles, deshacer, rebobinar a cualquier turno, rendirse y descarga del replay. El log se escribe en español con los textos de Showdown, y puedes ver los nombres en inglés. Para servir la versión compilada: `npm start` (http://127.0.0.1:3001). Más en la [guía de la web](docs/guias/web.md).
+
+En **Equipos** (http://127.0.0.1:5173/equipos) creas equipos desde cero o importados de Showdown: especie, habilidad, objeto, naturaleza, **Stat Points con los stats en vivo**, movimientos filtrados por lo que aprende cada Pokémon en Champions, sets sugeridos y validación en vivo. Se guardan en `storage/teams/` y se usan en combate desde el inicio ([guía del teambuilder](docs/guias/teambuilder.md)).
 
 ```bash
 npm run play
@@ -70,8 +72,8 @@ El proyecto avanza por fases. Cada fase pendiente tiene un **brief de traspaso**
   - [Mecánicas de combate](docs/research/02-mecanicas-combate.md)
   - [Stack técnico](docs/research/03-stack-tecnico.md)
   - Anexos: [roster](docs/research/anexos/champions-roster-regmc.md) · [objetos](docs/research/anexos/champions-objetos-regmc.md)
-- Guías: [datos del juego](docs/guias/datos.md) · [combates](docs/guias/combate.md) · [bots](docs/guias/bot.md) · [servidor y web](docs/guias/web.md)
-- Decisiones de arquitectura: [ADR-0001: motor de combate](docs/adr/0001-motor-de-combate.md) · [ADR-0002: pipeline de datos](docs/adr/0002-pipeline-de-datos.md) · [ADR-0003: sesión de combate](docs/adr/0003-sesion-de-combate.md) · [ADR-0004: bot por simulación](docs/adr/0004-bot-por-simulacion.md) · [ADR-0005: servidor, web y narración](docs/adr/0005-servidor-web-y-narracion.md)
+- Guías: [datos del juego](docs/guias/datos.md) · [combates](docs/guias/combate.md) · [bots](docs/guias/bot.md) · [servidor y web](docs/guias/web.md) · [teambuilder](docs/guias/teambuilder.md)
+- Decisiones de arquitectura: [ADR-0001: motor de combate](docs/adr/0001-motor-de-combate.md) · [ADR-0002: pipeline de datos](docs/adr/0002-pipeline-de-datos.md) · [ADR-0003: sesión de combate](docs/adr/0003-sesion-de-combate.md) · [ADR-0004: bot por simulación](docs/adr/0004-bot-por-simulacion.md) · [ADR-0005: servidor, web y narración](docs/adr/0005-servidor-web-y-narracion.md) · [ADR-0006: equipos guardados y teambuilder](docs/adr/0006-equipos-guardados-y-teambuilder.md)
 
 ## Créditos
 

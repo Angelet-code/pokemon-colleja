@@ -4,6 +4,31 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ## [Sin publicar]
 
+### Fase 6 — Teambuilder y equipos guardados (2026-10-08)
+
+#### Añadido
+
+- **Teambuilder** en la web (`/equipos`, enlace "Equipos" en la cabecera):
+  - **Lista** de equipos con iconos, modo, fecha y estado (legal o con N problemas), y acciones nuevo, importar, editar, duplicar, borrar (con confirmación) y **usar en combate**.
+  - **Editor** con los Pokémon a la izquierda y la ficha a la derecha (una cosa cada vez en móvil): buscador de especies (español, inglés o número), mote, género, shiny, habilidad con descripción, objeto (megapiedras solo para su especie y aviso de Item Clause), naturaleza, **Stat Points con stats en vivo** (y los de la Mega con su piedra), 4 buscadores de movimientos **filtrados por learnset** con tipo, categoría, potencia, precisión y PP, y **set sugerido** desde los sets estándar.
+  - **Problemas en vivo junto al campo** que los causa, con contador por Pokémon. Al guardar se añaden los del validador de Showdown.
+  - **Importar y exportar** en formato de Showdown, el equipo entero o un Pokémon. El texto que no cabe (más de 6, más de 4 movimientos, Stat Points de más, motes largos) se ajusta y se avisa de cada cambio.
+  - Guardado explícito con aviso al salir con cambios sin guardar.
+- **Inicio**: "Tu equipo" puede ser **guardado** o **pegado**. `battle:start` acepta `teamId` en lugar del texto.
+- **Persistencia** (`apps/server`): `TeamRepository` y `FileTeamRepository`, un JSON legible por equipo en `storage/teams/<id>.json` (con su export de Showdown), escritura atómica e ids seguros como nombre de fichero. CRUD en `GET/POST /api/teams`, `POST /api/teams/import` y `GET/PUT/DELETE /api/teams/:id`; cada respuesta lleva los `problems` del equipo. Carpeta configurable con `buildServer({ teamsDir })`.
+- **Decisiones de producto**: un equipo con problemas **se guarda como borrador** (solo se exige legalidad para combatir); el modo del equipo es el **preferido** y vale para los dos si es legal; editor con lista a la izquierda y ficha a la derecha; botón de set sugerido.
+- `@colleja/core`: `checkTeamIssues`/`checkSetIssues` (cada problema con su miembro, campo y tipo) y `fitTeamToLimits` (ajusta texto importado a los límites del editor).
+- `@colleja/protocol`: `PokemonSetSchema`, `TeamSchema`, `TeamContentSchema`, `TeamIdSchema` y los cuerpos y respuestas de `/api/teams`.
+- Web: componentes `Combobox` (buscador accesible, sin acentos, en los dos idiomas), `Dialog` y `TypeBadge`.
+- Tests (231 en total): repositorio en carpeta temporal, CRUD por HTTP (400, 404, problemas, importar, persistencia tras reiniciar), `battle:start` con `teamId` en los dos modos, esquemas, problemas por campo, `fitTeamToLimits`, `team-draft` y componentes (editor de Stat Points, buscador de movimientos, import/export y la lista).
+- Documentación: [guía del teambuilder](docs/guias/teambuilder.md), [ADR-0006](docs/adr/0006-equipos-guardados-y-teambuilder.md) y el brief de la fase 7.
+
+#### Cambiado
+
+- `checkTeam` marca a **cada** miembro que repite objeto (Item Clause) en los problemas por campo y no repite el mismo mensaje.
+- Las rutas de equipos del servidor pasan a `routes/teams.ts`, y la validación de equipos a `teams/team-problems.ts` (`teamProblems`).
+- El bundle de la web pasa de ≈1,2 MB a ≈1,5 MB (≈336 KB con gzip).
+
 ### Fase 5 — Servidor y UI de combate: MVP en el navegador (2026-10-08)
 
 #### Añadido
