@@ -18,8 +18,8 @@ import {
   type SwitchRequest,
   type TeamPreviewRequest,
 } from '@colleja/core';
+import { moveName, moveTypeName, speciesName } from '@colleja/narration';
 import type { CliIO } from './io';
-import { moveName, moveTypeName, speciesName } from './names';
 import { describeSet } from './render';
 
 export type Command =
@@ -110,7 +110,7 @@ export class HumanPlayer {
       for (const set of context.opponentTeam) this.io.print(`   · ${describeSet(set)}`);
     } else {
       const rival = view.sides[context.side === 'p1' ? 'p2' : 'p1'].preview;
-      this.io.print(`   ${rival.map(speciesName).join(' · ')}`);
+      this.io.print(`   ${rival.map((species) => speciesName(species)).join(' · ')}`);
     }
     this.io.print(' Tu equipo:');
     for (const [i, set] of context.team.entries())

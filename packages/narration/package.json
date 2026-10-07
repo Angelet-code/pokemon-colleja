@@ -1,0 +1,22 @@
+{
+  "name": "@colleja/narration",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Narración del combate (log) en español o inglés con las plantillas de Showdown, y nombres para mostrar. Apto para navegador.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@colleja/core": "*",
+    "@colleja/data": "*"
+  },
+  "devDependencies": {
+    "@colleja/bot": "*",
+    "@colleja/engine": "*",
+    "@colleja/teamgen": "*"
+  }
+}

@@ -12,7 +12,7 @@ describe('npm run play', () => {
     expect(code, output).toBe(0);
     expect(output).toMatch(/Resultado: (gana Bot [12]|empate)/);
     expect(output).toContain('── Turno 1 ──');
-    expect(output).toMatch(/usó [A-ZÁÉÍÓÚ]/); // Spanish move names
+    expect(output).toMatch(/ha usado [A-ZÁÉÍÓÚ]/); // Spanish templates and move names
     expect(output).toContain('rival: Táctico (nivel 2)');
   });
 

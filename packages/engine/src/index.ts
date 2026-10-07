@@ -5,7 +5,7 @@
 export { type ResolvedFormat, resolveFormat } from './formats';
 export { PERSPECTIVES, type Perspective, splitByPerspective } from './protocol';
 export { REPLAY_VERSION, type ReplayData } from './replay';
-export { AgentError, type PlayOptions, playOut } from './runner';
+export { AgentError, type DecideOptions, decideFor, type PlayOptions, playOut } from './runner';
 export { toBattleSeed } from './seed';
 export {
   type BattleConfig,

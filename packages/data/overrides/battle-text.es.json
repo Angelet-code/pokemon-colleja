@@ -1,0 +1,38 @@
+{
+  "$comment": "Plantillas de mensajes de combate en español que faltan en Showdown (null upstream). Misma sintaxis que data/text de Showdown: {POKEMON}, {ITEM:definite:capitalize}… Ver README.md.",
+  "default": {
+    "default": {
+      "startBattle": "¡Empieza el combate entre {TRAINER1} y {TRAINER2}!",
+      "winBattle": "¡**{TRAINER}** ha ganado el combate!",
+      "tieBattle": "¡Empate entre {TRAINER1} y {TRAINER2}!",
+      "party": "tus Pokémon aliados",
+      "opposingParty": "los Pokémon rivales",
+      "turn": "== Turno {NUMBER} ==",
+      "mega": "  ¡{ITEM:definite:capitalize} de {POKEMON} está reaccionando a la Piedra Activadora!",
+      "start": "  (¡{EFFECT} afecta a {POKEMON}!)",
+      "activate": "  (¡{EFFECT} se ha activado!)",
+      "startTeamEffect": "  (¡{EFFECT} afecta a {TEAM}!)",
+      "endTeamEffect": "  (¡{EFFECT} ha dejado de afectar a {TEAM}!)",
+      "startFieldEffect": "  (¡{EFFECT} ha empezado!)",
+      "endFieldEffect": "  (¡{EFFECT} ha terminado!)",
+      "eatItem": "  (¡{POKEMON} se ha comido su {ITEM}!)",
+      "removeItem": "  ¡{POKEMON} ha perdido su {ITEM}!",
+      "activateItem": "  (¡{POKEMON} ha usado su {ITEM}!)",
+      "damagePercentage": "  (¡{POKEMON} ha perdido el {PERCENTAGE} % de sus PS!)",
+      "healFromEffect": "  ¡{POKEMON} ha recuperado PS gracias a {EFFECT}!",
+      "boostFromItem": "  ¡{ITEM:definite:capitalize} ha aumentado {STAT:definite} de {POKEMON}!",
+      "boost2FromItem": "  ¡{ITEM:definite:capitalize} ha aumentado mucho {STAT:definite} de {POKEMON}!",
+      "unboostFromItem": "  ¡{ITEM:definite:capitalize} ha disminuido {STAT:definite} de {POKEMON}!",
+      "unboost2FromItem": "  ¡{ITEM:definite:capitalize} ha disminuido mucho {STAT:definite} de {POKEMON}!",
+      "unboost3FromItem": "  ¡{ITEM:definite:capitalize} ha disminuido muchísimo {STAT:definite} de {POKEMON}!"
+    }
+  },
+  "moves": {
+    "brickbreak": { "activate": "  ¡{POKEMON} ha roto las protecciones {TEAM:de}!" },
+    "ragingbull": { "activate": "  ¡{POKEMON} ha roto las protecciones {TEAM:de}!" },
+    "roost": { "start": "  (¡{POKEMON} pierde el tipo Volador durante este turno!)" }
+  },
+  "abilities": {
+    "naturalcure": { "activate": "  (¡{POKEMON} se ha curado gracias a Cura Natural!)" }
+  }
+}

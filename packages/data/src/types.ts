@@ -202,3 +202,28 @@ export interface DataMeta {
   /** Entries without an official Spanish name (English is used as fallback). */
   missingSpanishNames: Partial<Record<NameKind, string[]>>;
 }
+
+// ── Battle text (log narration) ───────────────────────────────────────────
+
+/** Tables of Showdown battle messages: `default` holds the generic templates and conditions. */
+export type BattleTextTable = 'default' | 'moves' | 'abilities' | 'items';
+
+/** Message templates of one effect, by field (`start`, `end`, `damage`, `activate`…). */
+export type BattleTextEntry = Record<string, string>;
+
+/**
+ * Grammatical metadata for articles and agreement (Spanish): gender (`m`/`f`/`n`) followed by
+ * countability (`s`/`p`/`u`), e.g. `fs`. `classified` is the counted form of an item name.
+ */
+export interface BattleTextGrammar {
+  grammar: string;
+  articleRule?: 'stressed-a';
+  classified?: { name: string; grammar: string; articleRule?: 'stressed-a' };
+}
+
+/** Battle text of one locale. Missing Spanish keys fall back to English. */
+export interface BattleTextData extends Record<BattleTextTable, Record<string, BattleTextEntry>> {
+  /** Stat names as used inside battle messages (`características`, `Ataque`…). */
+  stats: Record<string, string>;
+  grammar: { items: Record<string, BattleTextGrammar>; stats: Record<string, string> };
+}

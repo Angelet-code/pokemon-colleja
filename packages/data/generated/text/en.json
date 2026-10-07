@@ -1,0 +1,586 @@
+{
+  "default": {
+    "default": {
+      "startBattle": "Battle started between {TRAINER1} and {TRAINER2}!",
+      "winBattle": "**{TRAINER}** won the battle!",
+      "tieBattle": "Tie between {TRAINER1} and {TRAINER2}!",
+      "pokemon": "{NICKNAME}",
+      "opposingPokemon": "the opposing {NICKNAME}",
+      "fullName": "{NICKNAME} ({SPECIES})",
+      "team": "your team",
+      "opposingTeam": "the opposing team",
+      "party": "your ally Pokémon",
+      "opposingParty": "the opposing Pokémon",
+      "turn": "== Turn {NUMBER} ==",
+      "switchIn": "{TRAINER} sent out {FULLNAME}!",
+      "switchInOwn": "Go! {FULLNAME}!",
+      "switchOut": "{TRAINER} withdrew {NICKNAME}!",
+      "switchOutOwn": "{NICKNAME}, come back!",
+      "drag": "{FULLNAME} was dragged out!",
+      "faint": "{POKEMON} fainted!",
+      "swap": "{POKEMON} and {TARGET} switched places!",
+      "swapCenter": "{POKEMON} moved to the center!",
+      "canDynamax": "  {TRAINER} can dynamax now!",
+      "canDynamaxOwn": "  Dynamax Energy gathered around {TRAINER}!",
+      "zEffect": "  {POKEMON} unleashes its full-force Z-Move!",
+      "move": "{POKEMON} used **{MOVE}**!",
+      "abilityActivation": "[{POKEMON}'s {ABILITY}]",
+      "mega": "  {POKEMON}'s {ITEM} is reacting to the Key Stone!",
+      "megaNoItem": "  {POKEMON} is reacting to {TRAINER}'s Key Stone!",
+      "megaGen6": "  {POKEMON}'s {ITEM} is reacting to {TRAINER}'s Mega Bracelet!",
+      "transformMega": "{POKEMON} has Mega Evolved into Mega {SPECIES}!",
+      "primal": "{POKEMON}'s Primal Reversion! It reverted to its primal state!",
+      "zPower": "  {POKEMON} surrounded itself with its Z-Power!",
+      "zBroken": "  {POKEMON} couldn't fully protect itself and got hurt!",
+      "terastallize": "  ({POKEMON} has Terastallized into the {TYPE}-type!)",
+      "cant": "{POKEMON} cannot use {MOVE}!",
+      "cantNoMove": "{POKEMON} can't move!",
+      "fail": "  But it failed!",
+      "transform": "{POKEMON} transformed!",
+      "typeChange": "  {POKEMON} transformed into the {TYPE} type!",
+      "typeChangeFromEffect": "  {POKEMON}'s {EFFECT} made it the {TYPE} type!",
+      "typeAdd": "  {TYPE} type was added to {POKEMON}!",
+      "start": "  ({EFFECT} started on {POKEMON}!)",
+      "end": "  {POKEMON} was freed from {EFFECT}!",
+      "activate": "  ({EFFECT} activated!)",
+      "startTeamEffect": "  ({EFFECT} started on {TEAM}!)",
+      "endTeamEffect": "  ({EFFECT} ended on {TEAM}!)",
+      "startFieldEffect": "  ({EFFECT} started!)",
+      "endFieldEffect": "  ({EFFECT} ended!)",
+      "changeAbility": "  {POKEMON} acquired {ABILITY}!",
+      "addItem": "  {POKEMON} obtained {ITEM}.",
+      "takeItem": "  {POKEMON} stole {SOURCE}'s {ITEM}!",
+      "eatItem": "  ({POKEMON} ate its {ITEM}!)",
+      "useGem": "  {ITEM} strengthened {MOVE}'s power!",
+      "eatItemWeaken": "  {POKEMON}'s {ITEM} lessened the damage it took!",
+      "removeItem": "  {POKEMON} lost its {ITEM}!",
+      "activateItem": "  ({POKEMON} used its {ITEM}!)",
+      "activateWeaken": "  {POKEMON}'s {ITEM} lessened the damage it took!",
+      "damage": "  ({POKEMON} was hurt!)",
+      "damagePercentage": "  ({POKEMON} lost {PERCENTAGE}% of its health!)",
+      "damageFromPokemon": "  {POKEMON} was hurt by {SOURCE}'s {ITEM}!",
+      "damageFromItem": "  {POKEMON} was hurt by its {ITEM}!",
+      "damageFromPartialTrapping": "  {POKEMON} is hurt by {MOVE}!",
+      "heal": "  {POKEMON} had its HP restored.",
+      "healFromZEffect": "  {POKEMON} restored its HP using its Z-Power!",
+      "healFromEffect": "  {POKEMON} restored HP using its {EFFECT}!",
+      "boost": "  {POKEMON}'s {STAT} rose!",
+      "boost2": "  {POKEMON}'s {STAT} rose sharply!",
+      "boost3": "  {POKEMON}'s {STAT} rose drastically!",
+      "boost0": "  {POKEMON}'s {STAT} won't go any higher!",
+      "boostFromItem": "  The {ITEM} raised {POKEMON}'s {STAT}!",
+      "boost2FromItem": "  The {ITEM} sharply raised {POKEMON}'s {STAT}!",
+      "boost3FromItem": "  The {ITEM} drastically raised {POKEMON}'s {STAT}!",
+      "boostFromZEffect": "  {POKEMON} boosted its {STAT} using its Z-Power!",
+      "boost2FromZEffect": "  {POKEMON} boosted its {STAT} sharply using its Z-Power!",
+      "boost3FromZEffect": "  {POKEMON} boosted its {STAT} drastically using its Z-Power!",
+      "boostMultipleFromZEffect": "  {POKEMON} boosted its stats using its Z-Power!",
+      "unboost": "  {POKEMON}'s {STAT} fell!",
+      "unboost2": "  {POKEMON}'s {STAT} harshly fell!",
+      "unboost3": "  {POKEMON}'s {STAT} severely fell!",
+      "unboost0": "  {POKEMON}'s {STAT} won't go any lower!",
+      "unboostFromItem": "  The {ITEM} lowered {POKEMON}'s {STAT}!",
+      "unboost2FromItem": "  The {ITEM} harshly lowered {POKEMON}'s {STAT}!",
+      "unboost3FromItem": "  The {ITEM} drastically lowered {POKEMON}'s {STAT}!",
+      "swapBoost": "  {POKEMON} switched stat changes with its target!",
+      "swapOffensiveBoost": "  {POKEMON} switched all changes to its Attack and Sp. Atk with its target!",
+      "swapDefensiveBoost": "  {POKEMON} switched all changes to its Defense and Sp. Def with its target!",
+      "copyBoost": "  {POKEMON} copied {TARGET}'s stat changes!",
+      "clearBoost": "  {POKEMON}'s stat changes were removed!",
+      "clearBoostFromZEffect": "  {POKEMON} returned its decreased stats to normal using its Z-Power!",
+      "invertBoost": "  All stat changes on {POKEMON} were inverted!",
+      "clearAllBoost": "  All stat changes were eliminated!",
+      "superEffective": "  It's super effective!",
+      "superEffectiveSpread": "  It's super effective on {POKEMON}!",
+      "resisted": "  It's not very effective...",
+      "resistedSpread": "  It's not very effective on {POKEMON}.",
+      "extremelyEffective": "  It's extremely effective!",
+      "extremelyEffectiveSpread": "  It's extremely effective on {POKEMON}!",
+      "mostlyIneffective": "  It's mostly ineffective...",
+      "mostlyIneffectiveSpread": "  It's mostly ineffective on {POKEMON}.",
+      "crit": "  A critical hit!",
+      "critSpread": "  A critical hit on {POKEMON}!",
+      "immune": "  It doesn't affect {POKEMON}...",
+      "immuneNoPokemon": "  But it had no effect!",
+      "immuneOHKO": "  {POKEMON} is unaffected!",
+      "miss": "  {POKEMON} avoided the attack!",
+      "missNoPokemon": "  {SOURCE}'s attack missed!",
+      "center": "  Automatic center!",
+      "noTarget": "  But there was no target...",
+      "ohko": "  It's a one-hit KO!",
+      "combine": "  The two moves have become one! It's a combined move!",
+      "hitCount": "  The Pokémon was hit {NUMBER} {INFLECT:NUMBER:s=time:p=times}!"
+    },
+    "brn": {
+      "start": "  {POKEMON} was burned!",
+      "startFromItem": "  {POKEMON} was burned by the {ITEM}!",
+      "alreadyStarted": "  {POKEMON} is already burned!",
+      "end": "  {POKEMON}'s burn was healed!",
+      "endFromItem": "  {POKEMON}'s {ITEM} healed its burn!",
+      "damage": "  {POKEMON} was hurt by its burn!"
+    },
+    "frz": {
+      "start": "  {POKEMON} was frozen solid!",
+      "alreadyStarted": "  {POKEMON} is already frozen solid!",
+      "end": "  {POKEMON} thawed out!",
+      "endFromItem": "  {POKEMON}'s {ITEM} defrosted it!",
+      "endFromMove": "  {POKEMON}'s {MOVE} melted the ice!",
+      "cant": "{POKEMON} is frozen solid!"
+    },
+    "par": {
+      "start": "  {POKEMON} is paralyzed, so it may be unable to move!",
+      "alreadyStarted": "  {POKEMON} is already paralyzed!",
+      "end": "  {POKEMON} was cured of paralysis!",
+      "endFromItem": "  {POKEMON}'s {ITEM} cured its paralysis!",
+      "cant": "{POKEMON} is paralyzed! It can't move!"
+    },
+    "psn": {
+      "start": "  {POKEMON} was poisoned!",
+      "alreadyStarted": "  {POKEMON} is already poisoned!",
+      "end": "  {POKEMON} was cured of its poisoning!",
+      "endFromItem": "  {POKEMON}'s {ITEM} cured its poison!",
+      "damage": "  {POKEMON} was hurt by poison!"
+    },
+    "tox": {
+      "start": "  {POKEMON} was badly poisoned!",
+      "startFromItem": "  {POKEMON} was badly poisoned by the {ITEM}!",
+      "end": "#psn",
+      "endFromItem": "#psn",
+      "alreadyStarted": "#psn",
+      "damage": "#psn"
+    },
+    "slp": {
+      "start": "  {POKEMON} fell asleep!",
+      "startFromRest": "  {POKEMON} slept and became healthy!",
+      "alreadyStarted": "  {POKEMON} is already asleep!",
+      "end": "  {POKEMON} woke up!",
+      "endFromItem": "  {POKEMON}'s {ITEM} woke it up!",
+      "cant": "{POKEMON} is fast asleep."
+    },
+    "confusion": {
+      "start": "  {POKEMON} became confused!",
+      "startFromFatigue": "  {POKEMON} became confused due to fatigue!",
+      "end": "  {POKEMON} snapped out of its confusion!",
+      "endFromItem": "  {POKEMON}'s {ITEM} snapped it out of its confusion!",
+      "alreadyStarted": "  {POKEMON} is already confused!",
+      "activate": "  {POKEMON} is confused!",
+      "damage": "It hurt itself in its confusion!"
+    },
+    "drain": {"heal": "  {SOURCE} had its energy drained!"},
+    "flinch": {"cant": "{POKEMON} flinched and couldn't move!"},
+    "heal": {"fail": "  {POKEMON}'s HP is full!"},
+    "healreplacement": {"activate": "  {POKEMON} will restore its replacement's HP using its Z-Power!"},
+    "nopp": {"cant": "{POKEMON} used {MOVE}!\n  But there was no PP left for the move!"},
+    "recharge": {"cant": "{POKEMON} must recharge!"},
+    "recoil": {"damage": "  {POKEMON} was damaged by the recoil!"},
+    "unboost": {
+      "fail": "  {POKEMON}'s {STAT} {INFLECT:STAT:s=was:p=were} not lowered!",
+      "failNoStat": "  {POKEMON}'s stats were not lowered!"
+    },
+    "struggle": {"activate": "  {POKEMON} has no moves left!"},
+    "trapped": {"start": "  {POKEMON} can no longer escape!"},
+    "dynamax": {
+      "start": "  ({POKEMON}'s Dynamax!)",
+      "end": "  ({POKEMON} returned to normal!)",
+      "block": "  The move was blocked by the power of Dynamax!",
+      "fail": "  {POKEMON} shook its head. It seems like it can't use this move..."
+    },
+    "sandstorm": {
+      "weatherName": "Sandstorm",
+      "start": "  A sandstorm kicked up!",
+      "end": "  The sandstorm subsided.",
+      "upkeep": "  (The sandstorm is raging.)",
+      "damage": "  {POKEMON} is buffeted by the sandstorm!"
+    },
+    "sunnyday": {
+      "weatherName": "Sun",
+      "start": "  The sunlight turned harsh!",
+      "end": "  The harsh sunlight faded.",
+      "upkeep": "  (The sunlight is strong.)"
+    },
+    "raindance": {
+      "weatherName": "Rain",
+      "start": "  It started to rain!",
+      "end": "  The rain stopped.",
+      "upkeep": "  (Rain continues to fall.)"
+    },
+    "hail": {
+      "weatherName": "Hail",
+      "start": "  It started to hail!",
+      "end": "  The hail stopped.",
+      "upkeep": "  (The hail is crashing down.)",
+      "damage": "  {POKEMON} is buffeted by the hail!"
+    },
+    "snowscape": {
+      "weatherName": "Snow",
+      "start": "  It started to snow!",
+      "end": "  The snow stopped.",
+      "upkeep": "  (The snow is blowing about!)"
+    },
+    "desolateland": {
+      "weatherName": "Intense Sun",
+      "start": "  The sunlight turned extremely harsh!",
+      "end": "  The extremely harsh sunlight faded.",
+      "block": "  The extremely harsh sunlight was not lessened at all!",
+      "blockMove": "  The Water-type attack evaporated in the harsh sunlight!"
+    },
+    "primordialsea": {
+      "weatherName": "Heavy Rain",
+      "start": "  A heavy rain began to fall!",
+      "end": "  The heavy rain has lifted!",
+      "block": "  There is no relief from this heavy rain!",
+      "blockMove": "  The Fire-type attack fizzled out in the heavy rain!"
+    },
+    "deltastream": {
+      "weatherName": "Strong Winds",
+      "start": "  Mysterious strong winds are protecting Flying-type Pokémon!",
+      "end": "  The mysterious strong winds have dissipated!",
+      "activate": "  The mysterious strong winds weakened the attack!",
+      "block": "  The mysterious strong winds blow on regardless!"
+    },
+    "electricterrain": {
+      "start": "  An electric current ran across the battlefield!",
+      "end": "  The electricity disappeared from the battlefield.",
+      "block": "  {POKEMON} is protected by the Electric Terrain!"
+    },
+    "grassyterrain": {
+      "start": "  Grass grew to cover the battlefield!",
+      "end": "  The grass disappeared from the battlefield.",
+      "heal": "  {POKEMON}'s HP was restored."
+    },
+    "mistyterrain": {
+      "start": "  Mist swirled around the battlefield!",
+      "end": "  The mist disappeared from the battlefield.",
+      "block": "  {POKEMON} surrounds itself with a protective mist!"
+    },
+    "psychicterrain": {
+      "start": "  The battlefield got weird!",
+      "end": "  The weirdness disappeared from the battlefield!",
+      "block": "  {POKEMON} is protected by the Psychic Terrain!"
+    },
+    "gravity": {
+      "start": "  Gravity intensified!",
+      "end": "  Gravity returned to normal!",
+      "cant": "{POKEMON} can't use {MOVE} because of gravity!",
+      "activate": "{POKEMON} fell from the sky due to the gravity!"
+    },
+    "magicroom": {
+      "start": "  It created a bizarre area in which Pokémon's held items lose their effects!",
+      "end": "  Magic Room wore off, and held items' effects returned to normal!"
+    },
+    "mudsport": {"start": "  Electricity's power was weakened!", "end": "  The effects of Mud Sport have faded."},
+    "trickroom": {
+      "start": "  {POKEMON} twisted the dimensions!",
+      "end": "  The twisted dimensions returned to normal!"
+    },
+    "watersport": {"start": "  Fire's power was weakened!", "end": "  The effects of Water Sport have faded."},
+    "wonderroom": {
+      "start": "  It created a bizarre area in which Defense and Sp. Def stats are swapped!",
+      "end": "  Wonder Room wore off, and Defense and Sp. Def stats returned to normal!"
+    },
+    "crash": {"damage": "  {POKEMON} kept going and crashed!"}
+  },
+  "moves": {
+    "afteryou": {"activate": "  {TARGET} took the kind offer!"},
+    "aquaring": {
+      "start": "  {POKEMON} surrounded itself with a veil of water!",
+      "heal": "  A veil of water restored {POKEMON}'s HP!"
+    },
+    "attract": {
+      "start": "  {POKEMON} fell in love!",
+      "startFromItem": "  {POKEMON} fell in love because of the {ITEM}!",
+      "end": "  {POKEMON} got over its infatuation!",
+      "endFromItem": "  {POKEMON} cured its infatuation using its {ITEM}!",
+      "activate": "  {POKEMON} is in love with {TARGET}!",
+      "cant": "{POKEMON} is immobilized by love!"
+    },
+    "auroraveil": {
+      "start": "  Aurora Veil made {TEAM} stronger against physical and special moves!",
+      "end": "  {TEAM}'s Aurora Veil wore off!"
+    },
+    "axekick": {"damage": "#crash"},
+    "beakblast": {"start": "  {POKEMON} started heating up its beak!"},
+    "beatup": {"activate": "  {NAME}'s attack!"},
+    "bellydrum": {"boost": "  {POKEMON} cut its own HP and maximized its Attack!"},
+    "bind": {"start": "  {POKEMON} was squeezed by {SOURCE}!", "move": "#wrap"},
+    "bounce": {"prepare": "{POKEMON} sprang up!"},
+    "brickbreak": {"activate": "  {POKEMON} shattered {TEAM}'s protections!"},
+    "bugbite": {"removeItem": "  {SOURCE} stole and ate its target's {ITEM}!"},
+    "burnup": {"typeChange": "  {POKEMON} burned itself out!"},
+    "charge": {"start": "  {POKEMON} began charging power!"},
+    "chillyreception": {"prepare": "  {POKEMON} is preparing to tell a chillingly bad joke!"},
+    "corrosivegas": {"fail": "#healblock", "removeItem": "  {SOURCE} corroded {POKEMON}'s {ITEM}!"},
+    "courtchange": {"activate": "  {POKEMON} swapped the battle effects affecting each side of the field!"},
+    "curse": {
+      "start": "  {SOURCE} cut its own HP and put a curse on {POKEMON}!",
+      "damage": "  {POKEMON} is afflicted by the curse!"
+    },
+    "destinybond": {
+      "start": "  {POKEMON} is hoping to take its attacker down with it!",
+      "activate": "{POKEMON} took its attacker down with it!"
+    },
+    "dig": {"prepare": "{POKEMON} burrowed its way under the ground!"},
+    "disable": {
+      "start": "  {POKEMON}'s {MOVE} was disabled!",
+      "end": "  {POKEMON}'s move is no longer disabled!",
+      "cant": "{POKEMON}'s {MOVE} is disabled!"
+    },
+    "dive": {"prepare": "{POKEMON} hid underwater!"},
+    "doubleshock": {"typeChange": "  {POKEMON} used up all its electricity!"},
+    "dragoncheer": {"start": "#focusenergy"},
+    "eeriespell": {"activate": "#spite"},
+    "electrify": {"start": "  {POKEMON}'s moves have been electrified!"},
+    "electroshot": {"prepare": "{POKEMON} absorbed electricity!"},
+    "encore": {"start": "  {POKEMON} must do an encore!", "end": "  {POKEMON}'s encore ended!"},
+    "endure": {"start": "  {POKEMON} braced itself!", "activate": "  {POKEMON} endured the hit!"},
+    "fairylock": {"activate": "  No one will be able to run away during the next turn!"},
+    "feint": {"activate": "  {TARGET} fell for the feint!"},
+    "ficklebeam": {"activate": "  {POKEMON} is going all out for this attack!"},
+    "firespin": {"start": "  {POKEMON} became trapped in the fiery vortex!", "move": "#wrap"},
+    "fling": {"removeItem": "  {POKEMON} flung its {ITEM}!"},
+    "flipturn": {"switchOut": "#uturn"},
+    "fly": {"prepare": "{POKEMON} flew up high!"},
+    "focusenergy": {
+      "start": "  {POKEMON} is getting pumped!",
+      "startFromItem": "  {POKEMON} used the {ITEM} to get pumped!",
+      "startFromZEffect": "  {POKEMON} boosted its critical-hit ratio using its Z-Power!"
+    },
+    "focuspunch": {
+      "start": "  {POKEMON} is tightening its focus!",
+      "cant": "{POKEMON} lost its focus and couldn't move!"
+    },
+    "followme": {
+      "start": "  {POKEMON} became the center of attention!",
+      "startFromZEffect": "  {POKEMON} became the center of attention!"
+    },
+    "futuresight": {"start": "  {POKEMON} foresaw an attack!", "activate": "  {TARGET} took the Future Sight attack!"},
+    "gastroacid": {"start": "  {POKEMON}'s Ability was suppressed!"},
+    "guardsplit": {"activate": "  {POKEMON} shared its guard with the target!"},
+    "haze": {"activate": "  All stat changes were eliminated!"},
+    "healbell": {"activate": "  A bell chimed!"},
+    "healingwish": {"heal": "  The healing wish came true for {POKEMON}!"},
+    "helpinghand": {"start": "  {SOURCE} is ready to help {POKEMON}!"},
+    "highjumpkick": {"damage": "#crash"},
+    "imprison": {
+      "start": "  {POKEMON} sealed any moves its target shares with it!",
+      "cant": "{POKEMON} can't use its sealed {MOVE}!"
+    },
+    "infestation": {"start": "  {POKEMON} has been afflicted with an infestation by {SOURCE}!"},
+    "ingrain": {
+      "start": "  {POKEMON} planted its roots!",
+      "block": "  {POKEMON} is anchored in place with its roots!",
+      "heal": "  {POKEMON} absorbed nutrients with its roots!"
+    },
+    "instruct": {"activate": "  {TARGET} followed {POKEMON}'s instructions!"},
+    "knockoff": {"removeItem": "  {SOURCE} knocked off {POKEMON}'s {ITEM}!"},
+    "leechseed": {
+      "start": "  {POKEMON} was seeded!",
+      "end": "  {POKEMON} was freed from Leech Seed!",
+      "damage": "  {POKEMON}'s health is sapped by Leech Seed!"
+    },
+    "lightscreen": {
+      "start": "  Light Screen made {TEAM} stronger against special moves!",
+      "end": "  {TEAM}'s Light Screen wore off!"
+    },
+    "lockon": {"start": "  {SOURCE} took aim at {POKEMON}!"},
+    "magnetrise": {
+      "start": "  {POKEMON} levitated with electromagnetism!",
+      "end": "  {POKEMON}'s electromagnetism wore off!"
+    },
+    "makeitrain": {"activate": "#payday"},
+    "memento": {"heal": "  {POKEMON}'s HP was restored by the Z-Power!"},
+    "meteorbeam": {"prepare": "{POKEMON} is overflowing with space power!"},
+    "noretreat": {"start": "  {POKEMON} can no longer escape because it used No Retreat!"},
+    "octolock": {"start": "  {POKEMON} can no longer escape because of Octolock!"},
+    "painsplit": {"activate": "  The battlers shared their pain!"},
+    "partingshot": {"heal": "#memento", "switchOut": "#uturn"},
+    "perishsong": {
+      "start": "  All Pokémon that heard the song will faint in three turns!",
+      "activate": "  {POKEMON}'s perish count fell to {NUMBER}!"
+    },
+    "phantomforce": {"prepare": "#shadowforce", "activate": "#shadowforce"},
+    "pluck": {"removeItem": "#bugbite"},
+    "poltergeist": {"activate": "  {POKEMON} is about to be attacked by its {ITEM}!"},
+    "powersplit": {"activate": "  {POKEMON} shared its power with the target!"},
+    "powertrick": {"start": "  {POKEMON} switched its Attack and Defense!", "end": "#.start"},
+    "protect": {"start": "  {POKEMON} protected itself!", "block": "  {POKEMON} protected itself!"},
+    "quash": {"activate": "  {TARGET}'s move was postponed!"},
+    "quickguard": {"start": "  Quick Guard protected {TEAM}!", "block": "  Quick Guard protected {POKEMON}!"},
+    "ragepowder": {"start": "#followme", "startFromZEffect": "#followme"},
+    "ragingbull": {"activate": "  {POKEMON} shattered {TEAM}'s protections!"},
+    "recycle": {"addItem": "  {POKEMON} found one {ITEM}!"},
+    "reflect": {
+      "start": "  Reflect made {TEAM} stronger against physical moves!",
+      "end": "  {TEAM}'s Reflect wore off!"
+    },
+    "reflecttype": {"typeChange": "  {POKEMON}'s type became the same as {SOURCE}'s type!"},
+    "revivalblessing": {"heal": "  {POKEMON} was revived and is ready to fight again!"},
+    "roleplay": {"changeAbility": "  {POKEMON} copied {SOURCE}'s {ABILITY} Ability!"},
+    "roost": {"start": "  ({POKEMON} loses Flying type this turn.)"},
+    "safeguard": {
+      "start": "  {TEAM} cloaked itself in a mystical veil!",
+      "end": "  {TEAM} is no longer protected by Safeguard!",
+      "block": "  {POKEMON} is protected by Safeguard!"
+    },
+    "saltcure": {"start": "  {POKEMON} is being salt cured!", "damage": "  {POKEMON} is hurt by Salt Cure!"},
+    "sandtomb": {"start": "  {POKEMON} became trapped by the quicksand!"},
+    "shedtail": {
+      "start": "  {POKEMON} shed its tail to create a decoy!",
+      "alreadyStarted": "#substitute",
+      "fail": "#substitute"
+    },
+    "skillswap": {"activate": "  {POKEMON} swapped Abilities with its target!"},
+    "skyattack": {"prepare": "{POKEMON} became cloaked in a harsh light!"},
+    "smackdown": {"start": "  {POKEMON} fell straight down!"},
+    "snaptrap": {"start": "  {POKEMON} got trapped by a snap trap!"},
+    "solarbeam": {"prepare": "  {POKEMON} absorbed light!"},
+    "solarblade": {"prepare": "#solarbeam"},
+    "speedswap": {"activate": "  {POKEMON} switched Speed with its target!"},
+    "spikes": {
+      "start": "  Spikes were scattered on the ground all around {TEAM}!",
+      "end": "  The spikes disappeared from the ground around {TEAM}!",
+      "damage": "  {POKEMON} was hurt by the spikes!"
+    },
+    "spikyshield": {"damage": "#roughskin"},
+    "spite": {"activate": "  It reduced the PP of {TARGET}'s {MOVE} by {NUMBER}!"},
+    "stealthrock": {
+      "start": "  Pointed stones float in the air around {TEAM}!",
+      "end": "  The pointed stones disappeared from around {TEAM}!",
+      "damage": "  Pointed stones dug into {POKEMON}!"
+    },
+    "steelbeam": {"damage": "#mindblown"},
+    "stickyweb": {
+      "start": "  A sticky web has been laid out on the ground around {TEAM}!",
+      "end": "  The sticky web has disappeared from the ground around {TEAM}!",
+      "activate": "  {POKEMON} was caught in a sticky web!"
+    },
+    "stockpile": {"start": "  {POKEMON} stockpiled {NUMBER}!", "end": "  {POKEMON}'s stockpiled effect wore off!"},
+    "substitute": {
+      "start": "  {POKEMON} put in a substitute!",
+      "alreadyStarted": "  {POKEMON} already has a substitute!",
+      "end": "  {POKEMON}'s substitute faded!",
+      "fail": "  But it does not have enough HP left to make a substitute!",
+      "activate": "  The substitute took damage for {POKEMON}!"
+    },
+    "supercellslam": {"damage": "#crash"},
+    "switcheroo": {"activate": "#trick"},
+    "syrupbomb": {"start": "  {POKEMON} got covered in sticky candy syrup!"},
+    "tailwind": {"start": "  The Tailwind blew from behind {TEAM}!", "end": "  {TEAM}'s Tailwind petered out!"},
+    "taunt": {
+      "start": "  {POKEMON} fell for the taunt!",
+      "end": "  {POKEMON} shook off the taunt!",
+      "cant": "{POKEMON} can't use {MOVE} after the taunt!"
+    },
+    "teatime": {"activate": "  It's teatime! Everyone dug in to their Berries!", "fail": "  But nothing happened!"},
+    "throatchop": {"cant": "The effects of Throat Chop prevent {POKEMON} from using certain moves!"},
+    "tidyup": {"activate": "  Tidying up complete!"},
+    "torment": {"start": "  {POKEMON} was subjected to torment!", "end": "  {POKEMON} is no longer tormented!"},
+    "toxicspikes": {
+      "start": "  Poison spikes were scattered on the ground all around {TEAM}!",
+      "end": "  The poison spikes disappeared from the ground around {TEAM}!"
+    },
+    "transform": {"transform": "{POKEMON} transformed into {SPECIES}!"},
+    "trick": {"activate": "  {POKEMON} switched items with its target!"},
+    "uproar": {
+      "start": "  {POKEMON} caused an uproar!",
+      "end": "  {POKEMON} calmed down.",
+      "upkeep": "  {POKEMON} is making an uproar!",
+      "block": "  But the uproar kept {POKEMON} awake!",
+      "blockSelf": "  But {POKEMON} can't sleep in an uproar!"
+    },
+    "uturn": {"switchOut": "{POKEMON} went back to {TRAINER}!"},
+    "voltswitch": {"switchOut": "#uturn"},
+    "weatherball": {"move": "Breakneck Blitz turned into {MOVE} due to the weather!"},
+    "whirlpool": {"start": "  {POKEMON} became trapped in the vortex!"},
+    "wideguard": {"start": "  Wide Guard protected {TEAM}!", "block": "  Wide Guard protected {POKEMON}!"},
+    "wish": {"heal": "  {NICKNAME}'s wish came true!"},
+    "wrap": {"start": "  {POKEMON} was wrapped by {SOURCE}!", "move": "{POKEMON}'s attack continues!"},
+    "yawn": {"start": "  {POKEMON} grew drowsy!"}
+  },
+  "abilities": {
+    "aftermath": {"damage": "  {POKEMON} was hurt!"},
+    "angerpoint": {"boost": "  {POKEMON} maxed its Attack!"},
+    "anticipation": {"activate": "  {POKEMON} shuddered!"},
+    "armortail": {"block": "#damp"},
+    "aromaveil": {"block": "  {POKEMON} is protected by an aromatic veil!"},
+    "cloudnine": {"start": "#airlock"},
+    "damp": {"block": "  {SOURCE} cannot use {MOVE}!"},
+    "disguise": {"block": "  Its disguise served it as a decoy!", "transform": "{POKEMON}'s disguise was busted!"},
+    "dryskin": {"damage": "#aftermath"},
+    "electromorphosis": {"start": "  Being hit by {MOVE} charged {POKEMON} with power!"},
+    "fairyaura": {"start": "  {POKEMON} is radiating a fairy aura!"},
+    "flashfire": {"start": "  The power of {POKEMON}'s Fire-type moves rose!"},
+    "flowerveil": {"block": "  {POKEMON} surrounded itself with a veil of petals!"},
+    "forewarn": {
+      "activate": "  {TARGET}'s {MOVE} was revealed!",
+      "activateNoTarget": "  {POKEMON}'s Forewarn alerted it to {MOVE}!"
+    },
+    "frisk": {
+      "activate": "  {POKEMON} frisked {TARGET} and found its {ITEM}!",
+      "activateNoTarget": "  {POKEMON} frisked its target and found one {ITEM}!"
+    },
+    "harvest": {"addItem": "  {POKEMON} harvested one {ITEM}!"},
+    "hospitality": {"heal": "  {POKEMON} drank down all the matcha that {SOURCE} made!"},
+    "illusion": {"end": "  {POKEMON}'s illusion wore off!"},
+    "innardsout": {"damage": "#aftermath"},
+    "lightningrod": {"activate": "  {POKEMON} took the attack!"},
+    "liquidooze": {"damage": "  {POKEMON} sucked up the liquid ooze!"},
+    "magicbounce": {"move": "#magiccoat"},
+    "mimicry": {"activate": "  {POKEMON} returned to its original type!"},
+    "moldbreaker": {"start": "  {POKEMON} breaks the mold!"},
+    "mummy": {"changeAbility": "  {TARGET}'s Ability became Mummy!"},
+    "naturalcure": {"activate": "  ({POKEMON} is cured by its Natural Cure!)"},
+    "pickup": {"addItem": "#recycle"},
+    "pressure": {"start": "  {POKEMON} is exerting its pressure!"},
+    "queenlymajesty": {"block": "#damp"},
+    "quickdraw": {"activate": "  Quick Draw made {POKEMON} move faster!"},
+    "receiver": {"changeAbility": "  {SOURCE}'s {ABILITY} was taken over!"},
+    "roughskin": {"damage": "  {POKEMON} was hurt!"},
+    "stancechange": {"transform": "Changed to Blade Forme!", "transformEnd": "Changed to Shield Forme!"},
+    "stickyhold": {"block": "  {POKEMON}'s item cannot be removed!"},
+    "sturdy": {"activate": "  {POKEMON} endured the hit!"},
+    "suctioncups": {"block": "  {POKEMON} is anchored in place with its suction cups!"},
+    "supersweetsyrup": {"start": "  A supersweet aroma is wafting from the syrup covering {POKEMON}!"},
+    "supremeoverlord": {"activate": "  {POKEMON} gained strength from the fallen!"},
+    "sweetveil": {"block": "  {POKEMON} can't fall asleep due to a veil of sweetness!"},
+    "symbiosis": {"activate": "  {POKEMON} shared its {ITEM} with {TARGET}!"},
+    "telepathy": {"block": "  {POKEMON} can't be hit by attacks from its ally Pokémon!"},
+    "trace": {"changeAbility": "  {POKEMON} traced {SOURCE}'s {ABILITY}!"},
+    "unnerve": {"start": "  {TEAM} is too nervous to eat Berries!"},
+    "wanderingspirit": {"activate": "#skillswap"},
+    "zerotohero": {"activate": "  {POKEMON} underwent a heroic transformation!"}
+  },
+  "items": {
+    "airballoon": {
+      "start": "  {POKEMON} floats in the air with its Air Balloon!",
+      "end": "  {POKEMON}'s Air Balloon popped!"
+    },
+    "ejectbutton": {"end": "  {POKEMON} is switched out with the Eject Button!"},
+    "focusband": {"activate": "  {POKEMON} hung on using its Focus Band!"},
+    "focussash": {"end": "  {POKEMON} hung on using its Focus Sash!"},
+    "leftovers": {"heal": "  {POKEMON} restored a little HP using its Leftovers!"},
+    "leppaberry": {"activate": "  {POKEMON} restored PP to its move {MOVE} using its Leppa Berry!"},
+    "lifeorb": {"damage": "  {POKEMON} lost some of its HP!"},
+    "quickclaw": {"activate": "  {POKEMON} can act faster than normal, thanks to its Quick Claw!"},
+    "redcard": {"end": "  {POKEMON} held up its Red Card against {TARGET}!"},
+    "rockyhelmet": {"damage": "  {POKEMON} was hurt by the Rocky Helmet!"},
+    "shellbell": {"heal": "  {POKEMON} restored a little HP using its Shell Bell!"},
+    "whiteherb": {"end": "  {POKEMON} returned its stats to normal using its White Herb!"}
+  },
+  "stats": {
+    "hp": "HP",
+    "atk": "Attack",
+    "def": "Defense",
+    "spa": "Sp. Atk",
+    "spd": "Sp. Def",
+    "spe": "Speed",
+    "accuracy": "accuracy",
+    "evasion": "evasiveness",
+    "spc": "Special",
+    "stats": "stats"
+  },
+  "grammar": {
+    "items": {},
+    "stats": {}
+  }
+}

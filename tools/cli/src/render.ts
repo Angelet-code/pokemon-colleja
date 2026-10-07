@@ -20,7 +20,7 @@ import {
   statShort,
   statusShort,
   weatherName,
-} from './names';
+} from '@colleja/narration';
 
 const BAR_WIDTH = 20;
 
@@ -108,7 +108,7 @@ export function describeSet(set: PokemonSet): string {
     abilityName(set.ability),
     natureName(set.nature),
     spread || 'sin Stat Points',
-    set.moves.map(moveName).join(' / '),
+    set.moves.map((move) => moveName(move)).join(' / '),
   ];
   return parts.join(' · ');
 }

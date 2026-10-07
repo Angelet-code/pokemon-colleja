@@ -34,32 +34,42 @@ export async function playOut(
       if (++decisions > maxDecisions) {
         throw new AgentError(`El combate superó ${maxDecisions} decisiones sin terminar.`);
       }
-      await decide(session, side, agents[side], maxRetries, options.onChoice);
+      const choice = await decideFor(session, side, agents[side], { maxRetries });
+      if (choice) options.onChoice?.(side, choice);
     }
   }
   return session.winner ?? null;
 }
 
-async function decide(
+export interface DecideOptions {
+  /** Rejected choices tolerated before giving up (Showdown may reveal a trap…). Default: 3. */
+  maxRetries?: number;
+}
+
+/**
+ * Lets `agent` make the pending decision of `side`, asking again when Showdown rejects the
+ * choice (an `[Unavailable choice]` that depends on hidden information). Returns the accepted
+ * choice, or `null` if the side had nothing to decide. Throws `AgentError` after too many
+ * rejections. Used by `playOut` and by anything that drives a bot (CLI, server).
+ */
+export async function decideFor(
   session: BattleSession,
   side: SideId,
   agent: BattleAgent,
-  maxRetries: number,
-  onChoice: PlayOptions['onChoice'],
-): Promise<void> {
+  options: DecideOptions = {},
+): Promise<Choice | null> {
+  const maxRetries = options.maxRetries ?? 3;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const context = session.getAgentContext(side);
-    if (!context) return;
+    if (!context) return null;
     const choice = await agent.choose(context);
     const result = session.choose(side, choice);
-    if (result.ok) {
-      onChoice?.(side, choice);
-      return;
-    }
+    if (result.ok) return choice;
     if (attempt === maxRetries) {
       throw new AgentError(
         `${agent.name} (${side}) eligió "${formatChoice(choice)}" y fue rechazada: ${result.errors.join(' ')}`,
       );
     }
   }
+  return null;
 }

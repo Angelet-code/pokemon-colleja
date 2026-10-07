@@ -1,0 +1,10 @@
+{
+  "name": "@colleja/dev",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Arranca el servidor y la web (Vite) a la vez para desarrollo: npm run dev.",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  }
+}

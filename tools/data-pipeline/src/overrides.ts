@@ -1,6 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
+  type BattleTextData,
+  type BattleTextTable,
   type GameMode,
   type LocaleNames,
   type NameKind,
@@ -113,6 +115,31 @@ export function applySetOverrides(
         parseSetOverride(ctx, byId, speciesId, mode, override),
       );
       applied += list.length;
+    }
+  }
+  return applied;
+}
+
+type BattleTextOverrides = Partial<Record<BattleTextTable, Record<string, Record<string, string>>>>;
+
+/**
+ * Fills gaps of Showdown's Spanish battle messages with `overrides/battle-text.es.json`.
+ * Only known effects can be overridden: a typo in an id aborts the build. Returns how many
+ * templates were added or replaced.
+ */
+export function applyBattleTextOverrides(es: BattleTextData, en: BattleTextData): number {
+  const overrides = readOverrides<BattleTextOverrides>('battle-text.es.json');
+  let applied = 0;
+  for (const [table, entries] of Object.entries(overrides) as [
+    BattleTextTable,
+    Record<string, Record<string, string>>,
+  ][]) {
+    for (const [id, fields] of Object.entries(entries)) {
+      if (!en[table][id]) {
+        throw new Error(`overrides/battle-text.es.json → ${table}.${id}: efecto desconocido.`);
+      }
+      es[table][id] = { ...es[table][id], ...fields };
+      applied += Object.keys(fields).length;
     }
   }
   return applied;

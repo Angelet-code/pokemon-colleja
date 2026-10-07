@@ -12,11 +12,16 @@ import { join } from 'node:path';
 import type { DataMeta, GameMode } from '@colleja/data/schema';
 import { GENERATED_DIR, REGULATION, SOURCES } from './config';
 import { buildI18n } from './i18n';
-import { applySetOverrides, applySpanishNameOverrides } from './overrides';
+import {
+  applyBattleTextOverrides,
+  applySetOverrides,
+  applySpanishNameOverrides,
+} from './overrides';
 import { resolvePokeApiPokemon } from './pokeapi/species-map';
 import { loadPokeApiTables } from './pokeapi/tables';
 import { buildStandardSets } from './sets/standard-sets';
 import { extractAbilities, extractItems, extractNatures } from './showdown/abilities-items-natures';
+import { extractBattleText } from './showdown/battle-text';
 import { createShowdownContext } from './showdown/context';
 import { extractFormats, extractLearnsets } from './showdown/learnsets-formats';
 import { collectLegalMoveIds, extractMoves } from './showdown/moves';
@@ -64,17 +69,24 @@ async function main(): Promise<void> {
   for (const entry of species) entry.pokeapiId = pokemonBySpecies.get(entry.id)?.id ?? null;
   for (const item of items) item.spriteId = tables.items.get(item.id)?.identifier ?? null;
 
-  const texts = loadShowdownTexts(ctx, {
+  const effectIds = {
     moves: moves.map((m) => m.id),
     abilities: abilities.map((a) => a.id),
     items: items.map((i) => i.id),
-  });
+  };
+  const texts = loadShowdownTexts(ctx, effectIds);
   const i18n = buildI18n(
     { species, pokemonBySpecies, moves, abilities, items, natures },
     tables,
     texts,
   );
   const nameOverrides = applySpanishNameOverrides(i18n.names.es, i18n.missing);
+  log('Extrayendo las plantillas de mensajes de combate (es/en)…');
+  const battleText = {
+    es: extractBattleText(ctx, 'es', effectIds),
+    en: extractBattleText(ctx, 'en', effectIds),
+  };
+  const textOverrides = applyBattleTextOverrides(battleText.es, battleText.en);
 
   log('Generando sets estándar (validados con el validador de Champions)…');
   const { sets: standardSets, report } = buildStandardSets(ctx, species, natures);
@@ -120,6 +132,7 @@ async function main(): Promise<void> {
   for (const locale of ['es', 'en'] as const) {
     out(`i18n/${locale}.json`, i18n.names[locale]);
     out(`i18n/${locale}.descriptions.json`, i18n.descriptions[locale]);
+    out(`text/${locale}.json`, battleText[locale]);
   }
 
   const c = meta.counts;
@@ -141,6 +154,7 @@ async function main(): Promise<void> {
     if (ids?.length) log(`⚠ Sin nombre oficial en español (${kind}): ${listSample(ids)}`);
   }
   if (nameOverrides) log(`Nombres en español corregidos por overrides: ${nameOverrides}`);
+  if (textOverrides) log(`Mensajes de combate en español añadidos por overrides: ${textOverrides}`);
   if (report.missingRoles.length) {
     log(
       `⚠ Roles sin set legal (${report.missingRoles.length}): ${listSample(report.missingRoles, 8)}`,

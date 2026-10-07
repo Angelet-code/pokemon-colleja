@@ -2,18 +2,22 @@ import { readFileSync } from 'node:fs';
 import { RandomAgent } from '@colleja/bot';
 import {
   actionsChoice,
+  type BattleAgent,
   championsStats,
   formatShowdownTeam,
   moveAction,
   type PokemonSet,
   parseShowdownTeam,
   type SideId,
+  switchAction,
 } from '@colleja/core';
 import { type GameMode, listStandardSets, STAT_IDS } from '@colleja/data';
 import { Battle, CHAMPIONS_FORMATS, type ShowdownID, Teams } from '@colleja/showdown';
 import { describe, expect, it } from 'vitest';
 import {
+  AgentError,
   BattleSession,
+  decideFor,
   fromShowdownSet,
   playOut,
   resolveFormat,
@@ -301,5 +305,53 @@ describe('BattleSession', () => {
       .find((line) => line.startsWith('|switch|p2a:'));
     expect(p2SwitchFromP1).toMatch(/\|100\/100$/);
     expect(p2SwitchOmniscient).not.toMatch(/\|100\/100$/);
+  });
+});
+
+describe('forfeit', () => {
+  it('ends the battle with the other side as winner, and a rewind resumes it', async () => {
+    const session = createFixtureSession('singles', 'forfeit');
+    await playUntil(session, 'forfeit', 2);
+    session.forfeit('p1');
+    expect(session.ended).toBe(true);
+    expect(session.winner).toBe('p2');
+    expect(session.getLog('p1').at(-1)).toBe('|win|Equipo B');
+    session.rewindTo(2);
+    expect(session.ended).toBe(false);
+    expect(session.pendingSides()).toEqual(['p1', 'p2']);
+  });
+});
+
+describe('decideFor', () => {
+  /** Answers with a bad choice a few times before letting a random agent decide. */
+  function stubbornAgent(badAnswers: number): BattleAgent & { calls: number } {
+    const random = new RandomAgent({ seed: 'stubborn' });
+    return {
+      name: 'Terco',
+      calls: 0,
+      choose(context) {
+        this.calls++;
+        // Switching to the Pokémon already on the field is never legal.
+        return this.calls <= badAnswers ? actionsChoice(switchAction(1)) : random.choose(context);
+      },
+    };
+  }
+
+  it('asks again when the simulator rejects a choice', async () => {
+    const session = createFixtureSession('singles', 'decide');
+    const agent = stubbornAgent(2);
+    const choice = await decideFor(session, 'p1', agent);
+    expect(choice).not.toBeNull();
+    expect(agent.calls).toBe(3);
+    expect(session.isAwaiting('p1')).toBe(false);
+  });
+
+  it('gives up after too many rejections, and does nothing when the side has no decision', async () => {
+    const session = createFixtureSession('singles', 'decide');
+    await expect(decideFor(session, 'p1', stubbornAgent(10), { maxRetries: 2 })).rejects.toThrow(
+      AgentError,
+    );
+    await decideFor(session, 'p1', new RandomAgent({ seed: 'ok' }));
+    expect(await decideFor(session, 'p1', stubbornAgent(10))).toBeNull();
   });
 });

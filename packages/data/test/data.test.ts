@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   canLearn,
   getAbility,
+  getBattleText,
   getDescription,
   getFormat,
   getItem,
@@ -167,5 +168,41 @@ describe('standard sets', () => {
     const megaSets = getStandardSets('charizard', 'singles').filter((set) => set.mega);
     expect(megaSets.length).toBeGreaterThan(0);
     expect(megaSets.every((set) => set.species === 'charizard')).toBe(true);
+  });
+});
+
+describe('battle text (log templates)', () => {
+  const es = getBattleText('es');
+  const en = getBattleText('en');
+
+  it('has the generic templates in both languages', () => {
+    expect(en.default.default?.move).toBe('{POKEMON} used **{MOVE}**!');
+    expect(es.default.default?.move).toBe('¡{POKEMON} ha usado **{MOVE}**!');
+    expect(es.default.sunnyday?.weatherName).toBe('Sol');
+  });
+
+  it('fills Spanish gaps with overrides/battle-text.es.json', () => {
+    expect(es.default.default?.turn).toBe('== Turno {NUMBER} ==');
+    // Every generic English template exists in Spanish too (Champions has no Terastallization).
+    const missing = Object.keys(en.default.default ?? {}).filter(
+      (field) => !es.default.default?.[field],
+    );
+    expect(missing).toEqual(['terastallize']);
+  });
+
+  it('keeps only battle messages of effects available in Champions', () => {
+    expect(en.moves.protect).toEqual({
+      start: '  {POKEMON} protected itself!',
+      block: '  {POKEMON} protected itself!',
+    });
+    expect(en.moves.protect).not.toHaveProperty('desc');
+    for (const id of Object.keys(en.moves)) expect(getMove(id), id).toBeDefined();
+  });
+
+  it('has Spanish grammar for items and stats', () => {
+    expect(es.grammar.items.lifeorb).toEqual({ grammar: 'fs' });
+    expect(es.grammar.items.mysticwater?.classified?.name).toBe('colgante de Agua Mística');
+    expect(es.grammar.stats.atk).toBe('ms');
+    expect(es.stats.stats).toBe('características');
   });
 });

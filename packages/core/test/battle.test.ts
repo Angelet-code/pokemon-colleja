@@ -103,6 +103,14 @@ describe('request options', () => {
       fainted: false,
     });
     expect(parseCondition('0 fnt').fainted).toBe(true);
+    // Champions adds the HP bar colour at exactly 20 % and 50 %.
+    expect(parseCondition('50/100y par')).toEqual({
+      hp: 50,
+      maxhp: 100,
+      status: 'par',
+      fainted: false,
+    });
+    expect(parseCondition('20/100r')).toMatchObject({ hp: 20, maxhp: 100 });
   });
 
   it('computes doubles targets', () => {

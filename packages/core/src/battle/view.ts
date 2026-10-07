@@ -1,7 +1,8 @@
 /**
  * Minimal battle state rebuilt from the protocol lines of ONE perspective: what that player
- * can see (own HP exact, rival HP in %). Used by the CLI to draw the field and by bots.
- * It only tracks what the app needs; it is not a full client (the web UI may use @pkmn/client).
+ * can see (own HP exact, rival HP in %). Used by the bots, the CLI, the narration and the web
+ * battle screen (ADR-0005). It only tracks what they need; extend it here, with tests, if a
+ * consumer needs more (volatiles, remaining turns of weather…).
  */
 import { type SpeciesId, toId } from '@colleja/data';
 import { detailsSpecies, identName, parseCondition } from './request';

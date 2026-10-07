@@ -98,10 +98,15 @@ export interface Condition {
   fainted: boolean;
 }
 
-/** Parses a protocol HP/status string: `185/185`, `92/185 brn`, `45/100 par`, `0 fnt`. */
+/**
+ * Parses a protocol HP/status string: `185/185`, `92/185 brn`, `45/100 par`, `0 fnt`.
+ * Rival HP at exactly 20 % or 50 % carries the HP bar colour (`50/100y`, `20/100r`), which
+ * tells on which side of the threshold the real value is: it is ignored here.
+ */
 export function parseCondition(condition: string): Condition {
   const [hpPart = '0', status] = condition.trim().split(/\s+/);
-  const [hp = '0', maxhp] = hpPart.split('/');
+  const [hp = '0', maxhpWithColor] = hpPart.split('/');
+  const maxhp = maxhpWithColor?.replace(/[gyr]$/, '');
   if (status === 'fnt') return { hp: 0, maxhp: Number(maxhp ?? 0), status: null, fainted: true };
   return {
     hp: Number(hp),

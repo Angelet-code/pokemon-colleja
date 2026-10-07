@@ -18,11 +18,11 @@ import {
 } from '@colleja/bot';
 import { type BattleAgent, type PokemonSet, parseShowdownTeam, type SideId } from '@colleja/core';
 import type { GameMode } from '@colleja/data';
-import { BattleSession, TeamValidationError } from '@colleja/engine';
+import { BattleSession, decideFor, TeamValidationError } from '@colleja/engine';
+import { type NarrationEntry, Narrator, stripMarkup } from '@colleja/narration';
 import { generateTeam } from '@colleja/teamgen';
 import { type Command, HELP, HumanPlayer, parseCommand } from './human';
 import type { CliIO } from './io';
-import { Narrator } from './narrator';
 import { renderField } from './render';
 
 const FIXTURES = fileURLToPath(new URL('../../smoke/fixtures/', import.meta.url));
@@ -220,19 +220,14 @@ class BattleLoop {
   private printNewLines(): void {
     const log = this.session.getLog('p1');
     for (; this.printed < log.length; this.printed++) {
-      const text = this.narrator.narrate(log[this.printed] ?? '');
-      if (text) this.io.print(text);
+      for (const entry of this.narrator.push(log[this.printed] ?? '')) {
+        this.io.print(formatEntry(entry));
+      }
     }
   }
 
   private async agentTurn(side: SideId, agent: BattleAgent): Promise<void> {
-    const context = this.session.getAgentContext(side);
-    if (!context) return;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const result = this.session.choose(side, await agent.choose(context));
-      if (result.ok) return;
-    }
-    throw new Error(`${agent.name} (${side}) no consiguió hacer una elección válida.`);
+    await decideFor(this.session, side, agent);
   }
 
   /** Returns `true` when the player quits. */
@@ -296,5 +291,25 @@ class BattleLoop {
     const file = join(REPLAYS, `${stamp}-${this.session.mode}.json`);
     writeFileSync(file, `${JSON.stringify(this.session.exportReplay(), null, 2)}\n`);
     return file;
+  }
+}
+
+/** One narration message as a terminal line. */
+function formatEntry(entry: NarrationEntry): string {
+  const text = stripMarkup(entry.text);
+  switch (entry.kind) {
+    case 'turn':
+      return `
+── ${text} ──`;
+    case 'end':
+      return `
+${text}`;
+    case 'minor':
+      return `  ${text}`;
+    case 'major':
+      return entry.spaced
+        ? `
+${text}`
+        : text;
   }
 }

@@ -13,6 +13,7 @@
     "@colleja/core": "*",
     "@colleja/data": "*",
     "@colleja/engine": "*",
+    "@colleja/narration": "*",
     "@colleja/teamgen": "*"
   }
 }

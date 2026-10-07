@@ -233,6 +233,18 @@ export class BattleSession {
     return this.send(side, text);
   }
 
+  /**
+   * The side gives up and the other one wins. Forfeits are not choices: they are not in the
+   * input log, so rewinding afterwards (or replaying) resumes the battle as it was.
+   */
+  forfeit(side: SideId): void {
+    this.assertUsable();
+    if (this.state.ended) return;
+    this.state.battle.lose(side);
+    this.state.battle.sendUpdates();
+    this.flush();
+  }
+
   /** Back to the start of `turn` (as if the choices from then on had not been made). */
   rewindTo(turn: number): void {
     this.assertUsable();

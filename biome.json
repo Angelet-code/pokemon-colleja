@@ -12,7 +12,8 @@
       "!storage",
       "!assets",
       "!docs/research/anexos",
-      "!packages/data/generated"
+      "!packages/data/generated",
+      "!apps/web/dist"
     ]
   },
   "formatter": {
@@ -20,6 +21,11 @@
     "indentStyle": "space",
     "indentWidth": 2,
     "lineWidth": 100
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
   },
   "javascript": {
     "formatter": {

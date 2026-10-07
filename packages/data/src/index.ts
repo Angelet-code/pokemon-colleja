@@ -18,10 +18,13 @@ import movesJson from '../generated/moves.json' with { type: 'json' };
 import naturesJson from '../generated/natures.json' with { type: 'json' };
 import speciesJson from '../generated/species.json' with { type: 'json' };
 import standardSetsJson from '../generated/standard-sets.json' with { type: 'json' };
+import textEnJson from '../generated/text/en.json' with { type: 'json' };
+import textEsJson from '../generated/text/es.json' with { type: 'json' };
 import typechartJson from '../generated/typechart.json' with { type: 'json' };
 import type {
   AbilityData,
   AbilityId,
+  BattleTextData,
   DataMeta,
   DescriptionKind,
   FormatData,
@@ -66,6 +69,8 @@ const descriptions = typed<Record<Locale, LocaleDescriptions>>({
   es: descriptionsEsJson,
   en: descriptionsEnJson,
 });
+
+const battleText = typed<Record<Locale, BattleTextData>>({ es: textEsJson, en: textEnJson });
 
 export const meta = typed<DataMeta>(metaJson);
 
@@ -168,4 +173,12 @@ export function getDescription(
   locale: Locale = 'es',
 ): string | undefined {
   return descriptions[locale][kind][id] ?? descriptions.en[kind][id];
+}
+
+/**
+ * Showdown battle message templates of a locale (for the log narration). Spanish has gaps:
+ * read each field with an English fallback (`@colleja/narration` does it).
+ */
+export function getBattleText(locale: Locale): BattleTextData {
+  return battleText[locale];
 }
