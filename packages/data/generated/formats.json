@@ -1,0 +1,24 @@
+{
+  "singles": {
+    "mode": "singles",
+    "showdownId": "gen9championsbssregmc",
+    "name": "[Gen 9 Champions] BSS Reg M-C",
+    "teamSize": 6,
+    "pickedTeamSize": 3,
+    "level": 50,
+    "statPoints": {"total": 66, "perStat": 32},
+    "rules": ["Flat Rules", "Item Clause", "Nickname Clause", "Obtainable", "Species Clause", "Team Preview", "VGC Timer"],
+    "timer": {"starting": 420, "maxPerTurn": 55, "maxFirstTurn": 90}
+  },
+  "doubles": {
+    "mode": "doubles",
+    "showdownId": "gen9championsvgc2026regmc",
+    "name": "[Gen 9 Champions] VGC 2026 Reg M-C",
+    "teamSize": 6,
+    "pickedTeamSize": 4,
+    "level": 50,
+    "statPoints": {"total": 66, "perStat": 32},
+    "rules": ["Flat Rules", "Item Clause", "Nickname Clause", "Obtainable", "Open Team Sheets", "Species Clause", "Team Preview", "VGC Timer"],
+    "timer": {"starting": 420, "maxPerTurn": 55, "maxFirstTurn": 90}
+  }
+}

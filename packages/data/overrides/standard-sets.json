@@ -1,0 +1,5 @@
+{
+  "$comment": "Sets propios que sustituyen a los generados para una especie y modo. Ver README.md de esta carpeta. Se validan con el validador de Champions al ejecutar `npm run data:build`.",
+  "singles": {},
+  "doubles": {}
+}

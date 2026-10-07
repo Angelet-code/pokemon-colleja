@@ -1,0 +1,20 @@
+{
+  "regulation": "M-C",
+  "showdown": {"commit": "c046106cbe075931b1ff8d8b800ff5be47a85f96", "date": "2026-10-06T20:09:35-07:00"},
+  "pokeapi": {"commit": "2fe95532d27a9bf340575253aff50868319d8182"},
+  "counts": {
+    "species": 269,
+    "speciesNums": 231,
+    "megas": 82,
+    "battleOnly": 7,
+    "moves": 511,
+    "abilities": 215,
+    "items": 166,
+    "megaStones": 81,
+    "natures": 25,
+    "standardSets": {"singles": 488, "doubles": 463}
+  },
+  "missingSpanishNames": {
+    "abilities": ["auraguard"]
+  }
+}

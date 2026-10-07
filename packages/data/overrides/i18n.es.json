@@ -1,0 +1,20 @@
+{
+  "$comment": "Nombres en español que PokeAPI no tiene o que queremos corregir. Clave: id de Showdown (minúsculas, sin espacios). Se aplican al ejecutar `npm run data:build`.",
+  "species": {
+    "basculegionf": "Basculegion (Hembra)",
+    "mausholdfour": "Maushold (Familia de Cuatro)",
+    "palafinhero": "Palafin (Forma Heroica)",
+    "polteageistantique": "Polteageist (Forma Genuina)",
+    "squawkabillyblue": "Squawkabilly (Plumaje Azul)",
+    "squawkabillywhite": "Squawkabilly (Plumaje Blanco)",
+    "squawkabillyyellow": "Squawkabilly (Plumaje Amarillo)"
+  },
+  "moves": {},
+  "abilities": {},
+  "items": {
+    "leek": "Puerro"
+  },
+  "natures": {},
+  "types": {},
+  "stats": {}
+}

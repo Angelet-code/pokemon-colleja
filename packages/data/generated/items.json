@@ -1,0 +1,1327 @@
+{
+  "abomasite": {
+    "id": "abomasite",
+    "name": "Abomasite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "abomasnow", "to": "abomasnowmega"}
+    ],
+    "spriteId": "abomasite"
+  },
+  "absolite": {
+    "id": "absolite",
+    "name": "Absolite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "absol", "to": "absolmega"}
+    ],
+    "spriteId": "absolite"
+  },
+  "absolitez": {
+    "id": "absolitez",
+    "name": "Absolite Z",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "absol", "to": "absolmegaz"}
+    ],
+    "spriteId": "absolite-z"
+  },
+  "aerodactylite": {
+    "id": "aerodactylite",
+    "name": "Aerodactylite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "aerodactyl", "to": "aerodactylmega"}
+    ],
+    "spriteId": "aerodactylite"
+  },
+  "aggronite": {
+    "id": "aggronite",
+    "name": "Aggronite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "aggron", "to": "aggronmega"}
+    ],
+    "spriteId": "aggronite"
+  },
+  "airballoon": {
+    "id": "airballoon",
+    "name": "Air Balloon",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "air-balloon"
+  },
+  "alakazite": {
+    "id": "alakazite",
+    "name": "Alakazite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "alakazam", "to": "alakazammega"}
+    ],
+    "spriteId": "alakazite"
+  },
+  "altarianite": {
+    "id": "altarianite",
+    "name": "Altarianite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "altaria", "to": "altariamega"}
+    ],
+    "spriteId": "altarianite"
+  },
+  "ampharosite": {
+    "id": "ampharosite",
+    "name": "Ampharosite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "ampharos", "to": "ampharosmega"}
+    ],
+    "spriteId": "ampharosite"
+  },
+  "aspearberry": {
+    "id": "aspearberry",
+    "name": "Aspear Berry",
+    "category": "berry",
+    "megaEvolutions": [],
+    "spriteId": "aspear-berry"
+  },
+  "audinite": {
+    "id": "audinite",
+    "name": "Audinite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "audino", "to": "audinomega"}
+    ],
+    "spriteId": "audinite"
+  },
+  "babiriberry": {
+    "id": "babiriberry",
+    "name": "Babiri Berry",
+    "category": "berry",
+    "megaEvolutions": [],
+    "spriteId": "babiri-berry"
+  },
+  "banettite": {
+    "id": "banettite",
+    "name": "Banettite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "banette", "to": "banettemega"}
+    ],
+    "spriteId": "banettite"
+  },
+  "barbaracite": {
+    "id": "barbaracite",
+    "name": "Barbaracite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "barbaracle", "to": "barbaraclemega"}
+    ],
+    "spriteId": "barbaracite"
+  },
+  "baxcalibrite": {
+    "id": "baxcalibrite",
+    "name": "Baxcalibrite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "baxcalibur", "to": "baxcaliburmega"}
+    ],
+    "spriteId": "baxcalibrite"
+  },
+  "beedrillite": {
+    "id": "beedrillite",
+    "name": "Beedrillite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "beedrill", "to": "beedrillmega"}
+    ],
+    "spriteId": "beedrillite"
+  },
+  "bigroot": {
+    "id": "bigroot",
+    "name": "Big Root",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "big-root"
+  },
+  "bindingband": {
+    "id": "bindingband",
+    "name": "Binding Band",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "binding-band"
+  },
+  "blackbelt": {
+    "id": "blackbelt",
+    "name": "Black Belt",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "black-belt"
+  },
+  "blackglasses": {
+    "id": "blackglasses",
+    "name": "Black Glasses",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "black-glasses"
+  },
+  "blastoisinite": {
+    "id": "blastoisinite",
+    "name": "Blastoisinite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "blastoise", "to": "blastoisemega"}
+    ],
+    "spriteId": "blastoisinite"
+  },
+  "blazikenite": {
+    "id": "blazikenite",
+    "name": "Blazikenite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "blaziken", "to": "blazikenmega"}
+    ],
+    "spriteId": "blazikenite"
+  },
+  "brightpowder": {
+    "id": "brightpowder",
+    "name": "Bright Powder",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "bright-powder"
+  },
+  "cameruptite": {
+    "id": "cameruptite",
+    "name": "Cameruptite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "camerupt", "to": "cameruptmega"}
+    ],
+    "spriteId": "cameruptite"
+  },
+  "chandelurite": {
+    "id": "chandelurite",
+    "name": "Chandelurite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "chandelure", "to": "chandeluremega"}
+    ],
+    "spriteId": "chandelurite"
+  },
+  "charcoal": {
+    "id": "charcoal",
+    "name": "Charcoal",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "charcoal"
+  },
+  "charizarditex": {
+    "id": "charizarditex",
+    "name": "Charizardite X",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "charizard", "to": "charizardmegax"}
+    ],
+    "spriteId": "charizardite-x"
+  },
+  "charizarditey": {
+    "id": "charizarditey",
+    "name": "Charizardite Y",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "charizard", "to": "charizardmegay"}
+    ],
+    "spriteId": "charizardite-y"
+  },
+  "chartiberry": {
+    "id": "chartiberry",
+    "name": "Charti Berry",
+    "category": "berry",
+    "megaEvolutions": [],
+    "spriteId": "charti-berry"
+  },
+  "cheriberry": {
+    "id": "cheriberry",
+    "name": "Cheri Berry",
+    "category": "berry",
+    "megaEvolutions": [],
+    "spriteId": "cheri-berry"
+  },
+  "chesnaughtite": {
+    "id": "chesnaughtite",
+    "name": "Chesnaughtite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "chesnaught", "to": "chesnaughtmega"}
+    ],
+    "spriteId": "chesnaughtite"
+  },
+  "chestoberry": {
+    "id": "chestoberry",
+    "name": "Chesto Berry",
+    "category": "berry",
+    "megaEvolutions": [],
+    "spriteId": "chesto-berry"
+  },
+  "chilanberry": {
+    "id": "chilanberry",
+    "name": "Chilan Berry",
+    "category": "berry",
+    "megaEvolutions": [],
+    "spriteId": "chilan-berry"
+  },
+  "chimechite": {
+    "id": "chimechite",
+    "name": "Chimechite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "chimecho", "to": "chimechomega"}
+    ],
+    "spriteId": "chimechite"
+  },
+  "choicescarf": {
+    "id": "choicescarf",
+    "name": "Choice Scarf",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "choice-scarf"
+  },
+  "chopleberry": {
+    "id": "chopleberry",
+    "name": "Chople Berry",
+    "category": "berry",
+    "megaEvolutions": [],
+    "spriteId": "chople-berry"
+  },
+  "clefablite": {
+    "id": "clefablite",
+    "name": "Clefablite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "clefable", "to": "clefablemega"}
+    ],
+    "spriteId": "clefablite"
+  },
+  "cobaberry": {
+    "id": "cobaberry",
+    "name": "Coba Berry",
+    "category": "berry",
+    "megaEvolutions": [],
+    "spriteId": "coba-berry"
+  },
+  "colburberry": {
+    "id": "colburberry",
+    "name": "Colbur Berry",
+    "category": "berry",
+    "megaEvolutions": [],
+    "spriteId": "colbur-berry"
+  },
+  "crabominite": {
+    "id": "crabominite",
+    "name": "Crabominite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "crabominable", "to": "crabominablemega"}
+    ],
+    "spriteId": "crabominite"
+  },
+  "damprock": {
+    "id": "damprock",
+    "name": "Damp Rock",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "damp-rock"
+  },
+  "delphoxite": {
+    "id": "delphoxite",
+    "name": "Delphoxite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "delphox", "to": "delphoxmega"}
+    ],
+    "spriteId": "delphoxite"
+  },
+  "dragalgite": {
+    "id": "dragalgite",
+    "name": "Dragalgite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "dragalge", "to": "dragalgemega"}
+    ],
+    "spriteId": "dragalgite"
+  },
+  "dragonfang": {
+    "id": "dragonfang",
+    "name": "Dragon Fang",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "dragon-fang"
+  },
+  "dragoninite": {
+    "id": "dragoninite",
+    "name": "Dragoninite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "dragonite", "to": "dragonitemega"}
+    ],
+    "spriteId": "dragoninite"
+  },
+  "drampanite": {
+    "id": "drampanite",
+    "name": "Drampanite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "drampa", "to": "drampamega"}
+    ],
+    "spriteId": "drampanite"
+  },
+  "eelektrossite": {
+    "id": "eelektrossite",
+    "name": "Eelektrossite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "eelektross", "to": "eelektrossmega"}
+    ],
+    "spriteId": "eelektrossite"
+  },
+  "ejectbutton": {
+    "id": "ejectbutton",
+    "name": "Eject Button",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "eject-button"
+  },
+  "electricseed": {
+    "id": "electricseed",
+    "name": "Electric Seed",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "electric-seed"
+  },
+  "emboarite": {
+    "id": "emboarite",
+    "name": "Emboarite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "emboar", "to": "emboarmega"}
+    ],
+    "spriteId": "emboarite"
+  },
+  "excadrite": {
+    "id": "excadrite",
+    "name": "Excadrite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "excadrill", "to": "excadrillmega"}
+    ],
+    "spriteId": "excadrite"
+  },
+  "expertbelt": {
+    "id": "expertbelt",
+    "name": "Expert Belt",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "expert-belt"
+  },
+  "fairyfeather": {
+    "id": "fairyfeather",
+    "name": "Fairy Feather",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "fairy-feather"
+  },
+  "falinksite": {
+    "id": "falinksite",
+    "name": "Falinksite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "falinks", "to": "falinksmega"}
+    ],
+    "spriteId": "falinksite"
+  },
+  "feraligite": {
+    "id": "feraligite",
+    "name": "Feraligite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "feraligatr", "to": "feraligatrmega"}
+    ],
+    "spriteId": "feraligite"
+  },
+  "floettite": {
+    "id": "floettite",
+    "name": "Floettite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "floetteeternal", "to": "floettemega"}
+    ],
+    "spriteId": "floettite"
+  },
+  "focusband": {
+    "id": "focusband",
+    "name": "Focus Band",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "focus-band"
+  },
+  "focussash": {
+    "id": "focussash",
+    "name": "Focus Sash",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "focus-sash"
+  },
+  "froslassite": {
+    "id": "froslassite",
+    "name": "Froslassite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "froslass", "to": "froslassmega"}
+    ],
+    "spriteId": "froslassite"
+  },
+  "galladite": {
+    "id": "galladite",
+    "name": "Galladite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "gallade", "to": "gallademega"}
+    ],
+    "spriteId": "galladite"
+  },
+  "garchompite": {
+    "id": "garchompite",
+    "name": "Garchompite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "garchomp", "to": "garchompmega"}
+    ],
+    "spriteId": "garchompite"
+  },
+  "garchompitez": {
+    "id": "garchompitez",
+    "name": "Garchompite Z",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "garchomp", "to": "garchompmegaz"}
+    ],
+    "spriteId": "garchompite-z"
+  },
+  "gardevoirite": {
+    "id": "gardevoirite",
+    "name": "Gardevoirite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "gardevoir", "to": "gardevoirmega"}
+    ],
+    "spriteId": "gardevoirite"
+  },
+  "gengarite": {
+    "id": "gengarite",
+    "name": "Gengarite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "gengar", "to": "gengarmega"}
+    ],
+    "spriteId": "gengarite"
+  },
+  "glalitite": {
+    "id": "glalitite",
+    "name": "Glalitite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "glalie", "to": "glaliemega"}
+    ],
+    "spriteId": "glalitite"
+  },
+  "glimmoranite": {
+    "id": "glimmoranite",
+    "name": "Glimmoranite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "glimmora", "to": "glimmoramega"}
+    ],
+    "spriteId": "glimmoranite"
+  },
+  "golisopite": {
+    "id": "golisopite",
+    "name": "Golisopite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "golisopod", "to": "golisopodmega"}
+    ],
+    "spriteId": "golisopite"
+  },
+  "golurkite": {
+    "id": "golurkite",
+    "name": "Golurkite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "golurk", "to": "golurkmega"}
+    ],
+    "spriteId": "golurkite"
+  },
+  "grassyseed": {
+    "id": "grassyseed",
+    "name": "Grassy Seed",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "grassy-seed"
+  },
+  "greninjite": {
+    "id": "greninjite",
+    "name": "Greninjite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "greninja", "to": "greninjamega"}
+    ],
+    "spriteId": "greninjite"
+  },
+  "gyaradosite": {
+    "id": "gyaradosite",
+    "name": "Gyaradosite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "gyarados", "to": "gyaradosmega"}
+    ],
+    "spriteId": "gyaradosite"
+  },
+  "habanberry": {
+    "id": "habanberry",
+    "name": "Haban Berry",
+    "category": "berry",
+    "megaEvolutions": [],
+    "spriteId": "haban-berry"
+  },
+  "hardstone": {
+    "id": "hardstone",
+    "name": "Hard Stone",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "hard-stone"
+  },
+  "hawluchanite": {
+    "id": "hawluchanite",
+    "name": "Hawluchanite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "hawlucha", "to": "hawluchamega"}
+    ],
+    "spriteId": "hawluchanite"
+  },
+  "heatrock": {
+    "id": "heatrock",
+    "name": "Heat Rock",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "heat-rock"
+  },
+  "heracronite": {
+    "id": "heracronite",
+    "name": "Heracronite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "heracross", "to": "heracrossmega"}
+    ],
+    "spriteId": "heracronite"
+  },
+  "houndoominite": {
+    "id": "houndoominite",
+    "name": "Houndoominite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "houndoom", "to": "houndoommega"}
+    ],
+    "spriteId": "houndoominite"
+  },
+  "icyrock": {
+    "id": "icyrock",
+    "name": "Icy Rock",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "icy-rock"
+  },
+  "ironball": {
+    "id": "ironball",
+    "name": "Iron Ball",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "iron-ball"
+  },
+  "kangaskhanite": {
+    "id": "kangaskhanite",
+    "name": "Kangaskhanite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "kangaskhan", "to": "kangaskhanmega"}
+    ],
+    "spriteId": "kangaskhanite"
+  },
+  "kasibberry": {
+    "id": "kasibberry",
+    "name": "Kasib Berry",
+    "category": "berry",
+    "megaEvolutions": [],
+    "spriteId": "kasib-berry"
+  },
+  "kebiaberry": {
+    "id": "kebiaberry",
+    "name": "Kebia Berry",
+    "category": "berry",
+    "megaEvolutions": [],
+    "spriteId": "kebia-berry"
+  },
+  "kingsrock": {
+    "id": "kingsrock",
+    "name": "King's Rock",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "kings-rock"
+  },
+  "leek": {
+    "id": "leek",
+    "name": "Leek",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": null
+  },
+  "leftovers": {
+    "id": "leftovers",
+    "name": "Leftovers",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "leftovers"
+  },
+  "leppaberry": {
+    "id": "leppaberry",
+    "name": "Leppa Berry",
+    "category": "berry",
+    "megaEvolutions": [],
+    "spriteId": "leppa-berry"
+  },
+  "lifeorb": {
+    "id": "lifeorb",
+    "name": "Life Orb",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "life-orb"
+  },
+  "lightball": {
+    "id": "lightball",
+    "name": "Light Ball",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "light-ball"
+  },
+  "lightclay": {
+    "id": "lightclay",
+    "name": "Light Clay",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "light-clay"
+  },
+  "lopunnite": {
+    "id": "lopunnite",
+    "name": "Lopunnite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "lopunny", "to": "lopunnymega"}
+    ],
+    "spriteId": "lopunnite"
+  },
+  "lucarionite": {
+    "id": "lucarionite",
+    "name": "Lucarionite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "lucario", "to": "lucariomega"}
+    ],
+    "spriteId": "lucarionite"
+  },
+  "lucarionitez": {
+    "id": "lucarionitez",
+    "name": "Lucarionite Z",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "lucario", "to": "lucariomegaz"}
+    ],
+    "spriteId": "lucarionite-z"
+  },
+  "lumberry": {
+    "id": "lumberry",
+    "name": "Lum Berry",
+    "category": "berry",
+    "megaEvolutions": [],
+    "spriteId": "lum-berry"
+  },
+  "magnet": {
+    "id": "magnet",
+    "name": "Magnet",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "magnet"
+  },
+  "malamarite": {
+    "id": "malamarite",
+    "name": "Malamarite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "malamar", "to": "malamarmega"}
+    ],
+    "spriteId": "malamarite"
+  },
+  "manectite": {
+    "id": "manectite",
+    "name": "Manectite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "manectric", "to": "manectricmega"}
+    ],
+    "spriteId": "manectite"
+  },
+  "mawilite": {
+    "id": "mawilite",
+    "name": "Mawilite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "mawile", "to": "mawilemega"}
+    ],
+    "spriteId": "mawilite"
+  },
+  "medichamite": {
+    "id": "medichamite",
+    "name": "Medichamite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "medicham", "to": "medichammega"}
+    ],
+    "spriteId": "medichamite"
+  },
+  "meganiumite": {
+    "id": "meganiumite",
+    "name": "Meganiumite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "meganium", "to": "meganiummega"}
+    ],
+    "spriteId": "meganiumite"
+  },
+  "mentalherb": {
+    "id": "mentalherb",
+    "name": "Mental Herb",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "mental-herb"
+  },
+  "meowsticite": {
+    "id": "meowsticite",
+    "name": "Meowsticite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "meowstic", "to": "meowsticmmega"},
+      {"from": "meowsticf", "to": "meowsticfmega"}
+    ],
+    "spriteId": "meowsticite"
+  },
+  "metagrossite": {
+    "id": "metagrossite",
+    "name": "Metagrossite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "metagross", "to": "metagrossmega"}
+    ],
+    "spriteId": "metagrossite"
+  },
+  "metalcoat": {
+    "id": "metalcoat",
+    "name": "Metal Coat",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "metal-coat"
+  },
+  "metronome": {
+    "id": "metronome",
+    "name": "Metronome",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "metronome"
+  },
+  "miracleseed": {
+    "id": "miracleseed",
+    "name": "Miracle Seed",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "miracle-seed"
+  },
+  "mistyseed": {
+    "id": "mistyseed",
+    "name": "Misty Seed",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "misty-seed"
+  },
+  "muscleband": {
+    "id": "muscleband",
+    "name": "Muscle Band",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "muscle-band"
+  },
+  "mysticwater": {
+    "id": "mysticwater",
+    "name": "Mystic Water",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "mystic-water"
+  },
+  "nevermeltice": {
+    "id": "nevermeltice",
+    "name": "Never-Melt Ice",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "never-melt-ice"
+  },
+  "normalgem": {
+    "id": "normalgem",
+    "name": "Normal Gem",
+    "category": "gem",
+    "megaEvolutions": [],
+    "spriteId": "normal-gem"
+  },
+  "occaberry": {
+    "id": "occaberry",
+    "name": "Occa Berry",
+    "category": "berry",
+    "megaEvolutions": [],
+    "spriteId": "occa-berry"
+  },
+  "oranberry": {
+    "id": "oranberry",
+    "name": "Oran Berry",
+    "category": "berry",
+    "megaEvolutions": [],
+    "spriteId": "oran-berry"
+  },
+  "passhoberry": {
+    "id": "passhoberry",
+    "name": "Passho Berry",
+    "category": "berry",
+    "megaEvolutions": [],
+    "spriteId": "passho-berry"
+  },
+  "payapaberry": {
+    "id": "payapaberry",
+    "name": "Payapa Berry",
+    "category": "berry",
+    "megaEvolutions": [],
+    "spriteId": "payapa-berry"
+  },
+  "pechaberry": {
+    "id": "pechaberry",
+    "name": "Pecha Berry",
+    "category": "berry",
+    "megaEvolutions": [],
+    "spriteId": "pecha-berry"
+  },
+  "persimberry": {
+    "id": "persimberry",
+    "name": "Persim Berry",
+    "category": "berry",
+    "megaEvolutions": [],
+    "spriteId": "persim-berry"
+  },
+  "pidgeotite": {
+    "id": "pidgeotite",
+    "name": "Pidgeotite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "pidgeot", "to": "pidgeotmega"}
+    ],
+    "spriteId": "pidgeotite"
+  },
+  "pinsirite": {
+    "id": "pinsirite",
+    "name": "Pinsirite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "pinsir", "to": "pinsirmega"}
+    ],
+    "spriteId": "pinsirite"
+  },
+  "poisonbarb": {
+    "id": "poisonbarb",
+    "name": "Poison Barb",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "poison-barb"
+  },
+  "psychicseed": {
+    "id": "psychicseed",
+    "name": "Psychic Seed",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "psychic-seed"
+  },
+  "pyroarite": {
+    "id": "pyroarite",
+    "name": "Pyroarite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "pyroar", "to": "pyroarmega"}
+    ],
+    "spriteId": "pyroarite"
+  },
+  "quickclaw": {
+    "id": "quickclaw",
+    "name": "Quick Claw",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "quick-claw"
+  },
+  "raichunitex": {
+    "id": "raichunitex",
+    "name": "Raichunite X",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "raichu", "to": "raichumegax"}
+    ],
+    "spriteId": "raichunite-x"
+  },
+  "raichunitey": {
+    "id": "raichunitey",
+    "name": "Raichunite Y",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "raichu", "to": "raichumegay"}
+    ],
+    "spriteId": "raichunite-y"
+  },
+  "rawstberry": {
+    "id": "rawstberry",
+    "name": "Rawst Berry",
+    "category": "berry",
+    "megaEvolutions": [],
+    "spriteId": "rawst-berry"
+  },
+  "redcard": {
+    "id": "redcard",
+    "name": "Red Card",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "red-card"
+  },
+  "rindoberry": {
+    "id": "rindoberry",
+    "name": "Rindo Berry",
+    "category": "berry",
+    "megaEvolutions": [],
+    "spriteId": "rindo-berry"
+  },
+  "rockyhelmet": {
+    "id": "rockyhelmet",
+    "name": "Rocky Helmet",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "rocky-helmet"
+  },
+  "roseliberry": {
+    "id": "roseliberry",
+    "name": "Roseli Berry",
+    "category": "berry",
+    "megaEvolutions": [],
+    "spriteId": "roseli-berry"
+  },
+  "sablenite": {
+    "id": "sablenite",
+    "name": "Sablenite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "sableye", "to": "sableyemega"}
+    ],
+    "spriteId": "sablenite"
+  },
+  "salamencite": {
+    "id": "salamencite",
+    "name": "Salamencite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "salamence", "to": "salamencemega"}
+    ],
+    "spriteId": "salamencite"
+  },
+  "sceptilite": {
+    "id": "sceptilite",
+    "name": "Sceptilite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "sceptile", "to": "sceptilemega"}
+    ],
+    "spriteId": "sceptilite"
+  },
+  "scizorite": {
+    "id": "scizorite",
+    "name": "Scizorite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "scizor", "to": "scizormega"}
+    ],
+    "spriteId": "scizorite"
+  },
+  "scolipite": {
+    "id": "scolipite",
+    "name": "Scolipite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "scolipede", "to": "scolipedemega"}
+    ],
+    "spriteId": "scolipite"
+  },
+  "scopelens": {
+    "id": "scopelens",
+    "name": "Scope Lens",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "scope-lens"
+  },
+  "scovillainite": {
+    "id": "scovillainite",
+    "name": "Scovillainite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "scovillain", "to": "scovillainmega"}
+    ],
+    "spriteId": "scovillainite"
+  },
+  "scraftinite": {
+    "id": "scraftinite",
+    "name": "Scraftinite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "scrafty", "to": "scraftymega"}
+    ],
+    "spriteId": "scraftinite"
+  },
+  "sharpbeak": {
+    "id": "sharpbeak",
+    "name": "Sharp Beak",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "sharp-beak"
+  },
+  "sharpedonite": {
+    "id": "sharpedonite",
+    "name": "Sharpedonite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "sharpedo", "to": "sharpedomega"}
+    ],
+    "spriteId": "sharpedonite"
+  },
+  "shedshell": {
+    "id": "shedshell",
+    "name": "Shed Shell",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "shed-shell"
+  },
+  "shellbell": {
+    "id": "shellbell",
+    "name": "Shell Bell",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "shell-bell"
+  },
+  "shucaberry": {
+    "id": "shucaberry",
+    "name": "Shuca Berry",
+    "category": "berry",
+    "megaEvolutions": [],
+    "spriteId": "shuca-berry"
+  },
+  "silkscarf": {
+    "id": "silkscarf",
+    "name": "Silk Scarf",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "silk-scarf"
+  },
+  "silverpowder": {
+    "id": "silverpowder",
+    "name": "Silver Powder",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "silver-powder"
+  },
+  "sitrusberry": {
+    "id": "sitrusberry",
+    "name": "Sitrus Berry",
+    "category": "berry",
+    "megaEvolutions": [],
+    "spriteId": "sitrus-berry"
+  },
+  "skarmorite": {
+    "id": "skarmorite",
+    "name": "Skarmorite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "skarmory", "to": "skarmorymega"}
+    ],
+    "spriteId": "skarmorite"
+  },
+  "slowbronite": {
+    "id": "slowbronite",
+    "name": "Slowbronite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "slowbro", "to": "slowbromega"}
+    ],
+    "spriteId": "slowbronite"
+  },
+  "smoothrock": {
+    "id": "smoothrock",
+    "name": "Smooth Rock",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "smooth-rock"
+  },
+  "softsand": {
+    "id": "softsand",
+    "name": "Soft Sand",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "soft-sand"
+  },
+  "spelltag": {
+    "id": "spelltag",
+    "name": "Spell Tag",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "spell-tag"
+  },
+  "staraptite": {
+    "id": "staraptite",
+    "name": "Staraptite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "staraptor", "to": "staraptormega"}
+    ],
+    "spriteId": "staraptite"
+  },
+  "starminite": {
+    "id": "starminite",
+    "name": "Starminite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "starmie", "to": "starmiemega"}
+    ],
+    "spriteId": "starminite"
+  },
+  "steelixite": {
+    "id": "steelixite",
+    "name": "Steelixite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "steelix", "to": "steelixmega"}
+    ],
+    "spriteId": "steelixite"
+  },
+  "swampertite": {
+    "id": "swampertite",
+    "name": "Swampertite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "swampert", "to": "swampertmega"}
+    ],
+    "spriteId": "swampertite"
+  },
+  "tangaberry": {
+    "id": "tangaberry",
+    "name": "Tanga Berry",
+    "category": "berry",
+    "megaEvolutions": [],
+    "spriteId": "tanga-berry"
+  },
+  "terrainextender": {
+    "id": "terrainextender",
+    "name": "Terrain Extender",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "terrain-extender"
+  },
+  "twistedspoon": {
+    "id": "twistedspoon",
+    "name": "Twisted Spoon",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "twisted-spoon"
+  },
+  "tyranitarite": {
+    "id": "tyranitarite",
+    "name": "Tyranitarite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "tyranitar", "to": "tyranitarmega"}
+    ],
+    "spriteId": "tyranitarite"
+  },
+  "venusaurite": {
+    "id": "venusaurite",
+    "name": "Venusaurite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "venusaur", "to": "venusaurmega"}
+    ],
+    "spriteId": "venusaurite"
+  },
+  "victreebelite": {
+    "id": "victreebelite",
+    "name": "Victreebelite",
+    "category": "mega-stone",
+    "megaEvolutions": [
+      {"from": "victreebel", "to": "victreebelmega"}
+    ],
+    "spriteId": "victreebelite"
+  },
+  "wacanberry": {
+    "id": "wacanberry",
+    "name": "Wacan Berry",
+    "category": "berry",
+    "megaEvolutions": [],
+    "spriteId": "wacan-berry"
+  },
+  "whiteherb": {
+    "id": "whiteherb",
+    "name": "White Herb",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "white-herb"
+  },
+  "widelens": {
+    "id": "widelens",
+    "name": "Wide Lens",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "wide-lens"
+  },
+  "wiseglasses": {
+    "id": "wiseglasses",
+    "name": "Wise Glasses",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "wise-glasses"
+  },
+  "yacheberry": {
+    "id": "yacheberry",
+    "name": "Yache Berry",
+    "category": "berry",
+    "megaEvolutions": [],
+    "spriteId": "yache-berry"
+  },
+  "zoomlens": {
+    "id": "zoomlens",
+    "name": "Zoom Lens",
+    "category": "held",
+    "megaEvolutions": [],
+    "spriteId": "zoom-lens"
+  }
+}

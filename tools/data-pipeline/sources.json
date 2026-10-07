@@ -1,0 +1,11 @@
+{
+  "pokeapi": {
+    "repo": "PokeAPI/pokeapi",
+    "commit": "2fe95532d27a9bf340575253aff50868319d8182",
+    "csvPath": "data/v2/csv"
+  },
+  "sprites": {
+    "repo": "PokeAPI/sprites",
+    "commit": "d72f64eb74912747cb5c5579061ced4842ba0a98"
+  }
+}

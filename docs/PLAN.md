@@ -1,6 +1,6 @@
 # Pokemon Colleja Simulator — Plan del proyecto
 
-> **Estado**: Fases 0 (investigación y plan) y 1 (cimientos) completadas · 2026-10-07
+> **Estado**: Fases 0 (investigación y plan), 1 (cimientos) y 2 (datos) completadas · 2026-10-07
 > **Objetivo**: practicar combates de **Pokémon Champions** (individuales y dobles) contra un bot, con equipos propios y rivales configurables, con la máxima fidelidad a las mecánicas del juego.
 
 Documentación de soporte:
@@ -12,6 +12,8 @@ Documentación de soporte:
 | [research/03-stack-tecnico.md](research/03-stack-tecnico.md) | Motor, librerías, calculadora, bots existentes, fuentes de datos, sprites |
 | [research/anexos/](research/anexos/) | Roster completo M-C (353 entradas) y lista de objetos (166) |
 | [adr/0001-motor-de-combate.md](adr/0001-motor-de-combate.md) | Decisión: envolver el simulador de Showdown |
+| [adr/0002-pipeline-de-datos.md](adr/0002-pipeline-de-datos.md) | Decisión: datos generados y versionados, español desde PokeAPI |
+| [guias/datos.md](guias/datos.md) | Guía del pipeline de datos, sprites y overrides |
 
 ---
 
@@ -68,7 +70,7 @@ pokemon-colleja-simulator/
 ├─ packages/
 │  ├─ showdown/            # ✅ Puente único y tipado hacia vendor/pokemon-showdown (Node-only)
 │  ├─ core/                # Dominio puro: tipos, cálculo de stats (SP), import/export, reglas de formato
-│  ├─ data/                # Snapshots JSON generados + i18n (es/en) + sets estándar + overrides
+│  ├─ data/                # ✅ JSON generados + i18n (es/en) + sets estándar + overrides (apto para navegador)
 │  ├─ engine/              # Interfaz BattleEngine + adaptador ShowdownEngine (único que importa Showdown)
 │  ├─ bot/                 # Estrategias del bot (aleatorio, agresivo, táctico) + elección de vista previa
 │  ├─ teamgen/             # Generador de equipos aleatorios legales a partir de sets estándar
@@ -76,7 +78,7 @@ pokemon-colleja-simulator/
 ├─ tools/
 │  ├─ setup/               # ✅ Prepara el submódulo de Showdown (deps + build + tipos), idempotente
 │  ├─ smoke/               # ✅ Combates headless deterministas entre bots aleatorios
-│  ├─ data-pipeline/       # Scripts que generan packages/data desde vendor/ + PokeAPI (nombres ES)
+│  ├─ data-pipeline/       # ✅ Genera packages/data desde Showdown + PokeAPI y descarga sprites
 │  ├─ arena/               # Torneos bot contra bot (métricas, búsqueda de crashes)
 │  └─ cli/                 # Combate en terminal (para depurar sin UI)
 ├─ vendor/
@@ -228,7 +230,9 @@ El adaptador **valida siempre** los dos equipos con `TeamValidator` antes de cre
 
 ---
 
-## 5. Pipeline de datos (`npm run data:build`)
+## 5. Pipeline de datos (`npm run data:build`) ✅
+
+> Implementado en la fase 2. El detalle operativo, las reglas y las cifras reales están en [guias/datos.md](guias/datos.md) y la decisión en [ADR-0002](adr/0002-pipeline-de-datos.md). Lo que sigue es el diseño original.
 
 1. Lee el dex de Showdown con el mod `champions` del commit fijado.
 2. Exporta a `packages/data/generated/`:
@@ -275,7 +279,8 @@ Interfaz `BotStrategy` con `chooseTeamPreview(...)` y `chooseAction(request, bat
    - Campo con sprites, barras de PS (exactos los propios, % los del rival) y estado.
    - Panel de clima, campo, pantallas y peligros.
    - Selector de movimiento, objetivo (dobles) y Mega.
-   - Log en español.
+   - Log en español. Showdown incluye plantillas de mensajes de combate traducidas (`data/text/es/default.ts`, parcialmente). Se usarán con `@pkmn/view`, y las que falten se traducirán nosotros (hallazgo de la fase 2).
+   - Sprites: renders de Champions. Donde falte el icono, el render reducido (ver `assets/sprites/manifest.json`).
 5. **Herramientas** (fase 8): calculadora, rebobinar turno, replays, ver el equipo rival completo y explicación del bot.
 
 ---
@@ -288,7 +293,7 @@ Tamaños orientativos: S (pocas sesiones) · M · L.
 |---|---|---|---|
 | **0. Investigación y plan** | — | Esta documentación | ✅ |
 | **1. Cimientos** ✅ | S | `git init`, monorepo, TS/Biome/Vitest, submódulo de Showdown fijado y compilado, CLAUDE.md del proyecto | ✅ `npm run smoke`: 22 combates (fixtures VGC/BSS + aleatorios) sin errores. 14 tests, deterministas por semilla |
-| **2. Datos** | M | Pipeline de datos, i18n ES, sets estándar, overrides, script de descarga de sprites | Snapshot generado con `meta.json`, y los tests de recuentos y valores pasan |
+| **2. Datos** ✅ | M | Pipeline de datos, i18n ES, sets estándar, overrides, script de descarga de sprites | ✅ Datos deterministas: 231 especies, 82 Megas, 166 objetos y unos 950 sets validados. Test de consistencia con el motor |
 | **3. Dominio + motor** | M | `core` (stats SP, import/export, validación) y `engine` (BattleEngine, sesión, semillas, rebobinar). CLI para jugar en terminal | **Primer combate jugable** (en terminal). Misma semilla + mismas entradas = mismo log |
 | **4. Bot** | M | Niveles 0–2, elección en vista previa, `teamgen`, arena | El nivel 2 gana al menos el 80 % de 500 combates contra el nivel 0 en cada modo, sin elecciones inválidas |
 | **5. Servidor + UI de combate** | L | Fastify + WS, app React, pantalla de combate de individuales y luego de dobles. Importación de equipo pegado | Combate completo en el navegador en ambos modos |

@@ -5,6 +5,9 @@ coverage/
 *.tsbuildinfo
 .vite/
 
+# Data pipeline download cache (PokeAPI CSVs)
+tools/data-pipeline/.cache/
+
 # User data (equipos, rivales, replays) — local, no versionado
 storage/*
 !storage/.gitkeep

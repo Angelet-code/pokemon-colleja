@@ -19,6 +19,8 @@
     "setup": "tsx tools/setup/src/setup-showdown.ts",
     "setup:force": "tsx tools/setup/src/setup-showdown.ts --force",
     "smoke": "tsx tools/smoke/src/run.ts",
+    "data:build": "tsx tools/data-pipeline/src/build.ts",
+    "data:sprites": "tsx tools/data-pipeline/src/sprites.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "npm run typecheck --workspaces --if-present",

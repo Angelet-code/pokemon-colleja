@@ -1,0 +1,14 @@
+{
+  "name": "@colleja/data",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Datos de Pokémon Champions (Reg M-C) generados desde Showdown + nombres en español (PokeAPI). Apto para navegador.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  }
+}
