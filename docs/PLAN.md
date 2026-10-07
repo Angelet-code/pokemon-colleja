@@ -1,6 +1,6 @@
 # Pokemon Colleja Simulator — Plan del proyecto
 
-> **Estado**: Fases 0 (investigación y plan), 1 (cimientos), 2 (datos) y 3 (dominio + motor + CLI) completadas · 2026-10-07
+> **Estado**: Fases 0 a 5 completadas (**MVP**: combate contra el bot en el navegador) · 2026-10-08
 > **Objetivo**: practicar combates de **Pokémon Champions** (individuales y dobles) contra un bot, con equipos propios y rivales configurables, con la máxima fidelidad a las mecánicas del juego.
 
 Documentación de soporte:
@@ -15,10 +15,12 @@ Documentación de soporte:
 | [adr/0002-pipeline-de-datos.md](adr/0002-pipeline-de-datos.md) | Decisión: datos generados y versionados, español desde PokeAPI |
 | [adr/0003-sesion-de-combate.md](adr/0003-sesion-de-combate.md) | Decisión: sesión síncrona sobre `Battle`, rebobinado por reconstrucción, agentes y vista en `core` |
 | [adr/0004-bot-por-simulacion.md](adr/0004-bot-por-simulacion.md) | Decisión: el bot táctico valora cada opción simulando con daño esperado (no con bonificaciones heurísticas) |
+| [adr/0005-servidor-web-y-narracion.md](adr/0005-servidor-web-y-narracion.md) | Decisión: estado del cliente con `BattleView` (no `@pkmn/client`), narración con las plantillas de Showdown, protocolo update/snapshot y solo la perspectiva p1 |
 | [guias/datos.md](guias/datos.md) | Guía del pipeline de datos, sprites y overrides |
 | [guias/combate.md](guias/combate.md) | Guía de combates: CLI, `BattleSession`, elecciones, rebobinado y replays |
 | [guias/bot.md](guias/bot.md) | Guía de bots: niveles, cómo deciden, `teamgen`, arena y cómo mejorarlos |
-| [fases/](fases/) | **Briefs de traspaso** de cada fase pendiente: objetivo, diseño, hechos verificados, criterios de "hecho". Empieza por [fases/fase-5.md](fases/fase-5.md) |
+| [guias/web.md](guias/web.md) | Guía del servidor y la web: uso, arquitectura, mensajes, reglas y cómo añadir una pantalla |
+| [fases/](fases/) | **Briefs de traspaso** de cada fase pendiente: objetivo, diseño, hechos verificados, criterios de "hecho". Empieza por [fases/fase-6.md](fases/fase-6.md) |
 
 ---
 
@@ -31,7 +33,7 @@ Documentación de soporte:
 5. **Existe tooling listo para Champions**:
    - `@smogon/calc` (calculadora con soporte Champions), útil para el bot y para un panel de cálculo.
    - Sets "estándar" de random battle de Champions en el repo de Showdown (342 especies).
-6. **Red**: este equipo filtra muchos dominios (Sophos). npm y GitHub funcionan, así que los datos y los sprites se obtienen de GitHub.
+6. **Fuentes**: los datos y los sprites se obtienen de repos de GitHub (raw o git), que es reproducible. Una VPN que el usuario usa a veces bloquea otros dominios (Smogon, PokeAPI…).
 
 ---
 
@@ -70,8 +72,8 @@ Documentación de soporte:
 ```
 pokemon-colleja-simulator/
 ├─ apps/
-│  ├─ web/                 # React + Vite: teambuilder, rivales, pantalla de combate
-│  └─ server/              # Node + Fastify + WebSocket: sesiones de combate, API REST, persistencia
+│  ├─ web/                 # ✅ React + Vite: inicio y pantalla de combate (teambuilder y rivales: fases 6–7)
+│  └─ server/              # ✅ Node + Fastify + WebSocket: combates contra el bot, API REST (persistencia: fase 6)
 ├─ packages/
 │  ├─ showdown/            # ✅ Puente único y tipado hacia vendor/pokemon-showdown (Node-only)
 │  ├─ core/                # ✅ Dominio puro: tipos, stats (SP), import/export, elecciones, vista del combate, agentes
@@ -79,13 +81,15 @@ pokemon-colleja-simulator/
 │  ├─ engine/              # ✅ BattleSession sobre Battle de Showdown: validación, perspectivas, rebobinado, replays
 │  ├─ bot/                 # ✅ Bots: aleatorio, agresivo (daño esperado) y táctico (simulación), con @smogon/calc
 │  ├─ teamgen/             # ✅ Generador de equipos aleatorios legales a partir de sets estándar
-│  └─ protocol/            # Esquemas zod de los mensajes cliente↔servidor (compartidos)
+│  ├─ narration/           # ✅ Log del combate en español/inglés con las plantillas de Showdown (web y CLI)
+│  └─ protocol/            # ✅ Esquemas zod de los mensajes cliente↔servidor (compartidos)
 ├─ tools/
 │  ├─ setup/               # ✅ Prepara el submódulo de Showdown (deps + build + tipos), idempotente
 │  ├─ smoke/               # ✅ Combates headless deterministas entre bots aleatorios
 │  ├─ data-pipeline/       # ✅ Genera packages/data desde Showdown + PokeAPI y descarga sprites
 │  ├─ arena/               # ✅ Torneos bot contra bot (`npm run arena`: % de victorias, tiempos, fallos)
-│  └─ cli/                 # ✅ Combate en terminal contra el bot (`npm run play`)
+│  ├─ cli/                 # ✅ Combate en terminal contra el bot (`npm run play`)
+│  └─ dev/                 # ✅ `npm run dev`: servidor + Vite a la vez
 ├─ vendor/
 │  └─ pokemon-showdown/    # Submódulo git fijado a un commit concreto
 ├─ storage/                # Datos del usuario: equipos, rivales, replays (JSON legibles)
@@ -100,6 +104,10 @@ graph LR
   web[apps/web] --> protocol
   web --> core
   web --> data
+  web --> narration
+  narration --> core
+  narration --> data
+  protocol --> core
   server[apps/server] --> protocol
   server --> engine
   server --> bot
@@ -122,12 +130,13 @@ graph LR
   cli --> bot
   cli --> teamgen
   cli --> core
+  cli --> narration
   arena[tools/arena] --> engine
   arena --> bot
   arena --> teamgen
 ```
 
-**Regla dura:** solo `packages/showdown` accede a `vendor/`. Showdown se compila como CommonJS y el puente lo carga con `createRequire`, junto con sus `.d.ts`. Es Node-only: nunca se importa desde `apps/web`.
+**Regla dura:** solo `packages/showdown` accede a `vendor/`. Showdown se compila como CommonJS y el puente lo carga con `createRequire`, junto con sus `.d.ts`. Es Node-only: nunca se importa desde `apps/web`, que solo usa paquetes aptos para navegador (`core`, `data`, `protocol`, `narration`; lo comprueba un test).
 
 ### 3.4 Flujo de un combate
 
@@ -137,17 +146,17 @@ sequenceDiagram
   participant S as Server
   participant E as ShowdownEngine
   participant B as Bot (p2)
-  UI->>S: battle:start {modo, equipo propio, rival, dificultad, opciones}
-  S->>E: create(config + semilla)
-  E-->>S: protocolo p1 + request p1
-  E-->>B: protocolo p2 + request p2
-  S-->>UI: battle:protocol / battle:request
-  UI->>S: battle:choose "move 1 +1, move 3 -1"
-  B->>E: elección p2
+  UI->>S: battle:start {modo, equipo (texto Showdown), rival, nivel, opciones}
+  S->>E: BattleSession.create (valida los equipos)
+  S-->>UI: battle:started
+  B->>E: elección p2 (vista previa), con su AgentContext
+  S-->>UI: battle:update {líneas p1, petición p1, status}
+  UI->>S: battle:choose {Choice tipada}
   S->>E: elección p1
+  B->>E: elección p2 (decideFor)
   E-->>S: líneas del turno
-  S-->>UI: battle:protocol (UI reconstruye el estado con @pkmn/client)
-  Note over S,E: Cada entrada se guarda en el log → rebobinar = recrear desde la semilla y reaplicar entradas
+  S-->>UI: battle:update (la UI reconstruye el campo con BattleView y narra con @colleja/narration)
+  Note over S,E: Cada entrada se guarda en el log → rebobinar = recrear desde la semilla y reaplicar entradas (battle:snapshot)
 ```
 
 ### 3.5 Modelo de dominio (borrador)
@@ -214,10 +223,12 @@ El adaptador **valida siempre** los dos equipos con `TeamValidator` antes de cre
 
 ### 3.6 Protocolo cliente ↔ servidor
 
-- **REST**: `/api/teams`, `/api/opponents`, `/api/replays` (CRUD), `POST /api/teams/validate`, `POST /api/teams/random`, `GET /api/meta` (versión de datos y commit de Showdown).
-- **WebSocket**:
-  - Cliente → servidor: `battle:start`, `battle:choose`, `battle:rewind`, `battle:forfeit`.
-  - Servidor → cliente: `battle:started`, `battle:protocol` (líneas desde la perspectiva de p1), `battle:request`, `battle:ended`, `error`.
+> **Implementado en la fase 5** ([guía de la web](guias/web.md), [ADR-0005](adr/0005-servidor-web-y-narracion.md)).
+
+- **REST** (fase 5): `GET /api/meta` (versión de datos, commit de Showdown y niveles del bot), `POST /api/teams/validate`, `POST /api/teams/random`. Pendiente: `/api/teams`, `/api/opponents` y `/api/replays` (CRUD, fases 6–8).
+- **WebSocket** (`/ws`):
+  - Cliente → servidor: `battle:start`, `battle:choose` (`Choice` tipada), `battle:undo`, `battle:rewind`, `battle:forfeit`, `battle:export` y `battle:resume`.
+  - Servidor → cliente: `battle:started`, `battle:update` (líneas nuevas de **p1**, petición actual y estado), `battle:snapshot` (log completo, tras rebobinar o reconectar), `battle:replay` (solo al terminar) y `battle:error`.
 - Todos los mensajes se validan con esquemas **zod** compartidos (`packages/protocol`).
 
 ### 3.7 Persistencia
@@ -235,11 +246,11 @@ El adaptador **valida siempre** los dos equipos con `TeamValidator` antes de cre
 | Runtime | Node 24 (ya instalado) | Showdown master requiere Node ≥ 22.18 |
 | Monorepo | npm workspaces | Sin herramientas extra. Los paquetes internos se consumen como fuente TS |
 | Motor | Showdown vendorizado (submódulo + `node build`) | Champions al día (Reg M-C) |
-| Estado del combate en cliente | `@pkmn/protocol` + `@pkmn/client` + `@pkmn/view` | Parseo del protocolo y log en texto (MIT) |
+| Estado del combate en cliente | `BattleView` de `core` + `@colleja/narration` (port de `BattleTextParser` de Showdown) | `@pkmn/client` lleva datos de Escarlata/Púrpura, no de Champions ([ADR-0005](adr/0005-servidor-web-y-narracion.md)) |
 | Calculadora | `@smogon/calc` (Gen 0 = Champions) | Bot y panel de cálculo |
 | Servidor | Fastify + `@fastify/websocket` + zod | Ligero, tipado y validado |
-| UI | React 19 + Vite + Zustand + React Router + Tailwind CSS | Estándar, rápido de iterar |
-| Tests | Vitest (unidad e integración) y Playwright (E2E, más adelante) | Rápidos y nativos de Vite |
+| UI | React 19 + Vite 8 + Zustand + React Router + Tailwind CSS 4 | Estándar, rápido de iterar |
+| Tests | Vitest (unidad e integración), Testing Library + happy-dom (componentes) y Playwright (E2E, más adelante) | Rápidos y nativos de Vite |
 | Lint/formato | Biome | Una sola herramienta, rápida |
 | Sprites | Repo PokeAPI/sprites (`versions/generation-ix/champions/`) descargado a `assets/` | Showdown sprites está bloqueado en esta red. No se redistribuye |
 | Nombres en español | CSV de PokeAPI (GitHub) → `packages/data/i18n/es.json` | Showdown solo tiene inglés |
@@ -285,20 +296,20 @@ Cada nivel implementa `BattleAgent` (de `@colleja/core`): recibe un `AgentContex
 
 ## 7. Pantallas de la UI
 
-1. **Inicio**: elegir modo (individuales/dobles), tu equipo y el rival (aleatorio, preset o equipo pegado), y la dificultad.
+1. **Inicio** ✅ (fase 5; los presets llegan en la fase 7): elegir modo (individuales/dobles), tu equipo y el rival (aleatorio, preset o equipo pegado), y la dificultad.
 2. **Teambuilder**:
    - Lista de equipos.
    - Editor de cada Pokémon: buscador de especies, habilidad, objeto (con Item Clause), naturaleza, **SP con stats en vivo**, movimientos filtrados por learnset y validación en vivo.
    - Importar y exportar texto de Showdown.
 3. **Rivales**: generar un equipo aleatorio, editarlo en el teambuilder y guardarlo como preset con su dificultad.
-4. **Combate**:
+4. **Combate** ✅ (fase 5):
    - Vista previa (6 → 3/4).
    - Campo con sprites, barras de PS (exactos los propios, % los del rival) y estado.
    - Panel de clima, campo, pantallas y peligros.
    - Selector de movimiento, objetivo (dobles) y Mega.
-   - Log en español. Showdown incluye plantillas de mensajes de combate traducidas (`data/text/es/default.ts`, parcialmente). Se usarán con `@pkmn/view`, y las que falten se traducirán nosotros (hallazgo de la fase 2).
+   - Log en español con las plantillas de mensajes de Showdown (`data/text/es`) y nuestra narración (`@colleja/narration`). Las que faltan en español están en `packages/data/overrides/battle-text.es.json` ✅ (fase 5).
    - Sprites: renders de Champions. Donde falte el icono, el render reducido (ver `assets/sprites/manifest.json`).
-5. **Herramientas** (fase 8): calculadora, rebobinar turno, replays, ver el equipo rival completo y explicación del bot.
+5. **Herramientas** (fase 8): calculadora, lista de replays y explicación del bot. Deshacer, rebobinar a un turno, descargar el replay y ver el equipo rival completo (equipo abierto) ya están en la pantalla de combate.
 
 ---
 
@@ -313,13 +324,13 @@ Tamaños orientativos: S (pocas sesiones) · M · L.
 | **2. Datos** ✅ | M | Pipeline de datos, i18n ES, sets estándar, overrides, script de descarga de sprites | ✅ Datos deterministas: 231 especies, 82 Megas, 166 objetos y unos 950 sets validados. Test de consistencia con el motor |
 | **3. Dominio + motor** ✅ | M | `core` (stats SP, import/export, validación, elecciones, vista) y `engine` (sesión, semillas, rebobinar, replays). Bot nivel 0. CLI para jugar en terminal | ✅ `npm run play` en individuales y dobles. Mismo log con misma semilla y entradas, rebobinado y stats = motor (tests). 101 tests |
 | **4. Bot** ✅ | M | Niveles 1–2, elección en vista previa, `teamgen`, arena | ✅ El nivel 2 gana el 93,6 % (individuales) y el 91,8 % (dobles) de 500 combates al nivel 0, sin elecciones inválidas. 130 tests |
-| **5. Servidor + UI de combate** ⏭️ | L | Fastify + WS, app React, pantalla de combate de individuales y luego de dobles. Importación de equipo pegado. Brief: [fases/fase-5.md](fases/fase-5.md) | Combate completo en el navegador en ambos modos |
-| **6. Teambuilder** | L | Editor completo con SP, validación y persistencia | Crear un equipo legal desde cero y usarlo en combate |
+| **5. Servidor + UI de combate** ✅ | L | `protocol`, `narration`, servidor Fastify + WS, app React con inicio y pantalla de combate (individuales y dobles), equipo pegado, deshacer, rebobinar, rendirse y replay | ✅ Combate completo en el navegador en ambos modos (`npm run dev`), log en español con las plantillas de Showdown y sin información oculta (test). 197 tests |
+| **6. Teambuilder** ⏭️ | L | Editor completo con SP, validación y persistencia. Brief: [fases/fase-6.md](fases/fase-6.md) | Crear un equipo legal desde cero y usarlo en combate |
 | **7. Rivales editables** | S–M | Generar, editar y guardar rivales; elegir rival y dificultad | Practicar contra un equipo concreto guardado |
-| **8. Herramientas de práctica** | M | Calculadora, rebobinar, replays, equipo abierto, explicación del bot | — |
+| **8. Herramientas de práctica** | M | Calculadora, lista de replays, explicación del bot (deshacer, rebobinar, equipo abierto y descarga del replay ya están desde la fase 5) | — |
 | **Futuro** | — | Bot nivel 3, modo clásico IV/EV/Tera, PWA/móvil, PvP, rivales basados en uso real | — |
 
-**MVP = fases 1–5.** Al terminar la fase 5 ya se puede practicar pegando un equipo de Showdown. Las fases 6–7 completan la experiencia que pediste.
+**MVP = fases 1–5** ✅. Ya se puede practicar en el navegador pegando un equipo de Showdown. Las fases 6–7 completan la experiencia que pediste.
 
 ---
 
@@ -353,11 +364,13 @@ Las mecánicas en sí **no se re-testean**: son responsabilidad del motor (Showd
 | Riesgo | Mitigación |
 |---|---|
 | Cambios de API o protocolo de Showdown al actualizar el commit | Adaptador único, tests de integración y actualizaciones deliberadas |
-| `@pkmn/client` va con datos de Champions de junio (le faltan las Megas de M-C) | Comprobarlo al principio de la fase 5 (la UI). Plan B ya iniciado: `BattleView` de `core` (estado propio desde el protocolo) más las peticiones y `@colleja/data` |
+| ~~`@pkmn/client` sin datos de Champions~~ | **Resuelto en la fase 5**: la web usa `BattleView` de `core` y la narración propia con las plantillas de Showdown ([ADR-0005](adr/0005-servidor-web-y-narracion.md)) |
+| El bundle de la web lleva todos los datos (≈1,2 MB, ≈300 KB con gzip) | Aceptable en local. Si crece (teambuilder), cargar learnsets y sets estándar bajo demanda |
+| Los combates viven en memoria: se pierden si se reinicia el servidor | Aceptado para uso local. La reconexión funciona mientras el servidor siga vivo; persistir sesiones si hiciera falta (el replay ya permite reconstruirlas) |
 | La sesión usa la API interna de `Battle` (`choose`, `setPlayer`, `sendUpdates`, `inputLog`) | Aislada en `engine/src/session.ts` y cubierta por tests de determinismo, rebobinado y perspectivas ([ADR-0003](adr/0003-sesion-de-combate.md)) |
 | El bot adivina los sets rivales con los sets estándar: contra equipos humanos poco comunes puede equivocarse | Filtra por lo revelado y supone el set más ofensivo. Con equipo abierto juega con los sets reales. El nivel 3 (futuro) podrá muestrear sets |
 | `@smogon/calc` puede ir por detrás de nuestro commit de Showdown | Test de contraste con el motor (stats de todos los sets estándar y daño real). Si falla tras actualizar Showdown, revisar antes de actualizar la calculadora |
-| Filtro de red (Sophos) | Usar solo npm y GitHub. Sprites y nombres desde repos de GitHub |
+| VPN ocasional del usuario (Sophos) que bloquea webs de Pokémon | Los scripts usan solo npm y GitHub. Si una web falla, comprobar si la VPN está activa |
 | Licencias: el arte es © Nintendo/TPC, y los sets de Smogon tienen copyright | Uso personal, assets fuera de git, sets base desde el repo MIT de Showdown |
 | Crecimiento del alcance | MVP cerrado (fases 1–5) y el resto planificado por fases |
 | Fidelidad en casos raros de Champions | Depende de la investigación de Showdown. Reportar o parchear vía overrides si hiciera falta |

@@ -6,7 +6,7 @@ Simulador de combates de **Pokémon Champions** para practicar en individuales y
 
 ## Estado
 
-✅ Fase 0 (investigación y plan) · ✅ Fase 1 (cimientos) · ✅ Fase 2 (datos) · ✅ Fase 3 (dominio + motor + combate en terminal) · ✅ Fase 4 (bot de 3 niveles, equipos aleatorios, arena) · ⏭️ Fase 5 (servidor + UI de combate). Ver [CHANGELOG](CHANGELOG.md).
+✅ Fase 0 (investigación y plan) · ✅ Fase 1 (cimientos) · ✅ Fase 2 (datos) · ✅ Fase 3 (dominio + motor + combate en terminal) · ✅ Fase 4 (bot de 3 niveles, equipos aleatorios, arena) · ✅ Fase 5 (servidor + UI de combate: **MVP**) · ⏭️ Fase 6 (teambuilder). Ver [CHANGELOG](CHANGELOG.md).
 
 ## Puesta en marcha
 
@@ -19,6 +19,12 @@ npm install
 ```
 
 `npm install` también prepara el motor: sincroniza el submódulo de Showdown, instala sus dependencias y lo compila.
+
+```bash
+npm run dev
+```
+
+Arranca el servidor local y la web: abre **http://127.0.0.1:5173**, pega tu equipo en formato export de Showdown (o genera uno aleatorio), elige rival, dificultad y modo, y juega en el navegador. Hay vista previa, Mega, objetivos en dobles, deshacer, rebobinar a cualquier turno, rendirse y descarga del replay. El log se escribe en español con los textos de Showdown, y puedes ver los nombres en inglés. Para servir la versión compilada: `npm start` (http://127.0.0.1:3001). Más en la [guía de la web](docs/guias/web.md).
 
 ```bash
 npm run play
@@ -48,7 +54,7 @@ Ejecuta lint, typecheck, tests y smoke.
 npm run data:sprites
 ```
 
-Descarga los sprites (renders de Champions, iconos y objetos) a `assets/`, que no se versiona.
+Descarga los sprites (renders de Champions, iconos y objetos) a `assets/`, que no se versiona. La web los usa si están; si no, muestra las iniciales.
 
 Los datos del juego ya vienen generados en `packages/data/generated/`. Para regenerarlos tras actualizar Showdown o PokeAPI: `npm run data:build`. Más detalle en la [guía de datos](docs/guias/datos.md).
 
@@ -64,12 +70,12 @@ El proyecto avanza por fases. Cada fase pendiente tiene un **brief de traspaso**
   - [Mecánicas de combate](docs/research/02-mecanicas-combate.md)
   - [Stack técnico](docs/research/03-stack-tecnico.md)
   - Anexos: [roster](docs/research/anexos/champions-roster-regmc.md) · [objetos](docs/research/anexos/champions-objetos-regmc.md)
-- Guías: [datos del juego](docs/guias/datos.md) · [combates](docs/guias/combate.md)
-- Decisiones de arquitectura: [ADR-0001: motor de combate](docs/adr/0001-motor-de-combate.md) · [ADR-0002: pipeline de datos](docs/adr/0002-pipeline-de-datos.md) · [ADR-0003: sesión de combate](docs/adr/0003-sesion-de-combate.md)
+- Guías: [datos del juego](docs/guias/datos.md) · [combates](docs/guias/combate.md) · [bots](docs/guias/bot.md) · [servidor y web](docs/guias/web.md)
+- Decisiones de arquitectura: [ADR-0001: motor de combate](docs/adr/0001-motor-de-combate.md) · [ADR-0002: pipeline de datos](docs/adr/0002-pipeline-de-datos.md) · [ADR-0003: sesión de combate](docs/adr/0003-sesion-de-combate.md) · [ADR-0004: bot por simulación](docs/adr/0004-bot-por-simulacion.md) · [ADR-0005: servidor, web y narración](docs/adr/0005-servidor-web-y-narracion.md)
 
 ## Créditos
 
 - Motor de combate: [Pokémon Showdown](https://github.com/smogon/pokemon-showdown) (MIT)
 - Calculadora: [@smogon/calc](https://github.com/smogon/damage-calc) (MIT)
-- Utilidades de protocolo y cliente: [pkmn](https://github.com/pkmn/ps) (MIT)
+- Textos del log: plantillas de [Pokémon Showdown](https://github.com/smogon/pokemon-showdown) y port del `BattleTextParser` del [cliente de Showdown](https://github.com/smogon/pokemon-showdown-client) (MIT)
 - Datos i18n y sprites: [PokeAPI](https://pokeapi.co)

@@ -20,8 +20,9 @@ El proyecto avanza **por fases** (PLAN §8). Cuando te pidan *"continúa con la 
 | 2. Pipeline de datos (`@colleja/data`) | ✅ ([guía](docs/guias/datos.md)) |
 | 3. Dominio + motor + CLI jugable | ✅ ([guía](docs/guias/combate.md), [ADR-0003](docs/adr/0003-sesion-de-combate.md)) |
 | 4. Bot (niveles 1–2, teamgen, arena) | ✅ ([guía](docs/guias/bot.md), [ADR-0004](docs/adr/0004-bot-por-simulacion.md)) |
-| **5. Servidor + UI de combate** | ⏭️ **Siguiente**: [docs/fases/fase-5.md](docs/fases/fase-5.md) |
-| 6–8 y futuro | Pendientes (PLAN §8) |
+| 5. Servidor + UI de combate (MVP) | ✅ ([guía](docs/guias/web.md), [ADR-0005](docs/adr/0005-servidor-web-y-narracion.md)) |
+| **6. Teambuilder** | ⏭️ **Siguiente**: [docs/fases/fase-6.md](docs/fases/fase-6.md) |
+| 7–8 y futuro | Pendientes (PLAN §8) |
 
 ### Protocolo de cierre de fase
 
@@ -32,7 +33,7 @@ El proyecto avanza **por fases** (PLAN §8). Cuando te pidan *"continúa con la 
    - `AGENTS.md`: tabla de estado, comandos nuevos y reglas o particularidades nuevas.
    - `README.md`: línea de estado y comandos de usuario.
    - Guías (`docs/guias/`) y ADRs (`docs/adr/`) si aplica.
-3. **Escribe el brief de la siguiente fase** en `docs/fases/fase-(N+1).md`, con el mismo formato que `fase-5.md`: objetivo, punto de partida, hechos verificados, diseño recomendado, tests, criterios de "hecho" y fuera de alcance. Así la siguiente sesión puede empezar sin contexto.
+3. **Escribe el brief de la siguiente fase** en `docs/fases/fase-(N+1).md`, con el mismo formato que `fase-6.md`: objetivo, punto de partida, hechos verificados, diseño recomendado, tests, criterios de "hecho" y fuera de alcance. Así la siguiente sesión puede empezar sin contexto.
 4. Commits con Conventional Commits y **push a `origin/main`** (el usuario trabaja así). La CI de GitHub ejecuta `npm run check` en cada push: compruébala.
 
 ## Preferencias del usuario
@@ -47,6 +48,7 @@ El proyecto avanza **por fases** (PLAN §8). Cuando te pidan *"continúa con la 
   - Nombres en español con selector de inglés.
   - Sets estándar "cualesquiera" por ahora: el usuario los editará más adelante.
   - Bot: el rival por defecto es el **nivel más alto** (2); los equipos aleatorios llevan **como mucho una megapiedra**; el bot **no conoce los sets del rival** con equipo cerrado (solo con equipo abierto).
+  - Web (2026-10-07): pantalla de combate al estilo Showdown (campo arriba, controles abajo, log a la derecha), tema oscuro por defecto con opción clara, animaciones mínimas, y el selector ES/EN cambia los **nombres** (la interfaz y el log siguen en español).
 
 ## Puesta en marcha
 
@@ -58,6 +60,7 @@ cd pokemon-colleja
 npm install          # instala dependencias y además compila Showdown (postinstall)
 npm run check        # lint + typecheck + tests + smoke: debe salir en verde
 npm run data:sprites # opcional: sprites en assets/ (solo hacen falta para la UI)
+npm run dev          # servidor + web: http://127.0.0.1:5173
 ```
 
 ## Comandos
@@ -66,12 +69,14 @@ npm run data:sprites # opcional: sprites en assets/ (solo hacen falta para la UI
 |---|---|
 | `npm install` | Instala dependencias y prepara Showdown (postinstall → `npm run setup`) |
 | `npm run setup` / `setup:force` | Sincroniza el submódulo, instala sus dependencias y compila `dist/` con tipos (idempotente) |
+| `npm run dev` | Servidor (127.0.0.1:3001, con recarga) + web con Vite (http://127.0.0.1:5173) a la vez ([guía](docs/guias/web.md)) |
+| `npm run build` / `npm start` | Compila la web (`apps/web/dist`) / la compila y la sirve desde el servidor en http://127.0.0.1:3001 |
 | `npm run play` | Combate en la terminal contra el bot. Admite `-- --mode doubles --bot 0\|1\|2 --team <fichero> --opponent-team <fichero>\|random --seed X --no-preview --open-team-sheets --auto` ([guía](docs/guias/combate.md)) |
 | `npm run arena` | Torneo bot contra bot con equipos aleatorios. Admite `-- --a 2 --b 0 --mode singles\|doubles\|both --battles N --seed X` ([guía](docs/guias/bot.md)) |
 | `npm run smoke` | Combates headless de Champions (fixtures + aleatorios). Admite `-- --random N --seed X --verbose` |
 | `npm run data:build` | Regenera `packages/data/generated/` desde Showdown + PokeAPI (determinista). Después, revisa el diff |
 | `npm run data:sprites` | Descarga los sprites a `assets/sprites/` (no versionado). Admite `-- --shiny` y `-- --force` |
-| `npm test` | Vitest (`{packages,apps,tools}/*/test/**/*.test.ts`). Fuzz del bot más largo: `BOT_FUZZ_BATTLES=1000 npx vitest run packages/bot` |
+| `npm test` | Vitest (`{packages,apps,tools}/*/test/**/*.test.{ts,tsx}`; los de componentes con `// @vitest-environment happy-dom`). Fuzz del bot más largo: `BOT_FUZZ_BATTLES=1000 npx vitest run packages/bot` |
 | `npm run typecheck` | `tsc --noEmit` en cada workspace (TypeScript 7) |
 | `npm run lint` / `lint:fix` | Biome (formato + lint) |
 | `npm run check` | lint + typecheck + test + smoke. Ejecútalo antes de dar algo por terminado |
@@ -80,8 +85,8 @@ npm run data:sprites # opcional: sprites en assets/ (solo hacen falta para la UI
 
 ```
 apps/       → aplicaciones (web, server). Pueden depender de packages/*
-packages/   → librerías: showdown (puente al motor), data (datos del juego), core (dominio), engine (sesiones), bot, teamgen
-tools/      → scripts: setup, smoke, data-pipeline, cli, arena
+packages/   → librerías: showdown (puente al motor), data (datos del juego), core (dominio), engine (sesiones), bot, teamgen, narration (log), protocol (mensajes web ↔ servidor)
+tools/      → scripts: setup, smoke, data-pipeline, cli, arena, dev
 vendor/pokemon-showdown → submódulo git fijado a un commit (NO editar)
 docs/       → PLAN, research/, adr/, guias/, fases/ (briefs de cada fase)
 storage/    → datos del usuario (equipos, replays): local, no versionado
@@ -90,10 +95,10 @@ assets/     → sprites descargados: local, no versionado
 
 - **Solo `packages/showdown` toca `vendor/`.** El resto importa `@colleja/showdown`. Esto es una regla dura.
 - `@colleja/showdown` es Node-only (usa `createRequire`). Nunca se importa desde `apps/web` ni desde `packages/core`.
-- **Capas** (ver PLAN §3.3): `core` → `data`; `bot` → `core`, `data`, `@smogon/calc`; `teamgen` → `core`, `data`; `engine` → `core`, `data`, `showdown`; apps y tools → lo que necesiten. Nadie depende de `apps/*` ni de `tools/*`. `engine` y `teamgen` pueden ser dependencias **de desarrollo** de `bot` (sus tests juegan combates).
-- **`@colleja/core`, `@colleja/bot` y `@colleja/teamgen` son aptos para navegador**: sin `node:*` ni Showdown. `@colleja/engine` es solo Node y es el **único paquete de dominio que importa `@colleja/showdown`** (además de `tools/smoke` y `tools/data-pipeline`).
+- **Capas** (ver PLAN §3.3): `core` → `data`; `bot` → `core`, `data`, `@smogon/calc`; `teamgen` → `core`, `data`; `narration` → `core`, `data`; `protocol` → `core` (tipos), `zod`; `engine` → `core`, `data`, `showdown`; apps y tools → lo que necesiten. Nadie depende de `apps/*` ni de `tools/*`. `engine` y `teamgen` pueden ser dependencias **de desarrollo** de `bot` (sus tests juegan combates).
+- **`@colleja/core`, `@colleja/bot`, `@colleja/teamgen`, `@colleja/narration` y `@colleja/protocol` son aptos para navegador**: sin `node:*` ni Showdown. **`apps/web` solo importa paquetes aptos para navegador** (nunca `engine`, `showdown` ni `node:*`; lo comprueba `apps/web/test/dependencies.test.ts`). `@colleja/engine` es solo Node y es el **único paquete de dominio que importa `@colleja/showdown`** (además de `tools/smoke` y `tools/data-pipeline`).
 - **`@colleja/data` es apto para navegador**: solo lee los JSON generados. Los datos del juego (roster, movimientos, nombres en español…) **se consultan ahí**, nunca a mano ni de memoria.
-- `packages/data/generated/` **no se edita a mano**: se regenera con `npm run data:build`. Las correcciones van en `packages/data/overrides/` (sets propios en formato export y nombres en español).
+- `packages/data/generated/` **no se edita a mano**: se regenera con `npm run data:build`. Las correcciones van en `packages/data/overrides/` (sets propios en formato export, nombres en español y plantillas de mensajes de combate en español que falten en Showdown).
 - El pipeline importa `@colleja/data/schema` (tipos y constantes), nunca `@colleja/data`, porque este carga los JSON que el propio pipeline genera.
 - Los paquetes internos se consumen como fuente TS (`"exports": "./src/index.ts"`), sin build. Se ejecutan con `tsx` y se testean con Vitest. Un paquete nuevo necesita su `package.json` (`@colleja/<nombre>`, `"type": "module"`, script `typecheck`) y su `tsconfig.json` (extiende `../../tsconfig.base.json`). Después hay que ejecutar `npm install` para enlazarlo.
 
@@ -133,12 +138,22 @@ assets/     → sprites descargados: local, no versionado
 - El modelo del rival solo usa lo que el bot puede ver (`BattleView` de su perspectiva) y los sets estándar. Nunca le pases el log omnisciente ni el equipo rival con equipo cerrado.
 - Los tests de fuerza son cortos en el check (40 combates por modo); las cifras de referencia (500 por modo) se apuntan en el CHANGELOG al cambiar el bot.
 
+## Particularidades del servidor y la web
+
+- **El servidor solo envía la perspectiva p1** y las peticiones de p1 (`apps/server/src/battles/battle-room.ts`). El replay (log omnisciente) solo se entrega con el combate terminado. Hay un test que lo comprueba: si tocas la sala, que siga en verde.
+- Los mensajes van por `@colleja/protocol` (zod): un mensaje nuevo se añade allí primero, con su test de ida y vuelta. El servidor responde a cada acción con un `battle:update` y, tras deshacer, rebobinar o reconectar, con un `battle:snapshot`.
+- El estado del combate en la web sale de `BattleView` (core) y el log de `@colleja/narration` (port de `BattleTextParser` de Showdown). **No uses `@pkmn/client`/`@pkmn/dex`**: sus datos no son los de Champions ([ADR-0005](docs/adr/0005-servidor-web-y-narracion.md)). Las cifras que se muestran salen de la petición o de `@colleja/data`.
+- El store de la web solo cambia con mensajes del servidor; nunca adivines el resultado de una elección en el cliente.
+- Para los bots en el servidor (o en cualquier bucle humano contra bot), usa `decideFor` de `engine`: reintenta tras `[Unavailable choice]`.
+- El servidor escucha en `127.0.0.1` y usa `SERVER_PORT`/`SERVER_HOST` (no `PORT`, que las herramientas de desarrollo suelen fijar para la web). La web usa `WEB_PORT`.
+- Champions añade el color de la barra de PS al 20 % y al 50 % justos (`50/100y`): usa siempre `parseCondition` de `core` para leer condiciones.
+
 ## Actualizar Showdown (nueva regulación o fixes)
 
 1. `git -C vendor/pokemon-showdown fetch --depth 1 origin master`, y luego `git -C vendor/pokemon-showdown checkout FETCH_HEAD`.
-2. `npm run setup:force`, luego `npm run data:build` (y revisa el diff de los datos), y después `npm run check`. El test de consistencia falla si se te olvida regenerar los datos.
+2. `npm run setup:force`, luego `npm run data:build` (y revisa el diff de los datos, incluidas las plantillas de `generated/text/`), y después `npm run check`. El test de consistencia falla si se te olvida regenerar los datos.
 3. Commit del nuevo puntero del submódulo junto con los datos regenerados (`chore(showdown): bump to <sha>`) y entrada en el CHANGELOG.
 
 ## Red del equipo del usuario
 
-En el PC del usuario, Sophos bloquea o intercepta Serebii, Bulbapedia, Smogon, play.pokemonshowdown.com, data.pkmn.cc, pokeapi.co… **npm y GitHub funcionan.** Descarga los datos y los sprites desde repos de GitHub (raw o git). Si investigas en la web y un sitio falla, es por eso.
+La red es normal. A veces el usuario activa una VPN (Sophos) para otro proyecto que bloquea Serebii, Smogon, Showdown, PokeAPI… (`SEC_E_UNTRUSTED_ROOT`). Si un sitio falla así, avísale en lugar de buscar rodeos. Los scripts de datos y sprites siguen descargando de GitHub (raw o git) porque es reproducible.

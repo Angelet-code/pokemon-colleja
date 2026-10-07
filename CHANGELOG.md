@@ -4,6 +4,54 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ## [Sin publicar]
 
+### Fase 5 — Servidor y UI de combate: MVP en el navegador (2026-10-08)
+
+#### Añadido
+
+- **`npm run dev`**: servidor + web en http://127.0.0.1:5173. **`npm start`** compila la web y la sirve desde el servidor (http://127.0.0.1:3001). `npm run build` solo compila. El lanzador está en `tools/dev`.
+- `apps/web` (React 19, Vite 8, Tailwind 4, Zustand, React Router):
+  - **Inicio**: modo, tu equipo pegado en formato Showdown con comprobación en vivo (o uno aleatorio), rival aleatorio o pegado, dificultad (niveles del bot), vista previa, equipo abierto, nombre y semilla. Recuerda el último equipo y las opciones.
+  - **Combate** al estilo Showdown:
+    - Campo con sprites, PS (exactos los tuyos y en % los del rival), estado, cambios de características, Mega, y objeto y habilidad revelados.
+    - Clima, terreno, Espacio Raro y condiciones de cada lado.
+    - Equipos en iconos y vista previa (6 → 3/4).
+    - Menús desde `getSlotOptions`: movimientos con tipo, PP y categoría, Megaevolucionar, **objetivos en dobles** posición por posición con "Atrás", cambios y cambios forzados.
+    - Atajos de teclado (1–4, 5–9, Esc).
+    - Log en español y barra con **deshacer**, **rebobinar a un turno**, **rendirse** y **replay**.
+    - Pantalla final con revancha.
+    - Se reengancha al combate tras una recarga o un corte de conexión.
+  - **Decisiones de producto**: estilo Showdown, tema oscuro por defecto con opción clara, animaciones mínimas (barras de PS) y **selector ES/EN de nombres** (la interfaz y el log siguen en español).
+- `apps/server` (Fastify 5 + `@fastify/websocket`):
+  - REST: `GET /api/meta`, `POST /api/teams/validate`, `POST /api/teams/random`.
+  - WebSocket `/ws` con un combate por conexión (`BattleManager`/`BattleRoom`), el bot en p2 y limpieza de combates abandonados.
+  - **Solo envía la perspectiva p1**. El replay, que lleva el log omnisciente, solo se entrega al terminar.
+  - Escucha en `127.0.0.1` (`SERVER_PORT`/`SERVER_HOST`) y sirve `/sprites/*`.
+- `packages/protocol` (`@colleja/protocol`): esquemas zod de todos los mensajes (`battle:start/choose/undo/rewind/forfeit/export/resume` → `battle:started/update/snapshot/replay/error`) y de las peticiones REST, con errores en español.
+- `packages/narration` (`@colleja/narration`, apto para navegador): **log con las plantillas de Showdown**.
+  - Port tipado de `BattleTextParser` del cliente de Showdown (MIT), con la gramática española (artículos, género, "del/al", forma "classified" de los objetos) y el nombre de la forma Mega.
+  - El idioma de los nombres se elige aparte.
+  - Incluye el narrador y los nombres que antes vivían en el CLI. **El CLI narra ahora igual que la web.**
+- Datos: el pipeline exporta las plantillas de mensajes de combate a `packages/data/generated/text/{es,en}.json` (solo efectos de Champions, ≈70 KB) con `getBattleText`. Las 27 plantillas que faltaban en español se completan en `packages/data/overrides/battle-text.es.json`.
+- `engine`:
+  - `decideFor(session, side, agent)`: una decisión de un agente, con reintentos tras `[Unavailable choice]`. La usan `playOut`, el CLI y el servidor.
+  - `BattleSession.forfeit(side)`.
+- Tests (197 en total):
+  - Protocolo (ida y vuelta y mensajes mal formados).
+  - Narración: español con gramática, inglés, nombres en otro idioma y combates completos sin marcadores sin resolver.
+  - Servidor: REST, un combate completo por WebSocket en cada modo contra el nivel 2, **información oculta**, equipos ilegales, elección rechazada, deshacer, rebobinar, reconexión, rendirse y replay.
+  - Web: borrador de elección, menús de dobles con Testing Library y happy-dom, vista previa, store y regla de dependencias.
+  - `decideFor` y `forfeit`.
+- Documentación: [guía de la web](docs/guias/web.md), [ADR-0005](docs/adr/0005-servidor-web-y-narracion.md) y el brief de la fase 6.
+
+#### Cambiado
+
+- La web reconstruye el estado con `BattleView` de `core` en lugar de `@pkmn/client`. El spike de este mostró que sus datos de movimientos son los de Escarlata/Púrpura: 434 de 511 difieren de Champions ([ADR-0005](docs/adr/0005-servidor-web-y-narracion.md)).
+- Biome entiende las directivas de Tailwind en el CSS. Vitest incluye tests `.tsx`.
+
+#### Corregido
+
+- `parseCondition` (core) devolvía `NaN` cuando el PS del rival estaba justo al 20 % o al 50 %, porque Champions añade el color de la barra (`50/100y`). Afectaba al estado del campo y a los bots.
+
 ### Fase 4 — Bot (niveles 1 y 2), generador de equipos y arena (2026-10-07)
 
 #### Añadido

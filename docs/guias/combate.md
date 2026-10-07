@@ -1,6 +1,6 @@
 # Guía: combates (`core`, `engine`, `bot` y CLI)
 
-Cómo se juega un combate en el proyecto, desde la terminal o desde código. Decisión de arquitectura: [ADR-0003](../adr/0003-sesion-de-combate.md). Los bots, el generador de equipos y el arena tienen su propia guía: [bot.md](bot.md).
+Cómo se juega un combate en el proyecto, desde la terminal o desde código. Decisión de arquitectura: [ADR-0003](../adr/0003-sesion-de-combate.md). Los bots, el generador de equipos y el arena tienen su propia guía: [bot.md](bot.md). Para jugar en el navegador (`npm run dev`), ver la [guía de la web](web.md).
 
 ## Jugar en la terminal
 
@@ -36,14 +36,15 @@ En cada pregunta se elige con números. En dobles se pide además el objetivo y,
 | `salir` | Abandona el combate |
 | `ayuda` | Lista los comandos |
 
-El log se narra en español con un formateador mínimo (`tools/cli/src/narrator.ts`). El log completo con las plantillas de Showdown llega con la UI web (fase 5).
+El log se narra en español con las plantillas de mensajes de Showdown (`@colleja/narration`, el mismo narrador que usa la web).
 
 ## Piezas
 
 | Paquete | Entorno | Qué aporta |
 |---|---|---|
 | `@colleja/core` | Navegador y Node | `PokemonSet`/`Team`, stats (`championsStats`), Stat Points, import/export de Showdown, comprobación rápida de equipos, peticiones y elecciones tipadas, `getSlotOptions`/`validateChoice`, `BattleView`, `BattleAgent`, `SeededRandom` |
-| `@colleja/engine` | Solo Node | `validateTeam`, `resolveFormat`, `BattleSession`, `playOut`, replays, conversión de sets a Showdown |
+| `@colleja/engine` | Solo Node | `validateTeam`, `resolveFormat`, `BattleSession`, `playOut`, `decideFor`, replays, conversión de sets a Showdown |
+| `@colleja/narration` | Navegador y Node | `Narrator` (log en español o inglés con las plantillas de Showdown) y nombres para mostrar ([guía de la web](web.md)) |
 | `@colleja/bot` | Navegador y Node | Niveles 0–2 (`createBot`, `BOT_LEVELS`) y su análisis con `@smogon/calc` ([guía](bot.md)) |
 | `@colleja/teamgen` | Navegador y Node | `generateTeam`: equipos aleatorios legales desde los sets estándar |
 | `tools/cli` | Node | `npm run play` |
@@ -54,7 +55,7 @@ El log se narra en español con un formateador mínimo (`tools/cli/src/narrator.
 ```ts
 import { createBot } from '@colleja/bot';
 import { actionsChoice, moveAction, parseShowdownTeam } from '@colleja/core';
-import { BattleSession, playOut } from '@colleja/engine';
+import { BattleSession, decideFor, playOut } from '@colleja/engine';
 
 const session = BattleSession.create({
   mode: 'doubles',
@@ -76,10 +77,12 @@ session.getLog('p1');                            // protocolo visto por p1 (PS d
 session.getAgentContext('p2');                   // lo que puede saber un bot: petición, log de su lado, equipos
 session.rewindTo(3);                             // vuelve al inicio del turno 3
 session.undo();                                  // un paso atrás
+session.forfeit('p1');                           // p1 se rinde (rebobinar lo deshace)
 const replay = session.exportReplay();           // JSON reproducible
 BattleSession.fromReplay(replay);                // mismo combate
 
 await playOut(session, { p1: createBot(2, { seed: 'a' }), p2: createBot(0, { seed: 'b' }) });
+await decideFor(session, 'p2', createBot(2));    // una sola decisión de un agente (con reintentos)
 ```
 
 ### Elecciones
@@ -108,7 +111,7 @@ La sesión guarda en qué punto del `inputLog` empezó cada turno y, para volver
 `choose` devuelve `{ ok: false, errors }` y la sesión sigue esperando. Hay dos tipos de rechazo de Showdown:
 
 - `[Invalid choice]`: la elección es ilegal. Con una `Choice` tipada no debería pasar nunca (el test de fuzz del bot lo comprueba).
-- `[Unavailable choice]`: depende de información oculta (por ejemplo, un rival con una habilidad que atrapa y que aún no se ha revelado). Showdown manda una petición actualizada y hay que volver a elegir. `playOut` lo reintenta.
+- `[Unavailable choice]`: depende de información oculta (por ejemplo, un rival con una habilidad que atrapa y que aún no se ha revelado). Showdown manda una petición actualizada y hay que volver a elegir. `playOut` y `decideFor` lo reintentan.
 
 ## Tests relevantes
 
@@ -118,4 +121,5 @@ La sesión guarda en qué punto del `inputLog` empezó cada turno y, para volver
 | `packages/core/test/battle.test.ts` | Elecciones, objetivos en dobles, validación, `BattleView` |
 | `packages/engine/test/engine.test.ts` | Stats de core = motor en todos los sets estándar, validación, formatos, determinismo, replays, rebobinado, perspectivas |
 | `packages/bot/test/*.test.ts` | Bots: ver la [guía de bots](bot.md#tests) |
+| `packages/narration/test/narration.test.ts` | Narración en español e inglés, gramática y combates completos sin marcadores sin resolver |
 | `tools/cli/test/cli.test.ts` | `--auto` en ambos modos (nivel 2 y equipo aleatorio), `--bot 0/1` con fixtures y una partida "humana" guionizada con deshacer y rebobinar |

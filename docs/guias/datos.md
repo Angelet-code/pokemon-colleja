@@ -35,6 +35,7 @@ Después de un `data:build`, revisa siempre el diff de `packages/data/generated/
 | `standard-sets.json` | Sets estándar por modo y especie (≈490 en individuales y ≈460 en dobles) |
 | `i18n/{es,en}.json` | Nombres por idioma (especies, movimientos, habilidades, objetos, naturalezas, tipos, stats) |
 | `i18n/{es,en}.descriptions.json` | Descripciones de movimientos, habilidades y objetos |
+| `text/{es,en}.json` | Plantillas de mensajes de combate de Showdown (`data/text`) para el log: genéricas (`default`) y propias de movimientos, habilidades y objetos de Champions, más la gramática española de objetos y stats. Los huecos en español se completan con `overrides/battle-text.es.json`. Se leen con `getBattleText(locale)` |
 
 API de acceso, apta para navegador: `import { getSpecies, getName, getStandardSets… } from '@colleja/data'`.
 

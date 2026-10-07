@@ -39,3 +39,18 @@ Sirve para corregir o completar nombres en español que PokeAPI no tiene (el bui
   "stats": {}
 }
 ```
+
+## `battle-text.es.json`: mensajes de combate en español
+
+Completa las plantillas de mensajes de combate que Showdown aún no tiene traducidas (`null, // NEEDS TRANSLATION` en `data/text/es/`). Las usa la narración del log (`@colleja/narration`, [guía de la web](../../../docs/guias/web.md)). La estructura es la misma que la de `packages/data/generated/text/es.json`: tabla (`default`, `moves`, `abilities`, `items`) → efecto → campo → plantilla.
+
+```json
+{
+  "default": { "default": { "turn": "== Turno {NUMBER} ==" } },
+  "moves": { "roost": { "start": "  (¡{POKEMON} pierde el tipo Volador durante este turno!)" } }
+}
+```
+
+- La sintaxis es la de Showdown: marcadores `{POKEMON}`, `{ITEM}`, `{STAT}`…, con modificadores como `{ITEM:definite:capitalize}` (artículo según el género del objeto) o `{TEAM:de}` ("del lado rival"). Las líneas que empiezan por dos espacios son mensajes secundarios.
+- Solo se pueden completar efectos que existen en las plantillas inglesas: un id mal escrito hace fallar el build.
+- Lo que no esté traducido ni aquí ni en Showdown se muestra en inglés.
