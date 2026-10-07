@@ -1,0 +1,13 @@
+{
+  "name": "@colleja/showdown",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Puente único hacia el simulador de Pokémon Showdown vendorizado (solo Node).",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  }
+}

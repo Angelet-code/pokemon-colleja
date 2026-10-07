@@ -1,0 +1,27 @@
+# Dependencies & build output
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.vite/
+
+# User data (equipos, rivales, replays) — local, no versionado
+storage/*
+!storage/.gitkeep
+
+# Assets descargados (sprites © Nintendo/TPC) — no se redistribuyen
+assets/*
+!assets/.gitkeep
+
+# Environment & logs
+.env
+.env.*
+*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json

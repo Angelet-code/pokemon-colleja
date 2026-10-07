@@ -1,0 +1,14 @@
+{
+  "name": "@colleja/smoke",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Smoke test: combates headless de Champions (individuales y dobles) entre bots aleatorios.",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/run.ts",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@colleja/showdown": "*"
+  }
+}

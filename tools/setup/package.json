@@ -1,0 +1,10 @@
+{
+  "name": "@colleja/setup",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Prepara el simulador de Pokémon Showdown vendorizado (submódulo, dependencias y build).",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  }
+}
