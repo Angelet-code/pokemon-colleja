@@ -1,5 +1,6 @@
 /**
- * Terminal battle against the level 0 bot (phase 3). Also runs bot vs bot with `--auto`.
+ * Terminal battle against the bot (levels 0–2, random or fixture teams). Also runs bot vs
+ * bot with `--auto`.
  */
 
 import { randomBytes } from 'node:crypto';
@@ -7,10 +8,18 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { RandomAgent } from '@colleja/bot';
+import {
+  BOT_LEVELS,
+  type BotLevel,
+  botLevelInfo,
+  createBot,
+  DEFAULT_BOT_LEVEL,
+  isBotLevel,
+} from '@colleja/bot';
 import { type BattleAgent, type PokemonSet, parseShowdownTeam, type SideId } from '@colleja/core';
 import type { GameMode } from '@colleja/data';
 import { BattleSession, TeamValidationError } from '@colleja/engine';
+import { generateTeam } from '@colleja/teamgen';
 import { type Command, HELP, HumanPlayer, parseCommand } from './human';
 import type { CliIO } from './io';
 import { Narrator } from './narrator';
@@ -19,11 +28,17 @@ import { renderField } from './render';
 const FIXTURES = fileURLToPath(new URL('../../smoke/fixtures/', import.meta.url));
 const REPLAYS = fileURLToPath(new URL('../../../storage/replays/', import.meta.url));
 
+/** `--opponent-team` value that generates a random team. */
+const RANDOM_TEAM = 'random';
+
+const LEVELS_HELP = BOT_LEVELS.map((info) => `${info.level} = ${info.name}`).join(', ');
+
 export const USAGE = `Uso: npm run play -- [opciones]
 
   --mode singles|doubles     Individuales (6→3) o dobles (6→4). Por defecto: singles
+  --bot <0|1|2>              Nivel del bot (${LEVELS_HELP}). Por defecto: ${DEFAULT_BOT_LEVEL}
   --team <fichero>           Tu equipo en formato export de Showdown (por defecto: equipo-a)
-  --opponent-team <fichero>  Equipo del bot (por defecto: equipo-b)
+  --opponent-team <fichero>  Equipo del bot, o "random" para uno aleatorio. Por defecto: random
   --seed <texto>             Semilla: misma semilla + mismas elecciones = mismo combate
   --no-preview               Sin vista previa: salen los primeros en orden
   --open-team-sheets         Ver los sets completos del rival
@@ -33,6 +48,7 @@ export const USAGE = `Uso: npm run play -- [opciones]
 
 interface CliOptions {
   mode: GameMode;
+  bot: BotLevel;
   team: string;
   opponentTeam: string;
   seed: string;
@@ -47,8 +63,9 @@ function parseOptions(argv: string[]): CliOptions | string {
     args: argv,
     options: {
       mode: { type: 'string', short: 'm', default: 'singles' },
+      bot: { type: 'string', short: 'b', default: String(DEFAULT_BOT_LEVEL) },
       team: { type: 'string', default: join(FIXTURES, 'equipo-a.txt') },
-      'opponent-team': { type: 'string', default: join(FIXTURES, 'equipo-b.txt') },
+      'opponent-team': { type: 'string', default: RANDOM_TEAM },
       seed: { type: 'string' },
       'no-preview': { type: 'boolean', default: false },
       'open-team-sheets': { type: 'boolean', default: false },
@@ -61,8 +78,13 @@ function parseOptions(argv: string[]): CliOptions | string {
   if (values.mode !== 'singles' && values.mode !== 'doubles') {
     return `--mode debe ser "singles" o "doubles" (recibido: "${values.mode}").\n\n${USAGE}`;
   }
+  const bot = Number(values.bot);
+  if (!isBotLevel(bot)) {
+    return `--bot debe ser 0, 1 o 2 (recibido: "${values.bot}").\n\n${USAGE}`;
+  }
   return {
     mode: values.mode,
+    bot,
     team: values.team,
     opponentTeam: values['opponent-team'],
     seed: values.seed ?? randomBytes(4).toString('hex'),
@@ -103,7 +125,13 @@ export async function runCli(argv: string[], io: CliIO): Promise<number> {
       options: { teamPreview: options.teamPreview, openTeamSheets: options.openTeamSheets },
       players: {
         p1: { name: options.auto ? 'Bot 1' : options.name, team: loadTeam(options.team) },
-        p2: { name: options.auto ? 'Bot 2' : 'Bot', team: loadTeam(options.opponentTeam) },
+        p2: {
+          name: options.auto ? 'Bot 2' : 'Bot',
+          team:
+            options.opponentTeam === RANDOM_TEAM
+              ? generateTeam(options.mode, { seed: `${options.seed}:team` })
+              : loadTeam(options.opponentTeam),
+        },
       },
     });
   } catch (error) {
@@ -116,12 +144,15 @@ export async function runCli(argv: string[], io: CliIO): Promise<number> {
   }
 
   const modeLabel = options.mode === 'singles' ? 'Individuales' : 'Dobles';
-  io.print(`Pokémon Champions · ${modeLabel} · semilla "${options.seed}"`);
+  const level = botLevelInfo(options.bot);
+  io.print(
+    `Pokémon Champions · ${modeLabel} · rival: ${level.name} (nivel ${level.level}) · semilla "${options.seed}"`,
+  );
   if (!options.auto) io.print('Escribe "ayuda" en cualquier pregunta para ver los comandos.');
 
   // The bot's seed derives from the battle's: same seed + same human choices = same battle.
-  const bot = new RandomAgent({ seed: `${options.seed}:bot` });
-  const autoPlayer = options.auto ? new RandomAgent({ seed: `${options.seed}:p1` }) : null;
+  const bot = createBot(options.bot, { seed: `${options.seed}:bot` });
+  const autoPlayer = options.auto ? createBot(options.bot, { seed: `${options.seed}:p1` }) : null;
   try {
     return await new BattleLoop(session, io, bot, autoPlayer).run();
   } finally {

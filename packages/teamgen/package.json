@@ -1,0 +1,20 @@
+{
+  "name": "@colleja/teamgen",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Generador de equipos aleatorios legales a partir de los sets estándar. Apto para navegador.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@colleja/core": "*",
+    "@colleja/data": "*"
+  },
+  "devDependencies": {
+    "@colleja/engine": "*"
+  }
+}

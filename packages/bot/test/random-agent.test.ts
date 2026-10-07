@@ -1,42 +1,16 @@
-import { type PokemonSet, type RequestPokemon, SeededRandom } from '@colleja/core';
-import { type GameMode, getSpecies, listStandardSets } from '@colleja/data';
-import { BattleSession, playOut, validateTeam } from '@colleja/engine';
+import type { RequestPokemon } from '@colleja/core';
+import { BattleSession, playOut } from '@colleja/engine';
+import { generateTeam } from '@colleja/teamgen';
 import { describe, expect, it } from 'vitest';
 import { RandomAgent } from '../src/index';
 
 /** Battles per mode. Raise it to hunt for rare bugs: `BOT_FUZZ_BATTLES=1000 npm test`. */
 const BATTLES = Number(process.env.BOT_FUZZ_BATTLES ?? 100);
 
-/** Legal random team from the standard sets (a minimal stand-in for phase 4's teamgen). */
-function randomTeam(mode: GameMode, random: SeededRandom): PokemonSet[] {
-  for (;;) {
-    const team: PokemonSet[] = [];
-    const nums = new Set<number>();
-    const items = new Set<string>();
-    for (const standard of random.shuffle(listStandardSets(mode))) {
-      const num = getSpecies(standard.species)?.num ?? -1;
-      if (nums.has(num) || (standard.item && items.has(standard.item))) continue;
-      nums.add(num);
-      if (standard.item) items.add(standard.item);
-      team.push({
-        species: standard.species,
-        ...(standard.item ? { item: standard.item } : {}),
-        ability: standard.ability,
-        nature: standard.nature,
-        statPoints: standard.statPoints,
-        moves: standard.moves,
-      });
-      if (team.length === 6) break;
-    }
-    if (validateTeam(team, mode).ok) return team;
-  }
-}
-
 describe('RandomAgent (level 0)', () => {
   it.each(['singles', 'doubles'] as const)(
     `never sends an invalid choice (${BATTLES} %s battles)`,
     async (mode) => {
-      const random = new SeededRandom(`fuzz-${mode}`);
       let megas = 0;
       for (let i = 0; i < BATTLES; i++) {
         const seed = `fuzz-${mode}-${i}`;
@@ -46,8 +20,8 @@ describe('RandomAgent (level 0)', () => {
           // Alternate the practice options so every code path is exercised.
           options: { teamPreview: i % 4 !== 3 },
           players: {
-            p1: { name: 'Bot 1', team: randomTeam(mode, random) },
-            p2: { name: 'Bot 2', team: randomTeam(mode, random) },
+            p1: { name: 'Bot 1', team: generateTeam(mode, { seed: `${seed}:1` }) },
+            p2: { name: 'Bot 2', team: generateTeam(mode, { seed: `${seed}:2` }) },
           },
         });
         const agents = {

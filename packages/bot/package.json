@@ -2,7 +2,7 @@
   "name": "@colleja/bot",
   "version": "0.0.0",
   "private": true,
-  "description": "Bots rivales. Nivel 0: aleatorio. Apto para navegador (solo depende de core).",
+  "description": "Bots rivales: niveles 0 (aleatorio), 1 (agresivo) y 2 (táctico). Aptos para navegador (core, data y @smogon/calc).",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
@@ -12,9 +12,11 @@
   },
   "dependencies": {
     "@colleja/core": "*",
-    "@colleja/data": "*"
+    "@colleja/data": "*",
+    "@smogon/calc": "0.12.0"
   },
   "devDependencies": {
-    "@colleja/engine": "*"
+    "@colleja/engine": "*",
+    "@colleja/teamgen": "*"
   }
 }

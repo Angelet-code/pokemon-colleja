@@ -1,8 +1,10 @@
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { runCli, USAGE } from '../src/app';
 import { createBufferIO } from '../src/io';
 
 describe('npm run play', () => {
+  // Defaults: level 2 bot and a random rival team.
   it.each(['singles', 'doubles'])('--auto finishes a %s battle without errors', async (mode) => {
     const io = createBufferIO();
     const code = await runCli(['--auto', '--mode', mode, '--seed', `cli-${mode}`], io);
@@ -11,6 +13,18 @@ describe('npm run play', () => {
     expect(output).toMatch(/Resultado: (gana Bot [12]|empate)/);
     expect(output).toContain('── Turno 1 ──');
     expect(output).toMatch(/usó [A-ZÁÉÍÓÚ]/); // Spanish move names
+    expect(output).toContain('rival: Táctico (nivel 2)');
+  });
+
+  it.each([
+    ['0', 'singles'],
+    ['1', 'doubles'],
+  ])('--bot %s plays a %s battle with the fixture teams', async (bot, mode) => {
+    const io = createBufferIO();
+    const opponent = fileURLToPath(new URL('../../smoke/fixtures/equipo-b.txt', import.meta.url));
+    const args = ['--auto', '--bot', bot, '--mode', mode, '--opponent-team', opponent];
+    expect(await runCli([...args, '--seed', 'b'], io)).toBe(0);
+    expect(io.output.join('\n')).toMatch(/Resultado: (gana Bot [12]|empate)/);
   });
 
   it('is reproducible with the same seed', async () => {
@@ -28,6 +42,7 @@ describe('npm run play', () => {
     expect(help.output).toEqual([USAGE]);
     const bad = createBufferIO();
     expect(await runCli(['--mode', 'triples'], bad)).toBe(2);
+    expect(await runCli(['--bot', '7'], createBufferIO())).toBe(2);
     expect(await runCli(['--team', 'no-existe.txt', '--auto'], createBufferIO())).toBe(1);
   });
 });

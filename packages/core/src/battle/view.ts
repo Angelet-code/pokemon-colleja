@@ -33,6 +33,13 @@ export interface ViewPokemon {
   /** Moves seen so far. */
   moves: string[];
   megaEvolved: boolean;
+  /** Turn in which it last entered the field (0 = lead), `null` if never active. */
+  switchedInTurn: number | null;
+  /** It has used a move since it last entered (Fake Out only works before that). */
+  movedSinceSwitch: boolean;
+  /** Last move it used and the turn it was used in. */
+  lastMove: string | null;
+  lastMoveTurn: number | null;
 }
 
 export interface ViewSide {
@@ -90,6 +97,7 @@ export class BattleView {
     if (!line.startsWith('|')) return;
     const [, type = '', ...args] = line.split('|');
     const [a = '', b = '', c = ''] = args;
+    this.revealFromTags(type, a, args);
     switch (type) {
       case 'player':
         if (isSide(a) && b) this.sides[a].name = b;
@@ -223,7 +231,11 @@ export class BattleView {
       case 'move': {
         const pokemon = this.getPokemon(a);
         const move = toId(b);
-        if (pokemon && !pokemon.moves.includes(move)) pokemon.moves.push(move);
+        if (!pokemon) break;
+        if (!pokemon.moves.includes(move)) pokemon.moves.push(move);
+        pokemon.movedSinceSwitch = true;
+        pokemon.lastMove = move;
+        pokemon.lastMoveTurn = this.turn;
         break;
       }
       case '-weather':
@@ -255,6 +267,24 @@ export class BattleView {
         if (side) delete this.sides[side].conditions[toId(stripEffectPrefix(b))];
         break;
       }
+    }
+  }
+
+  /**
+   * `[from] item: Life Orb` / `[from] ability: Intimidate` tags reveal an item or ability of
+   * the `[of]` Pokémon, or of the line's own Pokémon when there is no `[of]`.
+   */
+  private revealFromTags(type: string, subject: string, args: readonly string[]): void {
+    const from = args.find((arg) => arg.startsWith('[from] '))?.slice('[from] '.length);
+    if (!from) return;
+    const of = args.find((arg) => arg.startsWith('[of] '))?.slice('[of] '.length);
+    const owner = this.getPokemon(of ?? subject);
+    if (!owner) return;
+    if (from.startsWith('item: ')) {
+      // An item that was just consumed or removed is handled by its own line (`-enditem`).
+      if (type !== '-enditem') owner.item = toId(from.slice('item: '.length));
+    } else if (from.startsWith('ability: ')) {
+      owner.ability = toId(from.slice('ability: '.length));
     }
   }
 
@@ -290,6 +320,10 @@ export class BattleView {
         ability: undefined,
         moves: [],
         megaEvolved: false,
+        switchedInTurn: null,
+        movedSinceSwitch: false,
+        lastMove: null,
+        lastMoveTurn: null,
       };
       viewSide.pokemon.push(pokemon);
     }
@@ -297,6 +331,10 @@ export class BattleView {
     if (previous && previous !== pokemon) {
       previous.position = null;
       previous.boosts = {};
+    }
+    if (previous !== pokemon) {
+      pokemon.switchedInTurn = this.turn;
+      pokemon.movedSinceSwitch = false;
     }
     viewSide.active[position] = pokemon;
     pokemon.position = position;

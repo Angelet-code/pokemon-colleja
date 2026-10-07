@@ -20,6 +20,7 @@
     "setup:force": "tsx tools/setup/src/setup-showdown.ts --force",
     "smoke": "tsx tools/smoke/src/run.ts",
     "play": "tsx tools/cli/src/play.ts",
+    "arena": "tsx tools/arena/src/run.ts",
     "data:build": "tsx tools/data-pipeline/src/build.ts",
     "data:sprites": "tsx tools/data-pipeline/src/sprites.ts",
     "test": "vitest run",

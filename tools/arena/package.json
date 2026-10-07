@@ -1,11 +1,11 @@
 {
-  "name": "@colleja/cli",
+  "name": "@colleja/arena",
   "version": "0.0.0",
   "private": true,
-  "description": "Combate de Pokémon Champions en la terminal contra el bot (niveles 0–2, individuales y dobles).",
+  "description": "Arena de bots: torneos bot contra bot con equipos aleatorios y métricas.",
   "type": "module",
   "scripts": {
-    "start": "tsx src/play.ts",
+    "start": "tsx src/run.ts",
     "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {

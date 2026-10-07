@@ -212,7 +212,23 @@ describe('BattleView', () => {
       boosts: {},
     });
     expect(dragonite?.moves).toEqual(['extremespeed']);
+    expect(dragonite).toMatchObject({
+      switchedInTurn: 0,
+      movedSinceSwitch: true,
+      lastMove: 'extremespeed',
+      lastMoveTurn: 1,
+    });
     expect(view.sides.p2.active[0]?.name).toBe('Gengar');
+    expect(view.sides.p2.active[0]).toMatchObject({ switchedInTurn: 1, movedSinceSwitch: false });
+
+    // Items and abilities revealed through `[from]` tags.
+    view.applyAll([
+      '|-damage|p2a: Gengar|80/100|[from] item: Life Orb',
+      '|-heal|p1a: Charizard|90/155|[from] item: Leftovers',
+      '|-unboost|p1a: Charizard|atk|1|[from] ability: Intimidate|[of] p2a: Gengar',
+    ]);
+    expect(view.sides.p2.active[0]).toMatchObject({ item: 'lifeorb', ability: 'intimidate' });
+    expect(charizard?.item).toBe('leftovers');
     expect(view.field).toEqual({
       weather: 'sunnyday',
       terrain: null,
