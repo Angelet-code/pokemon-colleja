@@ -1,6 +1,6 @@
 # Guía: servidor y app web
 
-Cómo se juega en el navegador y cómo está montado. Las decisiones de arquitectura están en [ADR-0005](../adr/0005-servidor-web-y-narracion.md). El editor de equipos tiene su propia guía: [teambuilder](teambuilder.md).
+Cómo se juega en el navegador y cómo está montado. Las decisiones de arquitectura están en [ADR-0005](../adr/0005-servidor-web-y-narracion.md). El editor de equipos y los rivales guardados tienen sus guías: [teambuilder](teambuilder.md) y [rivales](rivales.md).
 
 ## Uso
 
@@ -16,7 +16,7 @@ En la pantalla de inicio:
 2. Elige tu equipo:
    - **Guardado**: uno de los que creaste en **Equipos** ([teambuilder](teambuilder.md)). Vale para los dos modos si es legal.
    - **Pegado**: en formato export de Showdown, o pulsa "Equipo aleatorio". La línea `EVs:` son los Stat Points de Champions.
-3. Elige el rival: aleatorio o pegado.
+3. Elige el rival: aleatorio, **guardado** (uno de tus [rivales](rivales.md); se aplica su dificultad, que puedes cambiar) o pegado.
 4. Elige la dificultad y las opciones de práctica: vista previa, equipo abierto, nombre y semilla.
 
 La web recuerda el último equipo y las opciones (`localStorage`).
@@ -46,14 +46,14 @@ apps/web (React)  ──REST /api/*──▶  apps/server (Fastify)
 |---|---|
 | `@colleja/protocol` | Esquemas zod de los mensajes WebSocket y REST, y sus tipos. `parseClientMessage` valida lo que llega del navegador (errores en español) |
 | `@colleja/narration` | `Narrator`: líneas del protocolo → entradas del log (`turn`, `major`, `minor`, `end`) con las plantillas de Showdown en español o inglés, más un `BattleView` actualizado. Nombres para mostrar (`speciesName`, `moveName`…). Lo usan la web y el CLI |
-| `apps/server` | `buildServer()` (sin escuchar, para los tests) y `main.ts`. REST: `GET /api/meta`, `POST /api/teams/validate`, `POST /api/teams/random` y el CRUD de equipos guardados (`/api/teams`, ver [teambuilder](teambuilder.md)). WebSocket `/ws`. Sirve `/sprites/*` y, si existe, `apps/web/dist` |
-| `apps/web` | Inicio (`features/setup`), combate (`features/battle`: store Zustand, campo, menús, vista previa, log y barra de herramientas) y equipos (`features/teams`) |
+| `apps/server` | `buildServer()` (sin escuchar, para los tests) y `main.ts`. REST: `GET /api/meta`, `POST /api/teams/validate`, `POST /api/teams/random` y el CRUD de equipos y rivales guardados (`/api/teams` y `/api/opponents`, ver [teambuilder](teambuilder.md) y [rivales](rivales.md)). WebSocket `/ws`. Sirve `/sprites/*` y, si existe, `apps/web/dist` |
+| `apps/web` | Inicio (`features/setup`), combate (`features/battle`: store Zustand, campo, menús, vista previa, log y barra de herramientas) y equipos y rivales (`features/teams`) |
 
 ### Mensajes
 
 | Cliente → servidor | Servidor → cliente |
 |---|---|
-| `battle:start` (modo, equipo en texto **o** `teamId` de uno guardado, rival, nivel, opciones, semilla, nombre) | `battle:started` (id, jugadores, tus sets y los del rival con equipo abierto) |
+| `battle:start` (modo, equipo en texto **o** `teamId` de uno guardado, rival aleatorio, pegado o guardado (`opponentId`), nivel, opciones, semilla, nombre) | `battle:started` (id, jugadores, tus sets y los del rival con equipo abierto) |
 | `battle:choose` (`Choice` de core) | `battle:update` (líneas nuevas de p1, petición actual, `status`) |
 | `battle:undo` · `battle:rewind` (turno) | `battle:snapshot` (log completo, petición, `status`) |
 | `battle:forfeit` · `battle:export` · `battle:resume` | `battle:replay` (al terminar) · `battle:error` (`team`, `choice`, `state`, `not-found`, `message`, `internal`) |
@@ -87,4 +87,4 @@ apps/web (React)  ──REST /api/*──▶  apps/server (Fastify)
 | `packages/protocol/test/protocol.test.ts` | Ida y vuelta de cada mensaje y rechazo de los mal formados |
 | `packages/narration/test/narration.test.ts` | Plantillas en español con gramática (artículos, "del", Mega), inglés, nombres en otro idioma, fallback y combates completos sin marcadores sin resolver |
 | `apps/server/test/server.test.ts` | REST, un combate completo por WebSocket en cada modo contra el nivel 2, información oculta, equipos ilegales, elección rechazada, deshacer, rebobinar, reconexión, rendirse, replay y limpieza |
-| `apps/web/test/*.test.ts(x)` | `ChoiceDraft`, menús de acción en dobles (objetivos, Mega, atrás, teclado, cambios forzados), vista previa, store, reglas de dependencias y el teambuilder ([su guía](teambuilder.md#tests-relevantes)) |
+| `apps/web/test/*.test.ts(x)` | `ChoiceDraft`, menús de acción en dobles (objetivos, Mega, atrás, teclado, cambios forzados), vista previa, store, reglas de dependencias, el teambuilder ([su guía](teambuilder.md#tests-relevantes)) y los rivales ([su guía](rivales.md#tests-relevantes)) |

@@ -72,8 +72,8 @@ Documentación de soporte:
 ```
 pokemon-colleja-simulator/
 ├─ apps/
-│  ├─ web/                 # ✅ React + Vite: inicio, combate y teambuilder (rivales: fase 7)
-│  └─ server/              # ✅ Node + Fastify + WebSocket: combates contra el bot, API REST y equipos guardados
+│  ├─ web/                 # ✅ React + Vite: inicio, combate, teambuilder y rivales guardados
+│  └─ server/              # ✅ Node + Fastify + WebSocket: combates contra el bot, API REST, equipos y rivales guardados
 ├─ packages/
 │  ├─ showdown/            # ✅ Puente único y tipado hacia vendor/pokemon-showdown (Node-only)
 │  ├─ core/                # ✅ Dominio puro: tipos, stats (SP), import/export, elecciones, vista del combate, agentes
@@ -92,7 +92,7 @@ pokemon-colleja-simulator/
 │  └─ dev/                 # ✅ `npm run dev`: servidor + Vite a la vez
 ├─ vendor/
 │  └─ pokemon-showdown/    # Submódulo git fijado a un commit concreto
-├─ storage/                # Datos del usuario: equipos ✅ (teams/), rivales, replays (JSON legibles)
+├─ storage/                # Datos del usuario: equipos ✅ (teams/), rivales ✅ (opponents/), replays (JSON legibles)
 ├─ docs/                   # Plan, investigación, ADRs, guías
 └─ assets/                 # Sprites descargados (no versionados, no se redistribuyen)
 ```
@@ -226,16 +226,18 @@ El adaptador **valida siempre** los dos equipos con `TeamValidator` antes de cre
 > **Implementado en la fase 5** ([guía de la web](guias/web.md), [ADR-0005](adr/0005-servidor-web-y-narracion.md)).
 
 - **REST** (fase 5): `GET /api/meta` (versión de datos, commit de Showdown y niveles del bot), `POST /api/teams/validate`, `POST /api/teams/random`.
-- **REST** (fase 6, [guía](guias/teambuilder.md)): CRUD de equipos guardados en `/api/teams` (`GET`, `POST`, `POST /import`, `GET/PUT/DELETE /:id`). Pendiente: `/api/opponents` y `/api/replays` (fases 7–8).
+- **REST** (fase 6, [guía](guias/teambuilder.md)): CRUD de equipos guardados en `/api/teams` (`GET`, `POST`, `POST /import`, `GET/PUT/DELETE /:id`).
+- **REST** (fase 7, [guía](guias/rivales.md)): el mismo CRUD para los rivales guardados en `/api/opponents`. Pendiente: `/api/replays` (fase 8).
 - **WebSocket** (`/ws`):
-  - Cliente → servidor: `battle:start` (con el equipo en texto o el `teamId` de uno guardado), `battle:choose` (`Choice` tipada), `battle:undo`, `battle:rewind`, `battle:forfeit`, `battle:export` y `battle:resume`.
+  - Cliente → servidor: `battle:start` (con el equipo en texto o el `teamId` de uno guardado, y el rival aleatorio, pegado o guardado con su `opponentId`), `battle:choose` (`Choice` tipada), `battle:undo`, `battle:rewind`, `battle:forfeit`, `battle:export` y `battle:resume`.
   - Servidor → cliente: `battle:started`, `battle:update` (líneas nuevas de **p1**, petición actual y estado), `battle:snapshot` (log completo, tras rebobinar o reconectar), `battle:replay` (solo al terminar) y `battle:error`.
 - Todos los mensajes se validan con esquemas **zod** compartidos (`packages/protocol`).
 
 ### 3.7 Persistencia
 
-- `storage/teams/*.json` ✅ (fase 6), `storage/opponents/*.json` y `storage/replays/*.json`, todos legibles y editables a mano. Cada equipo incluye también su export de Showdown.
-- Acceso a través de interfaces `TeamRepository` ✅ (`FileTeamRepository`: un fichero por equipo, escritura atómica, [ADR-0006](adr/0006-equipos-guardados-y-teambuilder.md)) y `ReplayRepository`. La implementación inicial usa el sistema de archivos y puede pasar a SQLite si el proyecto crece.
+- `storage/teams/*.json` ✅ (fase 6), `storage/opponents/*.json` ✅ (fase 7) y `storage/replays/*.json`, todos legibles y editables a mano. Cada equipo y cada rival incluye también su export de Showdown.
+- Acceso a través de interfaces `TeamRepository` ✅, `OpponentRepository` ✅ y `ReplayRepository`, todas sobre el repositorio genérico `FileJsonRepository` (un fichero por elemento, escritura atómica, ids seguros: [ADR-0006](adr/0006-equipos-guardados-y-teambuilder.md), [ADR-0007](adr/0007-rivales-guardados.md)). La implementación inicial usa el sistema de archivos y puede pasar a SQLite si el proyecto crece.
+- Un rival guardado es un equipo más su dificultad (`botLevel`); las opciones de práctica no se guardan con él.
 - Un equipo guardado puede ser un **borrador ilegal**: la legalidad se informa siempre y solo se exige para combatir.
 
 ---
@@ -298,12 +300,12 @@ Cada nivel implementa `BattleAgent` (de `@colleja/core`): recibe un `AgentContex
 
 ## 7. Pantallas de la UI
 
-1. **Inicio** ✅ (fase 5; equipo guardado en la fase 6; los presets de rival llegan en la fase 7): elegir modo (individuales/dobles), tu equipo (guardado o pegado) y el rival (aleatorio, preset o equipo pegado), y la dificultad.
+1. **Inicio** ✅ (fase 5; equipo guardado en la fase 6; rival guardado en la fase 7): elegir modo (individuales/dobles), tu equipo (guardado o pegado) y el rival (aleatorio, preset o equipo pegado), y la dificultad.
 2. **Teambuilder** ✅ (fase 6, [guía](guias/teambuilder.md)):
    - Lista de equipos (usar en combate, duplicar, borrar, importar).
    - Editor de cada Pokémon: buscador de especies, habilidad, objeto (con Item Clause), naturaleza, **SP con stats en vivo** (y los de la Mega), movimientos filtrados por learnset, set sugerido y validación en vivo junto a cada campo.
    - Importar y exportar texto de Showdown (equipo o Pokémon).
-3. **Rivales**: generar un equipo aleatorio, editarlo en el teambuilder y guardarlo como preset con su dificultad.
+3. **Rivales** ✅ (fase 7, [guía](guias/rivales.md)): generar un equipo aleatorio, copiarlo de tus equipos, importarlo o crearlo, editarlo con el editor del teambuilder y guardarlo con su dificultad.
 4. **Combate** ✅ (fase 5):
    - Vista previa (6 → 3/4).
    - Campo con sprites, barras de PS (exactos los propios, % los del rival) y estado.
@@ -328,11 +330,11 @@ Tamaños orientativos: S (pocas sesiones) · M · L.
 | **4. Bot** ✅ | M | Niveles 1–2, elección en vista previa, `teamgen`, arena | ✅ El nivel 2 gana el 93,6 % (individuales) y el 91,8 % (dobles) de 500 combates al nivel 0, sin elecciones inválidas. 130 tests |
 | **5. Servidor + UI de combate** ✅ | L | `protocol`, `narration`, servidor Fastify + WS, app React con inicio y pantalla de combate (individuales y dobles), equipo pegado, deshacer, rebobinar, rendirse y replay | ✅ Combate completo en el navegador en ambos modos (`npm run dev`), log en español con las plantillas de Showdown y sin información oculta (test). 197 tests |
 | **6. Teambuilder** ✅ | L | Editor completo con SP, validación en vivo, import/export y persistencia (`storage/teams/`), equipo guardado en el inicio | ✅ Equipo de 6 creado desde cero en el navegador, guardado, intacto tras reiniciar y usado en combate en ambos modos. 231 tests |
-| **7. Rivales editables** ⏭️ | S–M | Generar, editar y guardar rivales; elegir rival y dificultad. Brief: [fases/fase-7.md](fases/fase-7.md) | Practicar contra un equipo concreto guardado |
-| **8. Herramientas de práctica** | M | Calculadora, lista de replays, explicación del bot (deshacer, rebobinar, equipo abierto y descarga del replay ya están desde la fase 5) | — |
+| **7. Rivales editables** ✅ | S–M | Generar, editar y guardar rivales (`storage/opponents/`) con su dificultad; elegirlos en el inicio | ✅ Rival aleatorio generado, editado, guardado, intacto tras reiniciar y jugado en ambos modos con exactamente su equipo y su nivel. 247 tests |
+| **8. Herramientas de práctica** ⏭️ | M | Calculadora de daño, lista de replays y explicación del bot (deshacer, rebobinar, equipo abierto y descarga del replay ya están desde la fase 5). Brief: [fases/fase-8.md](fases/fase-8.md) | — |
 | **Futuro** | — | Bot nivel 3, modo clásico IV/EV/Tera, PWA/móvil, PvP, rivales basados en uso real | — |
 
-**MVP = fases 1–5** ✅. Con la fase 6 ✅ los equipos se crean y guardan en el navegador. La fase 7 completa la experiencia que pediste (rivales guardados).
+**MVP = fases 1–5** ✅. Con la fase 6 ✅ los equipos se crean y guardan en el navegador, y con la 7 ✅ también los rivales: la experiencia que pediste está completa. La fase 8 añade herramientas para aprender de cada combate.
 
 ---
 
@@ -344,7 +346,7 @@ Tamaños orientativos: S (pocas sesiones) · M · L.
 | `data` | Recuentos y legalidad del snapshot. Muestras puntuales (stats base, cambios de movimientos de Champions) |
 | `engine` | Determinismo por semilla. Logs de referencia de combates guionizados. Rebobinado correcto. Traducción de elecciones (objetivos en dobles, Mega) |
 | `bot` | Fuzzing: cientos de combates bot contra bot en el check (miles a mano) sin elecciones inválidas ni cuelgues. Calculadora contrastada con el motor. Escenarios guionizados. Porcentaje de victorias por nivel con el arena |
-| `server` / `web` | Esquemas del protocolo. Repositorio de equipos en carpeta temporal y CRUD por HTTP. Componentes críticos (selector de objetivo, editor de SP, buscador de movimientos). E2E con Playwright más adelante |
+| `server` / `web` | Esquemas del protocolo. Repositorios de equipos y rivales en carpetas temporales y CRUD por HTTP. Componentes críticos (selector de objetivo, editor de SP, buscador de movimientos). E2E con Playwright más adelante |
 
 Las mecánicas en sí **no se re-testean**: son responsabilidad del motor (Showdown tiene 359 ficheros de test propios). Solo se comprueba nuestra integración con él.
 
@@ -367,7 +369,7 @@ Las mecánicas en sí **no se re-testean**: son responsabilidad del motor (Showd
 |---|---|
 | Cambios de API o protocolo de Showdown al actualizar el commit | Adaptador único, tests de integración y actualizaciones deliberadas |
 | ~~`@pkmn/client` sin datos de Champions~~ | **Resuelto en la fase 5**: la web usa `BattleView` de `core` y la narración propia con las plantillas de Showdown ([ADR-0005](adr/0005-servidor-web-y-narracion.md)) |
-| El bundle de la web lleva todos los datos (≈1,5 MB con el teambuilder, ≈336 KB con gzip) | Aceptable en local. Si crece más, cargar learnsets y sets estándar bajo demanda (`import()` dinámico) |
+| El bundle de la web lleva todos los datos (≈1,5 MB con el teambuilder y los rivales, ≈338 KB con gzip) | Aceptable en local. Si crece más, cargar learnsets y sets estándar bajo demanda (`import()` dinámico) |
 | Los combates viven en memoria: se pierden si se reinicia el servidor | Aceptado para uso local. La reconexión funciona mientras el servidor siga vivo; persistir sesiones si hiciera falta (el replay ya permite reconstruirlas) |
 | La sesión usa la API interna de `Battle` (`choose`, `setPlayer`, `sendUpdates`, `inputLog`) | Aislada en `engine/src/session.ts` y cubierta por tests de determinismo, rebobinado y perspectivas ([ADR-0003](adr/0003-sesion-de-combate.md)) |
 | El bot adivina los sets rivales con los sets estándar: contra equipos humanos poco comunes puede equivocarse | Filtra por lo revelado y supone el set más ofensivo. Con equipo abierto juega con los sets reales. El nivel 3 (futuro) podrá muestrear sets |
@@ -388,3 +390,4 @@ Las mecánicas en sí **no se re-testean**: son responsabilidad del motor (Showd
 | 3 | Stats | **Solo Stat Points** de Champions. El modo clásico IV/EV/Tera queda como ampliación futura, con el cálculo de stats ya preparado como estrategia por formato |
 | 4 | Idioma | **Español por defecto con selector de inglés** para los nombres de Pokémon, movimientos, objetos y habilidades |
 | 5 | Teambuilder (2026-10-08) | Un equipo con problemas **se guarda como borrador** (solo se exige legalidad para combatir). El modo del equipo es el **preferido**: vale para los dos si es legal. Editor con lista a la izquierda y ficha a la derecha, con set sugerido ([ADR-0006](adr/0006-equipos-guardados-y-teambuilder.md)) |
+| 6 | Rivales (2026-10-08) | Los rivales son una **colección aparte** (`storage/opponents/`) con su dificultad; **solo se guarda la dificultad** (no las opciones de práctica); al elegirlos en el inicio **se aplica su dificultad y se puede cambiar**; un rival generado **hay que guardarlo** para combatir contra él ([ADR-0007](adr/0007-rivales-guardados.md)) |

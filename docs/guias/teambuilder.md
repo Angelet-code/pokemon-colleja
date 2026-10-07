@@ -1,6 +1,6 @@
 # Guía: teambuilder y equipos guardados
 
-Cómo crear, guardar y usar equipos en el navegador, y cómo está montado. Las decisiones de arquitectura están en [ADR-0006](../adr/0006-equipos-guardados-y-teambuilder.md). El servidor y la app en general se explican en la [guía de la web](web.md).
+Cómo crear, guardar y usar equipos en el navegador, y cómo está montado. Las decisiones de arquitectura están en [ADR-0006](../adr/0006-equipos-guardados-y-teambuilder.md). El servidor y la app en general se explican en la [guía de la web](web.md). El mismo editor crea los rivales del bot: [guía de rivales](rivales.md).
 
 ## Uso
 
@@ -39,8 +39,8 @@ Los equipos se guardan en `storage/teams/<id>.json` (no versionado), legibles y 
 |---|---|
 | `@colleja/core` | `checkTeamIssues`/`checkSetIssues` (problema → miembro y campo), `fitTeamToLimits` (ajusta texto importado) y el resto de utilidades de equipo (`setStatPoint`, `championsStats`, import/export) |
 | `@colleja/protocol` (`teams.ts`) | `PokemonSetSchema`, `TeamSchema`, `TeamContentSchema` (sin id), `TeamIdSchema` y los cuerpos y respuestas de `/api/teams`. Límites estructurales, no legalidad |
-| `apps/server` | `teams/team-repository.ts` (`TeamRepository`, `FileTeamRepository`), `teams/team-problems.ts` (`teamProblems`: core y después Showdown) y `routes/teams.ts` |
-| `apps/web` (`features/teams/`) | `team-draft.ts` (operaciones puras), `team-editor-store.ts` (borrador, versión guardada, guardar), `options.tsx` (opciones de los buscadores), `TeamsPage`, `TeamEditorPage` y `components/` (`MemberList`, `SetEditor`, `StatPointsEditor`, `TextDialogs`) |
+| `apps/server` | `teams/team-repository.ts` (`TeamRepository`, `FileTeamRepository` sobre el repositorio genérico `storage/json-repository.ts`), `teams/team-problems.ts` (`teamProblems`: core y después Showdown), `teams/saved-teams.ts` (resumen e importación, comunes con los rivales) y `routes/teams.ts` |
+| `apps/web` (`features/teams/`) | `team-draft.ts` (operaciones puras), `team-editor-store.ts` (borrador, versión guardada, guardar en su destino), `editor-destination.ts` (equipos o rivales), `options.tsx` (opciones de los buscadores), `TeamsPage`, `TeamEditorPage` y `components/` (`MemberList`, `SetEditor`, `StatPointsEditor`, `TextDialogs` y la lista compartida con los rivales: `SavedList`, `SavedCard`, `ImportSavedDialog`) |
 | `apps/web` (`components/`) | `Combobox` (buscador accesible: flechas, Enter, Esc; busca sin acentos en los dos idiomas), `Dialog` y `TypeBadge` |
 
 ### API

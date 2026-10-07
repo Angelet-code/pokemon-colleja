@@ -4,6 +4,29 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ## [Sin publicar]
 
+### Fase 7 — Rivales guardados (2026-10-08)
+
+#### Añadido
+
+- **Rivales** en la web (`/rivales`, enlace "Rivales" en la cabecera): equipos para el bot con su **dificultad**.
+  - **Nuevo rival**: generar uno aleatorio (individuales o dobles), copiar uno de tus equipos, importar texto de Showdown (con nombre, modo y dificultad) o desde cero. El aleatorio y la copia se abren como **borrador sin guardar**.
+  - **Editor**: el del teambuilder, con el selector de dificultad en la cabecera y "Usar como rival".
+  - **Lista** con iconos, modo, dificultad, fecha y estado, y las acciones usar como rival, editar, duplicar y borrar (con confirmación).
+- **Inicio**: el "Equipo rival" puede ser **aleatorio, guardado o pegado**. Al elegir un rival guardado se aplica su dificultad, que se puede cambiar (el inicio recuerda la guardada). `battle:start` acepta `opponent: { kind: 'saved', opponentId }`.
+- **Persistencia** (`apps/server`): `OpponentRepository`/`FileOpponentRepository`, un JSON legible por rival en `storage/opponents/<id>.json` (con su export de Showdown). CRUD en `GET/POST /api/opponents`, `POST /api/opponents/import` y `GET/PUT/DELETE /api/opponents/:id`, con los `problems` en cada respuesta. Carpeta configurable con `buildServer({ opponentsDir })`.
+- **Decisiones de producto**: los rivales son una **colección aparte**; **solo se guarda la dificultad** (las opciones de práctica son de cada combate); en el inicio **se aplica la dificultad del rival y se puede cambiar**; un rival generado **hay que guardarlo** para combatir contra él.
+- `@colleja/protocol`: `OpponentContentSchema` (`TeamContentSchema` + `botLevel`), `SavedOpponentSchema`, `SavedIdSchema`, los cuerpos y respuestas de `/api/opponents` y `OpponentSummary`.
+- Web: `EditorDestination` (el editor guarda en equipos o en rivales), `BotLevelSelect`, `useMeta()` y la lista compartida (`SavedListLayout`, `SavedCard`, `ImportSavedDialog`).
+- Tests (247 en total): repositorio de rivales, CRUD por HTTP (400, 404, problemas, importar, persistencia tras reiniciar), combate contra un rival guardado en los dos modos (el bot lleva exactamente ese equipo y ese nivel) y errores si no existe o es ilegal; esquemas; store del editor con los dos destinos, "Generar aleatorio", lista de rivales, "Usar como rival" e inicio con rival guardado.
+- Documentación: [guía de rivales](docs/guias/rivales.md), [ADR-0007](docs/adr/0007-rivales-guardados.md) y el brief de la fase 8.
+
+#### Cambiado
+
+- **Repositorio genérico** `FileJsonRepository` (`apps/server/src/storage/json-repository.ts`): `FileTeamRepository` y `FileOpponentRepository` son subclases. El formato de los ficheros de equipos no cambia.
+- El editor (`TeamEditorPage`, `team-editor-store.ts`) recibe un destino; el store guarda `savedId` en lugar de `teamId`.
+- `SavedTeamPicker` sirve para tu equipo y para el rival. `TeamIdSchema` es ahora un alias de `SavedIdSchema` (mensaje "Id no válido.").
+- `testServer()` de los tests del servidor recibe `{ teamsDir, opponentsDir }`.
+
 ### Fase 6 — Teambuilder y equipos guardados (2026-10-08)
 
 #### Añadido
