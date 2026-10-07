@@ -8,6 +8,7 @@ import {
   type AgentContext,
   type BattleAgent,
   type Choice,
+  type DecisionExplanation,
   getSlotOptions,
   type MoveOption,
   type MoveRequest,
@@ -29,10 +30,18 @@ import {
   KO_BONUS,
   moveVictims,
   pickBest,
+  switchInValue,
   teamPreviewOrder,
 } from '../analysis/evaluation';
 import { FIRST_TURN_MOVES, SELF_KO_MOVES } from '../analysis/move-knowledge';
 import { type FoeMember, type OwnMember, Situation } from '../analysis/situation';
+import {
+  describeAction,
+  EXPLANATION_METHODS,
+  type ExplainContext,
+  explanation,
+  roundScore,
+} from '../explain';
 import type { BotLevel } from '../levels';
 
 export interface BotOptions {
@@ -55,12 +64,19 @@ export class AggressiveAgent implements BattleAgent {
   readonly name: string = 'Bot agresivo';
   readonly level: BotLevel = 1;
   protected readonly random: SeededRandom;
+  /** Builds the explanation of the last decision on demand (only the server asks for it). */
+  protected explainLast: (() => DecisionExplanation) | null = null;
 
   constructor(options: BotOptions = {}) {
     this.random = new SeededRandom(options.seed ?? String(Math.random()));
   }
 
+  explain(): DecisionExplanation | null {
+    return this.explainLast?.() ?? null;
+  }
+
   choose(context: AgentContext): Choice {
+    this.explainLast = null;
     const situation = new Situation(context);
     const { request } = context;
     switch (requestKind(request)) {
@@ -80,24 +96,64 @@ export class AggressiveAgent implements BattleAgent {
 
   protected chooseReplacements(situation: Situation, request: SwitchRequest): Choice {
     const chosen = new Set<number>();
-    const actions = getSlotOptions(request).map((slot): SlotAction => {
+    const slots = getSlotOptions(request);
+    const considered: { slot: SlotOptions; positions: number[]; picked: number | null }[] = [];
+    const actions = slots.map((slot): SlotAction => {
       const positions = slot.mustPass ? [] : slot.switches.filter((p) => !chosen.has(p));
       const position = bestSwitch(situation, positions, this.random);
+      considered.push({ slot, positions, picked: position });
       if (position === null) return PASS;
       chosen.add(position);
       return { type: 'switch', slot: position };
     });
+    this.explainLast = () =>
+      explanation(
+        'switch',
+        EXPLANATION_METHODS.switchIn,
+        considered.map(({ slot, positions, picked }) =>
+          positions.flatMap((position) => {
+            const member = situation.own[position - 1];
+            if (!member) return [];
+            return [
+              {
+                actions: [
+                  describeAction(explainContext(situation), slot, {
+                    type: 'switch',
+                    slot: position,
+                  }),
+                ],
+                score: roundScore(switchInValue(situation, member)),
+                chosen: position === picked,
+              },
+            ];
+          }),
+        ),
+      );
     return { type: 'actions', actions };
   }
 
   /** Greedy, slot by slot, keeping the choices compatible (no double switch, one Mega). */
   protected chooseMoves(situation: Situation, request: MoveRequest): Choice {
     const chosen: Candidate[] = [];
+    const considered: { slot: SlotOptions; candidates: Candidate[] }[] = [];
     for (const slot of getSlotOptions(request)) {
       const candidates = slot.mustPass ? [] : this.slotCandidates(situation, slot);
       const compatible = candidates.filter((c) => chosen.every((other) => compatible2(c, other)));
       chosen.push(pickBest(compatible, this.random) ?? { action: PASS, score: 0 });
+      considered.push({ slot, candidates: compatible });
     }
+    this.explainLast = () =>
+      explanation(
+        'moves',
+        EXPLANATION_METHODS.damage,
+        considered.map(({ slot, candidates }) =>
+          candidates.map((candidate) => ({
+            actions: [describeAction(explainContext(situation), slot, candidate.action)],
+            score: roundScore(candidate.score),
+            chosen: chosen.includes(candidate),
+          })),
+        ),
+      );
     return { type: 'actions', actions: chosen.map((candidate) => candidate.action) };
   }
 
@@ -125,6 +181,11 @@ export class AggressiveAgent implements BattleAgent {
     }
     return moves;
   }
+}
+
+/** What `describeAction` needs to know about the deciding side. */
+export function explainContext(situation: Situation): ExplainContext {
+  return { request: situation.context.request, view: situation.view, side: situation.me };
 }
 
 /** Expected value of a move: damage to rivals (+ KO bonus), minus damage to the ally. */

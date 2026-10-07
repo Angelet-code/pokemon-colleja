@@ -24,12 +24,21 @@ const MEGA_BONUS = 1;
 /** Tempo cost of switching. */
 const SWITCH_COST = 5;
 
-/** Best pair of actions for the two slots, or `null` if there is nothing to plan. */
+/** A pair of actions (one per slot) and its simulated value. */
+export interface PlannedPair {
+  actions: SlotAction[];
+  score: number;
+}
+
+/**
+ * Best pair of actions for the two slots (and every pair evaluated, for explanations), or
+ * `null` if there is nothing to plan.
+ */
 export function planDoubles(
   situation: Situation,
   slots: readonly SlotOptions[],
   random: SeededRandom,
-): SlotAction[] | null {
+): { chosen: PlannedPair; pairs: PlannedPair[] } | null {
   if (slots.length !== 2 || situation.activeFoes().length === 0) return null;
   const options = slots.map((slot) => slotOptions(situation, slot));
 
@@ -47,7 +56,7 @@ export function planDoubles(
   });
 
   const [first = [], second = []] = kept;
-  const pairs: { actions: SlotAction[]; score: number }[] = [];
+  const pairs: PlannedPair[] = [];
   for (const a of first) {
     for (const b of second) {
       if (!compatible(a.action, b.action)) continue;
@@ -55,7 +64,8 @@ export function planDoubles(
       pairs.push({ actions: [a.action, b.action], score });
     }
   }
-  return pickBest(pairs, random)?.actions ?? null;
+  const chosen = pickBest(pairs, random);
+  return chosen ? { chosen, pairs } : null;
 }
 
 /** Value of a pair of plans, mixing hit/miss for inaccurate status moves. */

@@ -8,8 +8,9 @@ import fastifyStatic from '@fastify/static';
 import fastifyWebsocket from '@fastify/websocket';
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
 import { BattleManager, type BattleManagerOptions } from './battles/battle-manager';
-import { OPPONENTS_DIR, SPRITES_DIR, TEAMS_DIR, WEB_DIST_DIR } from './config';
+import { OPPONENTS_DIR, REPLAYS_DIR, SPRITES_DIR, TEAMS_DIR, WEB_DIST_DIR } from './config';
 import { FileOpponentRepository } from './opponents/opponent-repository';
+import { FileReplayRepository } from './replays/replay-repository';
 import { registerApi } from './routes/api';
 import { registerBattleSocket } from './routes/battle-socket';
 import type { Repositories } from './storage/repositories';
@@ -27,6 +28,8 @@ export interface ServerOptions extends BattleManagerOptions {
   teamsDir?: string;
   /** Folder of the saved opponents (default `storage/opponents/`; tests use a temporary one). */
   opponentsDir?: string;
+  /** Folder of the saved replays (default `storage/replays/`; tests use a temporary one). */
+  replaysDir?: string;
 }
 
 export async function buildServer(options: ServerOptions = {}): Promise<FastifyInstance> {
@@ -36,6 +39,7 @@ export async function buildServer(options: ServerOptions = {}): Promise<FastifyI
   const repositories: Repositories = {
     teams: new FileTeamRepository(options.teamsDir ?? TEAMS_DIR, { onInvalid }),
     opponents: new FileOpponentRepository(options.opponentsDir ?? OPPONENTS_DIR, { onInvalid }),
+    replays: new FileReplayRepository(options.replaysDir ?? REPLAYS_DIR, { onInvalid }),
   };
   const battles = new BattleManager(repositories, options);
 

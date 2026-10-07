@@ -79,6 +79,8 @@ export function registerBattleSocket(app: FastifyInstance, manager: BattleManage
           return room.forfeit();
         case 'battle:export':
           return room.exportReplay();
+        case 'battle:save-replay':
+          return room.saveReplay();
       }
     };
 

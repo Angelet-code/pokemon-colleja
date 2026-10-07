@@ -3,7 +3,13 @@
  * outcome of a choice. The field state (`BattleView`) and the log narration are rebuilt from
  * the p1 protocol lines, the same way the bots and the CLI do.
  */
-import type { BattleRequest, BattleView, Choice, RequestSide } from '@colleja/core';
+import type {
+  BattleRequest,
+  BattleView,
+  Choice,
+  RequestSide,
+  TurnExplanation,
+} from '@colleja/core';
 import type { Locale } from '@colleja/data';
 import { type NarrationEntry, Narrator } from '@colleja/narration';
 import type {
@@ -15,6 +21,7 @@ import type {
 } from '@colleja/protocol';
 import { create } from 'zustand';
 import { BattleSocket, type SocketState } from '../../lib/battle-socket';
+import { downloadJson } from '../../lib/download';
 import { useSettings } from '../../stores/settings';
 
 const BATTLE_KEY = 'colleja:battle';
@@ -45,6 +52,10 @@ interface BattleState {
   status: BattleStatus | null;
   /** Rebuilt on every server message (a new object, so React re-renders). */
   screen: BattleScreen;
+  /** The bot's explanations of resolved decisions (what you may see of them). */
+  explanations: TurnExplanation[];
+  /** Id of the saved replay of this ending, once saved. */
+  savedReplayId: string | null;
   /** A choice or command was sent and the server has not answered yet. */
   busy: boolean;
   error: BattleError | null;
@@ -56,6 +67,8 @@ interface BattleState {
   rewind(turn: number): void;
   forfeit(): void;
   exportReplay(): void;
+  /** Saves the finished battle in the replay list. */
+  saveReplay(): void;
   /** Reattaches to a battle (after reloading the page). */
   resume(battleId: string): void;
   leave(): void;
@@ -103,7 +116,15 @@ export const useBattle = create<BattleState>()((set, get) => {
         rememberBattle(message.battleId);
         if (message.battleId !== get().battleId) {
           narrator = new Narrator('p1', { namesLocale: useSettings.getState().namesLocale });
-          set({ log: [], request: null, ownSide: null, status: null, screen: emptyScreen() });
+          set({
+            log: [],
+            request: null,
+            ownSide: null,
+            status: null,
+            screen: emptyScreen(),
+            explanations: [],
+            savedReplayId: null,
+          });
         }
         set({ battleId: message.battleId, info: message, error: null });
         pendingStart?.({ ok: true });
@@ -117,6 +138,9 @@ export const useBattle = create<BattleState>()((set, get) => {
           ownSide: message.request?.side ?? state.ownSide,
           status: message.status,
           screen: { view: narrator.state, entries: [...state.screen.entries, ...entries] },
+          explanations: [...state.explanations, ...(message.explanations ?? [])],
+          // A new ending (after a rewind) is a different replay.
+          savedReplayId: message.status.ended ? state.savedReplayId : null,
           busy: false,
         }));
         return;
@@ -129,10 +153,15 @@ export const useBattle = create<BattleState>()((set, get) => {
           ownSide: message.request?.side ?? get().ownSide,
           status: message.status,
           screen: { view: narrator.state, entries },
+          explanations: [...(message.explanations ?? [])],
+          savedReplayId: message.status.ended ? get().savedReplayId : null,
           busy: false,
         });
         return;
       }
+      case 'battle:replay-saved':
+        set({ savedReplayId: message.replayId, busy: false });
+        return;
       case 'battle:replay':
         downloadJson(
           `replay-${get().info?.mode ?? 'combate'}-${get().info?.seed ?? ''}.json`,
@@ -173,6 +202,8 @@ export const useBattle = create<BattleState>()((set, get) => {
     ownSide: null,
     status: null,
     screen: emptyScreen(),
+    explanations: [],
+    savedReplayId: null,
     busy: false,
     error: null,
 
@@ -202,6 +233,7 @@ export const useBattle = create<BattleState>()((set, get) => {
     rewind: (turn) => withBattle((battleId) => send({ type: 'battle:rewind', battleId, turn })),
     forfeit: () => withBattle((battleId) => send({ type: 'battle:forfeit', battleId })),
     exportReplay: () => withBattle((battleId) => send({ type: 'battle:export', battleId })),
+    saveReplay: () => withBattle((battleId) => send({ type: 'battle:save-replay', battleId })),
     resume(battleId) {
       set({ battleId });
       send({ type: 'battle:resume', battleId });
@@ -219,6 +251,8 @@ export const useBattle = create<BattleState>()((set, get) => {
         ownSide: null,
         status: null,
         screen: emptyScreen(),
+        explanations: [],
+        savedReplayId: null,
         busy: false,
         error: null,
         socketState: 'idle',
@@ -257,14 +291,4 @@ function forgetBattle(): void {
   } catch {
     // Nothing to forget.
   }
-}
-
-function downloadJson(filename: string, data: unknown): void {
-  const blob = new Blob([`${JSON.stringify(data, null, 2)}\n`], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
 }

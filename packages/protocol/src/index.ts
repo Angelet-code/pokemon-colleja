@@ -3,8 +3,10 @@
  * schemas plus inferred types. Browser-safe: shared by `apps/web` and `apps/server`.
  */
 export * from './battle';
+export * from './calc';
 export * from './common';
 export * from './opponents';
+export * from './replays';
 export * from './rest';
 export * from './teams';
 

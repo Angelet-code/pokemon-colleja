@@ -2,7 +2,12 @@ import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { RandomAgent } from '@colleja/bot';
-import { type AgentContext, isActionable, type PokemonSet } from '@colleja/core';
+import {
+  type AgentContext,
+  isActionable,
+  type PokemonSet,
+  type TurnExplanation,
+} from '@colleja/core';
 import type { GameMode } from '@colleja/data';
 import {
   BATTLE_SOCKET_PATH,
@@ -32,13 +37,20 @@ export function tempOpponentsDir(): string {
   return mkdtempSync(join(tmpdir(), 'colleja-opponents-'));
 }
 
+/** A temporary folder for saved replays. */
+export function tempReplaysDir(): string {
+  return mkdtempSync(join(tmpdir(), 'colleja-replays-'));
+}
+
 /** A server without sprites, web or timers, saving into temporary folders. */
 export function testServer({
   teamsDir = tempTeamsDir(),
   opponentsDir = tempOpponentsDir(),
+  replaysDir = tempReplaysDir(),
 }: {
   teamsDir?: string;
   opponentsDir?: string;
+  replaysDir?: string;
 } = {}): Promise<FastifyInstance> {
   return buildServer({
     spritesDir: null,
@@ -46,6 +58,7 @@ export function testServer({
     sweepIntervalMs: 0,
     teamsDir,
     opponentsDir,
+    replaysDir,
   });
 }
 
@@ -120,6 +133,8 @@ export class TestClient {
  */
 export class SocketPlayer {
   readonly log: string[] = [];
+  /** The bot's explanations received so far (replaced by snapshots). */
+  explanations: TurnExplanation[] = [];
   battleId = '';
   team: PokemonSet[] = [];
   mode: GameMode = 'singles';
@@ -143,9 +158,11 @@ export class SocketPlayer {
         return;
       case 'battle:snapshot':
         this.log.splice(0, this.log.length, ...message.log);
+        this.explanations = [...(message.explanations ?? [])];
         break;
       case 'battle:update':
         this.log.push(...message.lines);
+        this.explanations.push(...(message.explanations ?? []));
         break;
       case 'battle:error':
         throw new Error(`${message.kind}: ${message.message} ${message.details?.join(' ') ?? ''}`);

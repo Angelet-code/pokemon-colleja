@@ -19,6 +19,7 @@ import {
   TeamTextSchema,
 } from './common';
 import { OpponentIdSchema } from './opponents';
+import { TurnExplanationSchema } from './replays';
 import { TeamIdSchema } from './teams';
 
 /** WebSocket endpoint path. */
@@ -67,6 +68,8 @@ export const ClientMessageSchema = z.discriminatedUnion('type', [
   }),
   z.object({ type: z.literal('battle:forfeit'), battleId: BattleIdSchema }),
   z.object({ type: z.literal('battle:export'), battleId: BattleIdSchema }),
+  /** Saves the finished battle in the replay list (`/api/replays`). */
+  z.object({ type: z.literal('battle:save-replay'), battleId: BattleIdSchema }),
   /** Reattach to a battle after a reconnection (while the server keeps it). */
   z.object({ type: z.literal('battle:resume'), battleId: BattleIdSchema }),
 ]);
@@ -131,6 +134,11 @@ export const ServerMessageSchema = z.discriminatedUnion('type', [
     lines: z.array(z.string()),
     request: RequestSchema.nullable(),
     status: BattleStatusSchema,
+    /**
+     * The bot's explanations of decisions that are now resolved (new since the last message),
+     * with what the player has not seen yet hidden.
+     */
+    explanations: z.array(TurnExplanationSchema).optional(),
   }),
   /** Full state, after a rewind, an undo or a reconnection: the client starts over from it. */
   z.object({
@@ -139,12 +147,20 @@ export const ServerMessageSchema = z.discriminatedUnion('type', [
     log: z.array(z.string()),
     request: RequestSchema.nullable(),
     status: BattleStatusSchema,
+    /** Every resolved explanation of the bot so far (redacted like in `battle:update`). */
+    explanations: z.array(TurnExplanationSchema).optional(),
   }),
   /** Replay JSON of a finished battle (`ReplayData` of `@colleja/engine`). */
   z.object({
     type: z.literal('battle:replay'),
     battleId: BattleIdSchema,
     replay: z.record(z.string(), z.unknown()),
+  }),
+  /** The replay was saved (`battle:save-replay`). */
+  z.object({
+    type: z.literal('battle:replay-saved'),
+    battleId: BattleIdSchema,
+    replayId: z.string(),
   }),
   z.object({
     type: z.literal('battle:error'),

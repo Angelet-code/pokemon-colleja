@@ -11,6 +11,9 @@ export const TEAMS_DIR = fileURLToPath(new URL('storage/teams/', REPO_ROOT));
 /** Saved opponents (team plus difficulty), one JSON file each. */
 export const OPPONENTS_DIR = fileURLToPath(new URL('storage/opponents/', REPO_ROOT));
 
+/** Replays the player chose to save, one JSON file each. */
+export const REPLAYS_DIR = fileURLToPath(new URL('storage/replays/', REPO_ROOT));
+
 /** Production build of the web app (`npm run build`). */
 export const WEB_DIST_DIR = fileURLToPath(new URL('apps/web/dist/', REPO_ROOT));
 

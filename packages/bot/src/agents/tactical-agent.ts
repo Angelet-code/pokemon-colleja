@@ -25,8 +25,9 @@ import { pickBest } from '../analysis/evaluation';
 import { duelScore, fightingForm, planSingles } from '../analysis/singles-plan';
 import type { Situation } from '../analysis/situation';
 import { selectByCoverage } from '../analysis/team-selection';
+import { describeAction, EXPLANATION_METHODS, explanation, roundScore } from '../explain';
 import type { BotLevel } from '../levels';
-import { AggressiveAgent } from './aggressive-agent';
+import { AggressiveAgent, explainContext } from './aggressive-agent';
 
 export class TacticalAgent extends AggressiveAgent {
   override readonly name: string = 'Bot táctico';
@@ -48,7 +49,13 @@ export class TacticalAgent extends AggressiveAgent {
   protected override chooseReplacements(situation: Situation, request: SwitchRequest): Choice {
     const chosen = new Set<number>();
     const foes = situation.activeFoes();
-    const actions = getSlotOptions(request).map((slot): SlotAction => {
+    const groups: {
+      slot: (typeof slots)[number];
+      scored: { position: number; score: number }[];
+      picked: number | null;
+    }[] = [];
+    const slots = getSlotOptions(request);
+    const actions = slots.map((slot): SlotAction => {
       const scored = (slot.mustPass ? [] : slot.switches)
         .filter((position) => !chosen.has(position))
         .flatMap((position) => {
@@ -62,23 +69,64 @@ export class TacticalAgent extends AggressiveAgent {
           return [{ position, score: foes.length > 0 ? total / foes.length : 0 }];
         });
       const best = pickBest(scored, this.random);
+      groups.push({ slot, scored, picked: best?.position ?? null });
       if (!best) return { type: 'pass' };
       chosen.add(best.position);
       return { type: 'switch', slot: best.position };
     });
+    this.explainLast = () =>
+      explanation(
+        'switch',
+        EXPLANATION_METHODS.duels,
+        groups.map(({ slot, scored, picked }) =>
+          scored.map(({ position, score }) => ({
+            actions: [
+              describeAction(explainContext(situation), slot, { type: 'switch', slot: position }),
+            ],
+            score: roundScore(score),
+            chosen: position === picked,
+          })),
+        ),
+      );
     return { type: 'actions', actions };
   }
 
   protected override chooseMoves(situation: Situation, request: MoveRequest): Choice {
     const slots = getSlotOptions(request);
+    const context = explainContext(situation);
     if (situation.doubles) {
-      const actions = planDoubles(situation, slots, this.random);
-      if (actions) return { type: 'actions', actions };
+      const plan = planDoubles(situation, slots, this.random);
+      if (plan) {
+        this.explainLast = () =>
+          explanation('moves', EXPLANATION_METHODS.doubles, [
+            plan.pairs.map((pair) => ({
+              actions: pair.actions.flatMap((action, index) => {
+                const slot = slots[index];
+                return slot && action.type !== 'pass'
+                  ? [describeAction(context, slot, action)]
+                  : [];
+              }),
+              score: roundScore(pair.score),
+              chosen: pair === plan.chosen,
+            })),
+          ]);
+        return { type: 'actions', actions: plan.chosen.actions };
+      }
     } else {
       const [slot] = slots;
       const options = slot ? planSingles(situation, slot) : null;
       const best = options ? pickBest(options, this.random) : undefined;
-      if (best) return { type: 'actions', actions: [best.action] };
+      if (slot && options && best) {
+        this.explainLast = () =>
+          explanation('moves', EXPLANATION_METHODS.singles, [
+            options.map((option) => ({
+              actions: [describeAction(context, slot, option.action)],
+              score: roundScore(option.score),
+              chosen: option === best,
+            })),
+          ]);
+        return { type: 'actions', actions: [best.action] };
+      }
     }
     return super.chooseMoves(situation, request);
   }

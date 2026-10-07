@@ -20,12 +20,14 @@ export function Layout() {
           <span className="hidden rounded bg-panel-2 px-1.5 py-0.5 text-xs text-muted md:inline">
             Champions · Reg M-C
           </span>
-          <nav aria-label="Secciones" className="ml-2 flex gap-1">
+          <nav aria-label="Secciones" className="ml-2 flex min-w-0 gap-1 overflow-x-auto">
             <NavItem to="/" end>
               Combate
             </NavItem>
             <NavItem to="/equipos">Equipos</NavItem>
             <NavItem to="/rivales">Rivales</NavItem>
+            <NavItem to="/calculadora">Calculadora</NavItem>
+            <NavItem to="/replays">Replays</NavItem>
           </nav>
           <div className="ml-auto flex items-center gap-2">
             <span className="hidden text-xs text-muted sm:inline">Nombres</span>
@@ -64,7 +66,7 @@ function NavItem({ to, end, children }: { to: string; end?: boolean; children: s
       to={to}
       end={end}
       className={({ isActive }) =>
-        `rounded-lg px-2.5 py-1 text-sm font-medium transition hover:bg-panel-2 ${
+        `shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1 text-sm font-medium transition hover:bg-panel-2 ${
           isActive ? 'bg-panel-2 text-text' : 'text-muted hover:text-text'
         }`
       }

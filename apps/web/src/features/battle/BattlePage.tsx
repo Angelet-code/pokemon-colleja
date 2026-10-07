@@ -11,6 +11,7 @@ import { rememberedBattle, useBattle } from './battle-store';
 import { ActionPanel } from './components/ActionPanel';
 import { BattleLog } from './components/BattleLog';
 import { BattleToolbar } from './components/BattleToolbar';
+import { BotExplanation } from './components/BotExplanation';
 import { EndPanel } from './components/EndPanel';
 import { Field } from './components/Field';
 import { TeamPreview } from './components/TeamPreview';
@@ -71,6 +72,8 @@ export function BattlePage() {
         busy={busy}
         onRematch={() => void battle.rematch()}
         onExport={battle.exportReplay}
+        onSave={battle.saveReplay}
+        savedReplayId={battle.savedReplayId}
         onNew={leave}
       />
     );
@@ -167,6 +170,7 @@ export function BattlePage() {
           />
           <Field view={screen.view} own={ownSide?.pokemon ?? []} />
           {controls}
+          <BotExplanation explanations={battle.explanations} />
         </div>
         <div className={`min-h-[60vh] lg:min-h-0 ${tab === 'field' ? 'hidden lg:block' : ''}`}>
           <BattleLog entries={screen.entries} />

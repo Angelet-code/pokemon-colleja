@@ -4,6 +4,7 @@
  */
 export * from './battle/agent';
 export * from './battle/choice';
+export * from './battle/explanation';
 export * from './battle/options';
 export * from './battle/request';
 export * from './battle/types';

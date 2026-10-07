@@ -6,7 +6,9 @@ import {
   type ActionableRequest,
   type AgentContext,
   type BattleAgent,
+  BattleView,
   type Choice,
+  type DecisionExplanation,
   getSlotOptions,
   isFainted,
   type MoveOption,
@@ -19,6 +21,7 @@ import {
   type SwitchRequest,
   type TeamPreviewRequest,
 } from '@colleja/core';
+import { describeAction, EXPLANATION_METHODS, explanation } from './explain';
 
 export interface RandomAgentOptions {
   /** Same seed → same decisions for the same requests. */
@@ -35,6 +38,7 @@ export class RandomAgent implements BattleAgent {
   private readonly random: SeededRandom;
   private readonly moveChance: number;
   private readonly megaChance: number;
+  private explainLast: (() => DecisionExplanation) | null = null;
 
   constructor(options: RandomAgentOptions = {}) {
     this.random = new SeededRandom(options.seed ?? String(Math.random()));
@@ -43,7 +47,40 @@ export class RandomAgent implements BattleAgent {
   }
 
   choose(context: AgentContext): Choice {
-    return this.chooseFor(context.request);
+    this.explainLast = null;
+    const choice = this.chooseFor(context.request);
+    const { request } = context;
+    if (choice.type === 'actions') {
+      this.explainLast = () => {
+        const explainContext = {
+          request,
+          view: BattleView.from(context.log),
+          side: context.side,
+        };
+        const slots = getSlotOptions(request as MoveRequest | SwitchRequest);
+        return explanation(
+          requestKind(request) === 'switch' ? 'switch' : 'moves',
+          EXPLANATION_METHODS.random,
+          [
+            [
+              {
+                actions: choice.actions.flatMap((action, index) => {
+                  const slot = slots[index];
+                  return slot ? [describeAction(explainContext, slot, action)] : [];
+                }),
+                score: 0,
+                chosen: true,
+              },
+            ],
+          ],
+        );
+      };
+    }
+    return choice;
+  }
+
+  explain(): DecisionExplanation | null {
+    return this.explainLast?.() ?? null;
   }
 
   chooseFor(request: ActionableRequest): Choice {

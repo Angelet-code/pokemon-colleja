@@ -18,5 +18,6 @@ export * from './analysis/opponent-model';
 export * from './analysis/singles-plan';
 export * from './analysis/situation';
 export * from './analysis/team-selection';
+export * from './explain';
 export * from './levels';
 export * from './random-agent';

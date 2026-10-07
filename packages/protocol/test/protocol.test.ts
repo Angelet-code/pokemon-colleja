@@ -7,6 +7,7 @@ import {
   teamChoice,
 } from '@colleja/core';
 import {
+  CalcRequestSchema,
   type ClientMessage,
   ClientMessageSchema,
   CreateOpponentRequestSchema,
@@ -16,6 +17,7 @@ import {
   PokemonSetSchema,
   parseClientMessage,
   RandomTeamRequestSchema,
+  ReplayContentSchema,
   SavedOpponentSchema,
   type ServerMessage,
   ServerMessageSchema,
@@ -238,5 +240,101 @@ describe('saved teams', () => {
     for (const opponent of [{ kind: 'saved' }, { kind: 'saved', opponentId: '../etc' }]) {
       expect(StartBattleSchema.safeParse({ ...start, opponent }).success).toBe(false);
     }
+  });
+});
+
+describe('phase 8: calculator, replays and explanations', () => {
+  const garchomp = {
+    species: 'garchomp',
+    ability: 'roughskin',
+    nature: 'jolly',
+    statPoints: { hp: 2, atk: 32, def: 0, spa: 0, spd: 0, spe: 32 },
+    moves: ['earthquake'],
+  };
+  const explanation = {
+    turn: 3,
+    kind: 'moves' as const,
+    method: 'Balance de PS tras simular el intercambio.',
+    options: [
+      {
+        actions: [{ kind: 'move' as const, user: 'garchomp', move: 'earthquake', mega: true }],
+        score: 12.5,
+        chosen: true,
+      },
+      { actions: [{ kind: 'hidden' as const, user: 'garchomp' }], score: 3, chosen: false },
+      {
+        actions: [{ kind: 'switch' as const, user: 'garchomp', species: 'gengar' }],
+        score: 1,
+        chosen: false,
+      },
+    ],
+  };
+
+  it('round-trips a calculator request and rejects impossible states', () => {
+    const request = {
+      attacker: { set: garchomp, mega: true, boosts: { atk: 2 }, status: 'brn' },
+      defender: { set: garchomp, hpPercent: 50 },
+      move: 'earthquake',
+      field: { doubles: true, weather: 'sandstorm', screens: ['reflect'] },
+    };
+    expect(CalcRequestSchema.parse(request)).toEqual(request);
+    for (const bad of [
+      { ...request, move: 'Earthquake' },
+      { ...request, attacker: { set: garchomp, boosts: { atk: 7 } } },
+      { ...request, defender: { set: garchomp, hpPercent: 0 } },
+      { ...request, field: { doubles: true, weather: 'fog' } },
+    ]) {
+      expect(CalcRequestSchema.safeParse(bad).success, JSON.stringify(bad)).toBe(false);
+    }
+  });
+
+  it('round-trips a saved replay with its explanations', () => {
+    const content = {
+      name: 'Jugador contra Bot Táctico',
+      botLevel: 2,
+      opponentKind: 'saved',
+      replay: {
+        version: 1,
+        mode: 'singles',
+        ruleset: 'champions-regmc',
+        formatid: 'gen9championsbssregmc',
+        options: { teamPreview: true, openTeamSheets: false },
+        seed: 'x',
+        players: { p1: { name: 'Jugador', team: [garchomp] }, p2: { name: 'Bot', team: [] } },
+        inputLog: ['>start {}'],
+        log: ['|turn|1'],
+        winner: null,
+        turns: 1,
+      },
+      playerLog: ['|turn|1'],
+      explanations: [explanation],
+    };
+    expect(ReplayContentSchema.parse(content)).toEqual(content);
+    expect(
+      ReplayContentSchema.safeParse({
+        ...content,
+        explanations: [{ ...explanation, kind: 'team' }],
+      }).success,
+    ).toBe(false);
+  });
+
+  it('carries explanations in updates and the save-replay messages', () => {
+    const update: ServerMessage = {
+      type: 'battle:update',
+      battleId: 'b1',
+      lines: [],
+      request: null,
+      status: { turn: 4, rewindableTurns: [], undoTarget: null, ended: false, winner: null },
+      explanations: [explanation],
+    };
+    expect(ServerMessageSchema.parse(update)).toEqual(update);
+    const saved: ServerMessage = { type: 'battle:replay-saved', battleId: 'b1', replayId: 'r1' };
+    expect(ServerMessageSchema.parse(saved)).toEqual(saved);
+    expect(
+      parseClientMessage(JSON.stringify({ type: 'battle:save-replay', battleId: 'b1' })),
+    ).toEqual({
+      ok: true,
+      message: { type: 'battle:save-replay', battleId: 'b1' },
+    });
   });
 });

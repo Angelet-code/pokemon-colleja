@@ -2,15 +2,19 @@
 import {
   API_PREFIX,
   type ApiError,
+  type CalcRequest,
+  type CalcResponse,
   type GameModeValue,
   type ImportOpponentRequest,
   type ImportTeamRequest,
   type ListOpponentsResponse,
+  type ListReplaysResponse,
   type ListTeamsResponse,
   type MetaResponse,
   type OpponentContent,
   type OpponentResponse,
   type RandomTeamResponse,
+  type ReplayResponse,
   type TeamContent,
   type TeamResponse,
   type ValidateTeamResponse,
@@ -83,4 +87,11 @@ export const api = {
     request<OpponentResponse>(`/opponents/${encodeURIComponent(id)}`, json('PUT', { opponent })),
   deleteOpponent: (id: string) =>
     request<void>(`/opponents/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+
+  // Practice tools
+  calc: (body: CalcRequest) => request<CalcResponse>('/calc', json('POST', body)),
+  listReplays: () => request<ListReplaysResponse>('/replays'),
+  getReplay: (id: string) => request<ReplayResponse>(`/replays/${encodeURIComponent(id)}`),
+  deleteReplay: (id: string) =>
+    request<void>(`/replays/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 };

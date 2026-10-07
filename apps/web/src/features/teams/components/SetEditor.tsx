@@ -54,7 +54,8 @@ export function SetEditor({
   locale: Locale;
   problems: FieldProblemMap;
   onChange: (set: PokemonSet) => void;
-  onRemove: () => void;
+  /** Without it there is no "Quitar" button (e.g. in the calculator). */
+  onRemove?: () => void;
 }) {
   const set = draft.members[index];
   const mode: GameMode = draft.mode;
@@ -148,9 +149,11 @@ export function SetEditor({
             <Button variant="ghost" onClick={() => setDialog('export')}>
               Exportar
             </Button>
-            <Button variant="danger" onClick={onRemove}>
-              Quitar
-            </Button>
+            {onRemove && (
+              <Button variant="danger" onClick={onRemove}>
+                Quitar
+              </Button>
+            )}
           </div>
         </div>
       </div>

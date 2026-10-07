@@ -1,5 +1,6 @@
-/** End of the battle: result, seed, replay and rematch. */
+/** End of the battle: result, seed, replay (save or download) and rematch. */
 import type { BattleStatus } from '@colleja/protocol';
+import { Link } from 'react-router';
 import { Button, Panel } from '../../../components/ui';
 
 export function EndPanel({
@@ -9,6 +10,8 @@ export function EndPanel({
   busy,
   onRematch,
   onExport,
+  onSave,
+  savedReplayId,
   onNew,
 }: {
   status: BattleStatus;
@@ -17,6 +20,9 @@ export function EndPanel({
   busy: boolean;
   onRematch: () => void;
   onExport: () => void;
+  onSave: () => void;
+  /** Set once this ending is saved in the replay list. */
+  savedReplayId: string | null;
   onNew: () => void;
 }) {
   const result =
@@ -40,8 +46,20 @@ export function EndPanel({
           <Button variant="primary" onClick={onRematch} disabled={busy}>
             Revancha
           </Button>
-          <Button onClick={onExport} disabled={busy}>
-            Descargar replay
+          {savedReplayId ? (
+            <Link
+              to={`/replays/${savedReplayId}`}
+              className="inline-flex items-center rounded-lg border border-good/40 bg-good/10 px-3 py-2 text-sm font-medium text-good hover:brightness-110"
+            >
+              ✓ Guardado · Ver replay
+            </Link>
+          ) : (
+            <Button onClick={onSave} disabled={busy}>
+              Guardar replay
+            </Button>
+          )}
+          <Button variant="ghost" onClick={onExport} disabled={busy}>
+            Descargar
           </Button>
           <Button variant="ghost" onClick={onNew}>
             Cambiar equipos

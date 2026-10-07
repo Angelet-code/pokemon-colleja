@@ -61,9 +61,10 @@ export class BattleManager {
     }
 
     const room = new BattleRoom(
-      { id: randomUUID(), seed, botLevel },
+      { id: randomUUID(), seed, botLevel, opponentKind: message.opponent.kind },
       session,
       createBot(botLevel, { seed: `${seed}:bot` }),
+      this.storage.replays,
     );
     this.rooms.set(room.id, room);
     return room;

@@ -1,6 +1,7 @@
 import type { GameMode } from '@colleja/data';
 import type { PokemonSet } from '../team/types';
 import type { Choice } from './choice';
+import type { DecisionExplanation } from './explanation';
 import type { ActionableRequest } from './request';
 import type { SideId } from './types';
 
@@ -24,4 +25,9 @@ export interface AgentContext {
 export interface BattleAgent {
   readonly name: string;
   choose(context: AgentContext): Choice | Promise<Choice>;
+  /**
+   * Why the last `choose` call chose what it did (`null` when there is nothing to explain,
+   * e.g. team preview). Optional: only bots implement it, and it never changes the decision.
+   */
+  explain?(): DecisionExplanation | null;
 }
