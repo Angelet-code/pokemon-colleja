@@ -4,6 +4,27 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ## [Sin publicar]
 
+### Fase 8 — Herramientas de práctica (2026-10-08)
+
+#### Añadido
+
+- **Calculadora de daño** (`/calculadora`, enlace en la cabecera): atacante y defensor con la ficha del teambuilder, su estado (Mega, PS, estado alterado, cambios de características) y el campo (modo, clima, campo, pantallas). Calcula los cuatro movimientos del atacante a la vez (rango en PS y %, probabilidad de KO y golpes para KO), con "Intercambiar" y "Cargar de mis equipos". Corre en el servidor (`POST /api/calc`) con el mismo `estimateDamage` que usa el bot.
+- **Replays guardados** (`/replays`): "Guardar replay" al terminar un combate (`battle:save-replay` → `battle:replay-saved`), lista con resultado y equipos, descarga y borrado con confirmación, y **visor turno a turno** con el campo, el log y lo que valoró el bot. Ve todo (PS exactos y equipos completos) o "Como jugador". Se guardan en `storage/replays/<id>.json` (`FileReplayRepository`); rutas `GET /api/replays`, `GET/DELETE /api/replays/:id`.
+- **"¿Por qué hizo eso el bot?"** en el combate: tras resolverse cada turno, las opciones que valoró el bot con su puntuación y la elegida marcada. Con equipo cerrado, lo que aún no has visto sale como "algo que aún no has visto".
+- **Decisiones de producto**: calculadora en el servidor; replays **solo si los pides**; explicación **tras cada turno**; visor que lo muestra todo con interruptor "Como jugador"; lo no revelado se oculta en la explicación.
+- `@colleja/core`: `DecisionExplanation`, `TurnExplanation`, `redactExplanation` y `BattleAgent.explain?()`.
+- `@colleja/bot`: los tres niveles explican su última decisión (bajo demanda, sin tocar el generador aleatorio); `describeAction`, `EXPLANATION_METHODS`. `planDoubles` devuelve también las parejas evaluadas.
+- `@colleja/protocol`: `calc.ts`, `replays.ts` (`ReplayDataSchema`, `ReplayContentSchema`, `TurnExplanationSchema`) y `explanations` en `battle:update`/`battle:snapshot`.
+- Tests (270 en total): mismas decisiones con y sin explicación en los tres niveles y dos modos; calculadora = `estimateDamage`; explicaciones solo de turnos resueltos y sin movimientos no vistos; guardar, listar, leer y borrar replays; pasos del visor, panel, store y calculadora en la web.
+- Documentación: [guía de herramientas](docs/guias/herramientas.md), [ADR-0008](docs/adr/0008-herramientas-de-practica.md) y el brief de la fase 9 (propuesta de ampliaciones).
+
+#### Cambiado
+
+- `SetEditor` admite no tener botón "Quitar" (`onRemove` opcional) para reutilizarse en la calculadora.
+- La cabecera tiene cinco secciones (Combate, Equipos, Rivales, Calculadora, Replays) y se desplaza en horizontal en pantallas estrechas.
+- `testServer()` recibe también `replaysDir`.
+- El bundle de la web pasa a ≈1,57 MB (≈344 KB con gzip).
+
 ### Fase 7 — Rivales guardados (2026-10-08)
 
 #### Añadido

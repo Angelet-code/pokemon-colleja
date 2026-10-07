@@ -85,6 +85,10 @@ Resultados de referencia al cerrar la fase 4: en el [CHANGELOG](../../CHANGELOG.
 3. Corrige el **modelo** (un efecto que falta en la simulación, un dato mal leído), no añadas pesos sueltos.
 4. Mide con el arena contra el nivel anterior: al menos 300 combates por modo (±5 %) y, para cifras finales, 1000.
 
+## Explicación de las decisiones
+
+Cada nivel implementa `explain()` (de `BattleAgent`): devuelve la explicación de su última decisión con el método de valoración (`EXPLANATION_METHODS`) y sus mejores opciones con la puntuación. Se construye **bajo demanda** a partir de lo que el bot ya calculó, sin usar el generador aleatorio, así que nunca cambia la decisión (lo comprueba `test/explain.test.ts`). El servidor la enseña al jugador tras resolverse cada turno y oculta lo que aún no ha visto ([guía de herramientas](herramientas.md)).
+
 ## Tests
 
 | Fichero | Qué cubre |

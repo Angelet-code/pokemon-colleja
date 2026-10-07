@@ -23,8 +23,8 @@ El proyecto avanza **por fases** (PLAN §8). Cuando te pidan *"continúa con la 
 | 5. Servidor + UI de combate (MVP) | ✅ ([guía](docs/guias/web.md), [ADR-0005](docs/adr/0005-servidor-web-y-narracion.md)) |
 | 6. Teambuilder y equipos guardados | ✅ ([guía](docs/guias/teambuilder.md), [ADR-0006](docs/adr/0006-equipos-guardados-y-teambuilder.md)) |
 | 7. Rivales guardados | ✅ ([guía](docs/guias/rivales.md), [ADR-0007](docs/adr/0007-rivales-guardados.md)) |
-| **8. Herramientas de práctica** | ⏭️ **Siguiente**: [docs/fases/fase-8.md](docs/fases/fase-8.md) |
-| Futuro | Pendiente (PLAN §8) |
+| 8. Herramientas de práctica | ✅ ([guía](docs/guias/herramientas.md), [ADR-0008](docs/adr/0008-herramientas-de-practica.md)) |
+| **9. Siguiente ampliación** | ⏭️ **Siguiente**: [docs/fases/fase-9.md](docs/fases/fase-9.md) (propuesta: el usuario elige) |
 
 ### Protocolo de cierre de fase
 
@@ -35,7 +35,7 @@ El proyecto avanza **por fases** (PLAN §8). Cuando te pidan *"continúa con la 
    - `AGENTS.md`: tabla de estado, comandos nuevos y reglas o particularidades nuevas.
    - `README.md`: línea de estado y comandos de usuario.
    - Guías (`docs/guias/`) y ADRs (`docs/adr/`) si aplica.
-3. **Escribe el brief de la siguiente fase** en `docs/fases/fase-(N+1).md`, con el mismo formato que `fase-8.md`: objetivo, punto de partida, hechos verificados, diseño recomendado, tests, criterios de "hecho" y fuera de alcance. Así la siguiente sesión puede empezar sin contexto.
+3. **Escribe el brief de la siguiente fase** en `docs/fases/fase-(N+1).md`, con el mismo formato que `fase-8.md` (si no hay fase planificada, una propuesta de ampliaciones como `fase-9.md`): objetivo, punto de partida, hechos verificados, diseño recomendado, tests, criterios de "hecho" y fuera de alcance. Así la siguiente sesión puede empezar sin contexto.
 4. Commits con Conventional Commits y **push a `origin/main`** (el usuario trabaja así). La CI de GitHub ejecuta `npm run check` en cada push: compruébala.
 
 ## Preferencias del usuario
@@ -53,6 +53,7 @@ El proyecto avanza **por fases** (PLAN §8). Cuando te pidan *"continúa con la 
   - Web (2026-10-07): pantalla de combate al estilo Showdown (campo arriba, controles abajo, log a la derecha), tema oscuro por defecto con opción clara, animaciones mínimas, y el selector ES/EN cambia los **nombres** (la interfaz y el log siguen en español).
   - Teambuilder (2026-10-08): un equipo con problemas **se guarda como borrador** (solo se exige legalidad para combatir); el modo del equipo es el **preferido** y vale para los dos si es legal; lista a la izquierda y ficha a la derecha; botón de set sugerido.
   - Rivales (2026-10-08): **colección aparte** con su dificultad (se pueden copiar de tus equipos); **solo se guarda la dificultad**, no las opciones de práctica; en el inicio **se aplica la dificultad del rival y se puede cambiar**; un rival generado **hay que guardarlo** para combatir contra él.
+  - Herramientas (2026-10-08): calculadora **en el servidor**; replays guardados **solo si el usuario lo pide**; explicación del bot **tras cada turno**; visor de replays omnisciente con interruptor "Como jugador"; con equipo cerrado, la explicación **oculta lo no revelado**.
 
 ## Puesta en marcha
 
@@ -73,7 +74,7 @@ npm run dev          # servidor + web: http://127.0.0.1:5173
 |---|---|
 | `npm install` | Instala dependencias y prepara Showdown (postinstall → `npm run setup`) |
 | `npm run setup` / `setup:force` | Sincroniza el submódulo, instala sus dependencias y compila `dist/` con tipos (idempotente) |
-| `npm run dev` | Servidor (127.0.0.1:3001, con recarga) + web con Vite (http://127.0.0.1:5173) a la vez ([guía](docs/guias/web.md)). Los equipos guardados van a `storage/teams/` ([guía](docs/guias/teambuilder.md)) y los rivales a `storage/opponents/` ([guía](docs/guias/rivales.md)) |
+| `npm run dev` | Servidor (127.0.0.1:3001, con recarga) + web con Vite (http://127.0.0.1:5173) a la vez ([guía](docs/guias/web.md)). Los equipos guardados van a `storage/teams/` ([guía](docs/guias/teambuilder.md)) y los rivales a `storage/opponents/` ([guía](docs/guias/rivales.md)). Calculadora, replays y explicación del bot: [guía](docs/guias/herramientas.md) |
 | `npm run build` / `npm start` | Compila la web (`apps/web/dist`) / la compila y la sirve desde el servidor en http://127.0.0.1:3001 |
 | `npm run play` | Combate en la terminal contra el bot. Admite `-- --mode doubles --bot 0\|1\|2 --team <fichero> --opponent-team <fichero>\|random --seed X --no-preview --open-team-sheets --auto` ([guía](docs/guias/combate.md)) |
 | `npm run arena` | Torneo bot contra bot con equipos aleatorios. Admite `-- --a 2 --b 0 --mode singles\|doubles\|both --battles N --seed X` ([guía](docs/guias/bot.md)) |
@@ -93,7 +94,7 @@ packages/   → librerías: showdown (puente al motor), data (datos del juego), 
 tools/      → scripts: setup, smoke, data-pipeline, cli, arena, dev
 vendor/pokemon-showdown → submódulo git fijado a un commit (NO editar)
 docs/       → PLAN, research/, adr/, guias/, fases/ (briefs de cada fase)
-storage/    → datos del usuario (teams/ y opponents/ con los equipos y rivales guardados, replays/): local, no versionado
+storage/    → datos del usuario (teams/, opponents/ y replays/: equipos, rivales y replays guardados): local, no versionado
 assets/     → sprites descargados: local, no versionado
 ```
 
@@ -155,13 +156,20 @@ assets/     → sprites descargados: local, no versionado
 ## Particularidades de los equipos y rivales guardados y el teambuilder
 
 - **Lo guardado pasa por un repositorio**: `TeamRepository` (`apps/server/src/teams/team-repository.ts`) y `OpponentRepository` (`apps/server/src/opponents/opponent-repository.ts`), ambos sobre `FileJsonRepository` (`apps/server/src/storage/json-repository.ts`). Nunca escribas ficheros a mano desde otra parte. Un fichero por elemento en `storage/<colección>/<id>.json`; el nombre del fichero es el id y solo admite letras, números y guiones (`SavedIdSchema`). Una colección nueva es un `JsonFileFormat` y una subclase.
-- **Los tests nunca escriben en `storage/`**: usa `testServer()`, `tempTeamsDir()` y `tempOpponentsDir()` de `apps/server/test/helpers.ts` (carpetas temporales).
+- **Los tests nunca escriben en `storage/`**: usa `testServer()`, `tempTeamsDir()`, `tempOpponentsDir()` y `tempReplaysDir()` de `apps/server/test/helpers.ts` (carpetas temporales).
 - **Legalidad informada, no impuesta**: se guarda cualquier equipo que cumpla los límites estructurales de `TeamSchema` (6 miembros, 4 movimientos, 0–32 SP por stat). Los `problems` (core y después el validador de Showdown, con `teamProblems`) van en cada respuesta, y la legalidad solo se exige al empezar un combate.
 - El texto importado pasa por `fitTeamToLimits` (core), que recorta lo que no cabe y devuelve cada ajuste para enseñárselo al usuario.
 - Para mostrar un problema junto a su campo usa `checkTeamIssues`/`checkSetIssues` (core). No partas los textos de `checkTeam`.
 - Las operaciones del editor van en `apps/web/src/features/teams/team-draft.ts` (puras y testeadas); los componentes solo las llaman. Para comparar borradores usa `sameDraft` (zod reordena las claves al validar).
 - **Un rival es un equipo más `botLevel`, en plano** (`OpponentContentSchema = TeamContentSchema.extend({ botLevel })`). El editor es el mismo: `TeamEditorPage` recibe un `EditorDestination` (`TEAM_DESTINATION` u `OPPONENT_DESTINATION`) que dice dónde cargar y guardar. No dupliques el editor ni la lista (`SavedListLayout`, `SavedCard`).
 - **La dificultad del combate es siempre `botLevel` de `battle:start`**: con un rival guardado (`opponent: { kind: 'saved', opponentId }`) la web la rellena con la del rival, y el servidor no la lee del fichero.
+
+## Particularidades de las herramientas de práctica
+
+- **La calculadora es `estimateDamage` de `@colleja/bot`** en el servidor (`POST /api/calc`). No añadas `@smogon/calc` a la web ni otra fórmula de daño.
+- **Una explicación nunca cambia una decisión**: los bots guardan lo que ya calcularon y construyen la explicación en `explain()`, bajo demanda y sin tocar el generador aleatorio. `packages/bot/test/explain.test.ts` juega con y sin explicaciones y exige el mismo `inputLog`.
+- **La explicación es información oculta**: la sala (`BattleRoom`) solo envía las de turnos ya resueltos y, con equipo cerrado, pasadas por `redactExplanation` (core). Si tocas la sala, que siga en verde el test de `apps/server/test/tools.test.ts`.
+- **Los replays solo los crea el servidor** a partir de una sala terminada (`battle:save-replay`); no hay `POST /api/replays`. `ReplayDataSchema` (protocol) replica `ReplayData` (engine): si cambias uno, cambia el otro y sube la versión.
 
 ## Actualizar Showdown (nueva regulación o fixes)
 

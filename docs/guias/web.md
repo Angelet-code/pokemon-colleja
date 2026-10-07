@@ -1,6 +1,6 @@
 # Guía: servidor y app web
 
-Cómo se juega en el navegador y cómo está montado. Las decisiones de arquitectura están en [ADR-0005](../adr/0005-servidor-web-y-narracion.md). El editor de equipos y los rivales guardados tienen sus guías: [teambuilder](teambuilder.md) y [rivales](rivales.md).
+Cómo se juega en el navegador y cómo está montado. Las decisiones de arquitectura están en [ADR-0005](../adr/0005-servidor-web-y-narracion.md). El editor de equipos, los rivales guardados y las herramientas de práctica tienen sus guías: [teambuilder](teambuilder.md), [rivales](rivales.md) y [herramientas](herramientas.md).
 
 ## Uso
 
@@ -25,7 +25,8 @@ En el combate:
 
 - Los menús salen de la petición del motor: movimientos con tipo y PP, Megaevolucionar, objetivos en dobles (posición por posición, con "← Atrás") y cambios.
 - **Teclado**: 1–4 movimientos (u objetivos al apuntar), 5–9 cambios, Esc atrás.
-- Barra superior: **Deshacer**, **Rebobinar a…** un turno, **Rendirse** y **Replay**. El replay solo se puede descargar al terminar, porque contiene la información oculta del rival.
+- Barra superior: **Deshacer**, **Rebobinar a…** un turno, **Rendirse** y **Replay**. El replay solo se puede descargar o **guardar** ("Guardar replay", para verlo en [Replays](herramientas.md)) al terminar, porque contiene la información oculta del rival.
+- Bajo los controles, **"¿Por qué hizo eso el bot?"**: lo que valoró el bot en cada turno ya jugado ([herramientas](herramientas.md)).
 - Pantalla final: revancha (misma configuración, otra semilla), replay o volver al inicio.
 - **Nombres ES/EN** en la cabecera: cambia el idioma de los nombres; la interfaz y el log siguen en español. También se puede cambiar el tema (oscuro o claro).
 - Si recargas la página o se corta la conexión, la web vuelve a engancharse al combate mientras el servidor siga arrancado.
@@ -47,7 +48,7 @@ apps/web (React)  ──REST /api/*──▶  apps/server (Fastify)
 | `@colleja/protocol` | Esquemas zod de los mensajes WebSocket y REST, y sus tipos. `parseClientMessage` valida lo que llega del navegador (errores en español) |
 | `@colleja/narration` | `Narrator`: líneas del protocolo → entradas del log (`turn`, `major`, `minor`, `end`) con las plantillas de Showdown en español o inglés, más un `BattleView` actualizado. Nombres para mostrar (`speciesName`, `moveName`…). Lo usan la web y el CLI |
 | `apps/server` | `buildServer()` (sin escuchar, para los tests) y `main.ts`. REST: `GET /api/meta`, `POST /api/teams/validate`, `POST /api/teams/random` y el CRUD de equipos y rivales guardados (`/api/teams` y `/api/opponents`, ver [teambuilder](teambuilder.md) y [rivales](rivales.md)). WebSocket `/ws`. Sirve `/sprites/*` y, si existe, `apps/web/dist` |
-| `apps/web` | Inicio (`features/setup`), combate (`features/battle`: store Zustand, campo, menús, vista previa, log y barra de herramientas) y equipos y rivales (`features/teams`) |
+| `apps/web` | Inicio (`features/setup`), combate (`features/battle`: store Zustand, campo, menús, vista previa, log y barra de herramientas) equipos y rivales (`features/teams`), calculadora (`features/calc`) y replays (`features/replays`) |
 
 ### Mensajes
 
