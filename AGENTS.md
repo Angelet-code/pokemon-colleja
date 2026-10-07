@@ -18,8 +18,9 @@ El proyecto avanza **por fases** (PLAN §8). Cuando te pidan *"continúa con la 
 | 0. Investigación y plan | ✅ ([docs/research/](docs/research/)) |
 | 1. Cimientos (monorepo, Showdown vendorizado, smoke) | ✅ |
 | 2. Pipeline de datos (`@colleja/data`) | ✅ ([guía](docs/guias/datos.md)) |
-| **3. Dominio + motor + CLI jugable** | ⏭️ **Siguiente**: [docs/fases/fase-3.md](docs/fases/fase-3.md) |
-| 4–8 y futuro | Pendientes (PLAN §8) |
+| 3. Dominio + motor + CLI jugable | ✅ ([guía](docs/guias/combate.md), [ADR-0003](docs/adr/0003-sesion-de-combate.md)) |
+| **4. Bot (niveles 1–2, teamgen, arena)** | ⏭️ **Siguiente**: [docs/fases/fase-4.md](docs/fases/fase-4.md) |
+| 5–8 y futuro | Pendientes (PLAN §8) |
 
 ### Protocolo de cierre de fase
 
@@ -30,7 +31,7 @@ El proyecto avanza **por fases** (PLAN §8). Cuando te pidan *"continúa con la 
    - `AGENTS.md`: tabla de estado, comandos nuevos y reglas o particularidades nuevas.
    - `README.md`: línea de estado y comandos de usuario.
    - Guías (`docs/guias/`) y ADRs (`docs/adr/`) si aplica.
-3. **Escribe el brief de la siguiente fase** en `docs/fases/fase-(N+1).md`, con el mismo formato que `fase-3.md`: objetivo, punto de partida, hechos verificados, diseño recomendado, tests, criterios de "hecho" y fuera de alcance. Así la siguiente sesión puede empezar sin contexto.
+3. **Escribe el brief de la siguiente fase** en `docs/fases/fase-(N+1).md`, con el mismo formato que `fase-4.md`: objetivo, punto de partida, hechos verificados, diseño recomendado, tests, criterios de "hecho" y fuera de alcance. Así la siguiente sesión puede empezar sin contexto.
 4. Commits con Conventional Commits y **push a `origin/main`** (el usuario trabaja así). La CI de GitHub ejecuta `npm run check` en cada push: compruébala.
 
 ## Preferencias del usuario
@@ -63,10 +64,11 @@ npm run data:sprites # opcional: sprites en assets/ (solo hacen falta para la UI
 |---|---|
 | `npm install` | Instala dependencias y prepara Showdown (postinstall → `npm run setup`) |
 | `npm run setup` / `setup:force` | Sincroniza el submódulo, instala sus dependencias y compila `dist/` con tipos (idempotente) |
+| `npm run play` | Combate en la terminal contra el bot. Admite `-- --mode doubles --team <fichero> --seed X --no-preview --open-team-sheets --auto` ([guía](docs/guias/combate.md)) |
 | `npm run smoke` | Combates headless de Champions (fixtures + aleatorios). Admite `-- --random N --seed X --verbose` |
 | `npm run data:build` | Regenera `packages/data/generated/` desde Showdown + PokeAPI (determinista). Después, revisa el diff |
 | `npm run data:sprites` | Descarga los sprites a `assets/sprites/` (no versionado). Admite `-- --shiny` y `-- --force` |
-| `npm test` | Vitest (`{packages,apps,tools}/*/test/**/*.test.ts`) |
+| `npm test` | Vitest (`{packages,apps,tools}/*/test/**/*.test.ts`). Fuzz del bot más largo: `BOT_FUZZ_BATTLES=1000 npx vitest run packages/bot` |
 | `npm run typecheck` | `tsc --noEmit` en cada workspace (TypeScript 7) |
 | `npm run lint` / `lint:fix` | Biome (formato + lint) |
 | `npm run check` | lint + typecheck + test + smoke. Ejecútalo antes de dar algo por terminado |
@@ -75,8 +77,8 @@ npm run data:sprites # opcional: sprites en assets/ (solo hacen falta para la UI
 
 ```
 apps/       → aplicaciones (web, server). Pueden depender de packages/*
-packages/   → librerías: showdown (puente al motor), data (datos del juego); core, engine y bot en la fase 3+
-tools/      → scripts: setup, smoke, data-pipeline (cli, arena… en fases siguientes)
+packages/   → librerías: showdown (puente al motor), data (datos del juego), core (dominio), engine (sesiones), bot
+tools/      → scripts: setup, smoke, data-pipeline, cli (arena en la fase 4)
 vendor/pokemon-showdown → submódulo git fijado a un commit (NO editar)
 docs/       → PLAN, research/, adr/, guias/, fases/ (briefs de cada fase)
 storage/    → datos del usuario (equipos, replays): local, no versionado
@@ -85,6 +87,8 @@ assets/     → sprites descargados: local, no versionado
 
 - **Solo `packages/showdown` toca `vendor/`.** El resto importa `@colleja/showdown`. Esto es una regla dura.
 - `@colleja/showdown` es Node-only (usa `createRequire`). Nunca se importa desde `apps/web` ni desde `packages/core`.
+- **Capas** (ver PLAN §3.3): `core` → `data`; `bot` → `core`, `data`; `engine` → `core`, `data`, `showdown`; apps y tools → lo que necesiten. Nadie depende de `apps/*` ni de `tools/*`.
+- **`@colleja/core` y `@colleja/bot` son aptos para navegador**: sin `node:*` ni Showdown. `@colleja/engine` es solo Node y es el **único paquete de dominio que importa `@colleja/showdown`** (además de `tools/smoke` y `tools/data-pipeline`).
 - **`@colleja/data` es apto para navegador**: solo lee los JSON generados. Los datos del juego (roster, movimientos, nombres en español…) **se consultan ahí**, nunca a mano ni de memoria.
 - `packages/data/generated/` **no se edita a mano**: se regenera con `npm run data:build`. Las correcciones van en `packages/data/overrides/` (sets propios en formato export y nombres en español).
 - El pipeline importa `@colleja/data/schema` (tipos y constantes), nunca `@colleja/data`, porque este carga los JSON que el propio pipeline genera.
@@ -107,7 +111,16 @@ assets/     → sprites descargados: local, no versionado
 - Los learnsets de Champions difieren de los de Escarlata/Púrpura (por ejemplo, Incineroar no aprende Knock Off). La verdad la tienen `@colleja/data` (`canLearn`) o el validador, nunca la memoria.
 - Hay 20 efectos con texto propio de Champions (Fiebre Dorada, Sorpresa…). Para esos no se usa el texto de los juegos principales.
 - No hay Teracristalización. La Mega Evolución sí existe, una por combate.
-- Formatos usados: `gen9championsbssregmc` (individuales: 6 → elegir 3) y `gen9championsvgc2026regmc` (dobles: 6 → elegir 4). Están en `CHAMPIONS_FORMATS`. Más hechos verificados del motor (reglas `@@@`, `inputLog`, elección de equipo, sintaxis de las elecciones) en [docs/fases/fase-3.md](docs/fases/fase-3.md).
+- Formatos usados: `gen9championsbssregmc` (individuales: 6 → elegir 3) y `gen9championsvgc2026regmc` (dobles: 6 → elegir 4). Están en `CHAMPIONS_FORMATS`, pero **solo `engine/src/formats.ts` construye formatids** (con sus reglas `@@@`). Más hechos verificados del motor (reglas `@@@`, `inputLog`, elección de equipo, sintaxis de las elecciones) en [docs/fases/fase-3.md](docs/fases/fase-3.md).
+
+## Particularidades del motor de combate
+
+- **Todo combate pasa por `BattleSession.create`**, que valida los equipos. No crees `Battle`/`BattleStream` a mano fuera de `engine` (salvo `tools/smoke`, que prueba Showdown en crudo).
+- Las elecciones se mandan como `Choice` tipada (se comprueban con `validateChoice`) o como texto de Showdown. Una rechazada devuelve `{ ok: false }` y la sesión sigue esperando.
+- `[Unavailable choice]` **no es un bug**: depende de información oculta (p. ej. una habilidad que atrapa aún no revelada) y Showdown manda una petición nueva. `[Invalid choice]` sí lo es.
+- Los bots solo ven su perspectiva (`AgentContext`). Nunca les pases el log omnisciente.
+- Los equipos fixture de `tools/smoke/fixtures/` son también los equipos por defecto del CLI y los usan los tests de `core` y `engine`: si los cambias, que sigan siendo legales en ambos modos.
+- Los tests de combate usan semillas fijas. Si un cambio altera un log de referencia, comprueba que es intencionado.
 
 ## Actualizar Showdown (nueva regulación o fixes)
 

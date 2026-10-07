@@ -1,5 +1,7 @@
 # Fase 3 — Dominio + motor + primer combate jugable (CLI)
 
+> ✅ **Completada** (2026-10-07). Resultado: [guía de combates](../guias/combate.md) · [ADR-0003](../adr/0003-sesion-de-combate.md) · siguiente: [fase 4](fase-4.md). Este brief se conserva por los hechos verificados del motor.
+
 > **Brief de traspaso.** Escrito al cerrar la fase 2 (2026-10-07) para que una sesión nueva pueda empezar sin contexto previo.
 > Lee antes [AGENTS.md](../../AGENTS.md) (reglas y comandos) y [PLAN.md](../PLAN.md) §3, que describe la arquitectura objetivo.
 > Las decisiones de diseño aquí son **recomendaciones**: si al implementar encuentras algo mejor, adelante, pero documenta la decisión en un ADR.
@@ -107,11 +109,11 @@ Jugar el **primer combate completo en la terminal**: el usuario contra un bot al
 
 ## Criterios de "hecho"
 
-- [ ] `npm run play` permite jugar un combate completo, de individuales y de dobles, contra el bot aleatorio.
-- [ ] Misma semilla + mismas entradas → el mismo log (test).
-- [ ] `deshacer` / `rebobinar N` funcionan (test).
-- [ ] Los stats de core coinciden con los del motor (test).
-- [ ] `npm run check` en verde: añade `npm run play -- --auto` al script `check` o un test equivalente.
+- [x] `npm run play` permite jugar un combate completo, de individuales y de dobles, contra el bot aleatorio.
+- [x] Misma semilla + mismas entradas → el mismo log (test).
+- [x] `deshacer` / `rebobinar N` funcionan (test).
+- [x] Los stats de core coinciden con los del motor (test).
+- [x] `npm run check` en verde: añade `npm run play -- --auto` al script `check` o un test equivalente.
 
 ## Al cerrar la fase
 

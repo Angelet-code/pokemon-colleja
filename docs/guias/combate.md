@@ -1,0 +1,117 @@
+# Guía: combates (`core`, `engine`, `bot` y CLI)
+
+Cómo se juega un combate en el proyecto, desde la terminal o desde código. Decisión de arquitectura: [ADR-0003](../adr/0003-sesion-de-combate.md).
+
+## Jugar en la terminal
+
+```bash
+npm run play                                  # individuales con los equipos por defecto
+npm run play -- --mode doubles                # dobles
+npm run play -- --team mi-equipo.txt          # tu equipo, en formato export de Showdown
+npm run play -- --seed hola                   # combate reproducible
+npm run play -- --no-preview --open-team-sheets
+npm run play -- --help
+```
+
+| Opción | Qué hace |
+|---|---|
+| `--mode singles\|doubles` | Individuales (6 → 3) o dobles (6 → 4). Por defecto, individuales |
+| `--team <fichero>` | Tu equipo (por defecto `tools/smoke/fixtures/equipo-a.txt`) |
+| `--opponent-team <fichero>` | Equipo del bot (por defecto `equipo-b.txt`). Los equipos aleatorios llegan en la fase 4 |
+| `--seed <texto>` | Semilla. Misma semilla + mismas elecciones = mismo combate. Sin ella se genera una y se muestra al empezar |
+| `--no-preview` | Sin vista previa: cada uno saca sus primeros 3 o 4, en orden, y no ve el equipo rival |
+| `--open-team-sheets` | Ves los sets completos del rival en la vista previa |
+| `--name <nombre>` | Tu nombre en el combate |
+| `--auto` | Bot contra bot sin preguntas (lo usan los tests) |
+
+En cada pregunta se elige con números. En dobles se pide además el objetivo y, si se puede, si megaevolucionar. Comandos que funcionan en cualquier pregunta (también al terminar el combate):
+
+| Comando | Qué hace |
+|---|---|
+| `deshacer` | Vuelve al inicio del turno anterior (o del actual, si ya pasó algo en él, como un cambio forzado) |
+| `rebobinar N` | Vuelve al inicio del turno N (0 = vista previa) |
+| `exportar` | Guarda el replay en `storage/replays/<fecha>-<modo>.json` |
+| `salir` | Abandona el combate |
+| `ayuda` | Lista los comandos |
+
+El log se narra en español con un formateador mínimo (`tools/cli/src/narrator.ts`). El log completo con las plantillas de Showdown llega con la UI web (fase 5).
+
+## Piezas
+
+| Paquete | Entorno | Qué aporta |
+|---|---|---|
+| `@colleja/core` | Navegador y Node | `PokemonSet`/`Team`, stats (`championsStats`), Stat Points, import/export de Showdown, comprobación rápida de equipos, peticiones y elecciones tipadas, `getSlotOptions`/`validateChoice`, `BattleView`, `BattleAgent`, `SeededRandom` |
+| `@colleja/engine` | Solo Node | `validateTeam`, `resolveFormat`, `BattleSession`, `playOut`, replays, conversión de sets a Showdown |
+| `@colleja/bot` | Navegador y Node | `RandomAgent` (nivel 0). Los niveles 1 y 2 llegan en la fase 4 |
+| `tools/cli` | Node | `npm run play` |
+
+## Usar el motor desde código
+
+```ts
+import { RandomAgent } from '@colleja/bot';
+import { actionsChoice, moveAction, parseShowdownTeam } from '@colleja/core';
+import { BattleSession, playOut } from '@colleja/engine';
+
+const session = BattleSession.create({
+  mode: 'doubles',
+  seed: 'hola',                                  // cualquier texto; sin semilla, aleatoria
+  options: { teamPreview: true, openTeamSheets: false },
+  players: {
+    p1: { name: 'Yo', team: parseShowdownTeam(textoA).sets },
+    p2: { name: 'Bot', team: parseShowdownTeam(textoB).sets },
+  },
+});                                              // valida ambos equipos: TeamValidationError si no son legales
+
+session.on((event) => { /* protocol | request | error | end | rewind */ });
+
+session.choose('p1', { type: 'team', order: [1, 2, 3, 4] });
+session.choose('p1', actionsChoice(moveAction(1, { target: 2, mega: true }), moveAction(3, { target: 1 })));
+session.choose('p2', 'move 1 +1, switch 3');     // también texto de Showdown (sin pre-comprobación)
+
+session.getLog('p1');                            // protocolo visto por p1 (PS del rival en %)
+session.getAgentContext('p2');                   // lo que puede saber un bot: petición, log de su lado, equipos
+session.rewindTo(3);                             // vuelve al inicio del turno 3
+session.undo();                                  // un paso atrás
+const replay = session.exportReplay();           // JSON reproducible
+BattleSession.fromReplay(replay);                // mismo combate
+
+await playOut(session, { p1: new RandomAgent({ seed: 'a' }), p2: new RandomAgent({ seed: 'b' }) });
+```
+
+### Elecciones
+
+`Choice` se serializa a la sintaxis de Showdown con `formatChoice`:
+
+| `Choice` | Texto |
+|---|---|
+| `teamChoice([2, 1, 3])` | `team 2, 1, 3` |
+| `actionsChoice(moveAction(1))` | `move 1` |
+| `actionsChoice(moveAction(2, { target: 1, mega: true }), moveAction(1, { target: -1 }))` | `move 2 +1 mega, move 1 -1` |
+| `actionsChoice(PASS, switchAction(3))` | `pass, switch 3` |
+
+En dobles, `+N` es la posición N del rival y `-N` la posición N propia (aliado o uno mismo). `getSlotOptions(request)` lista, para cada posición activa, los movimientos con sus objetivos válidos, los cambios posibles y si puede megaevolucionar. `validateChoice(request, choice)` devuelve los problemas en español; la sesión lo aplica antes de mandar la elección.
+
+### Perspectivas
+
+`getLog(perspectiva)` admite `p1`, `p2`, `omniscient` y `spectator`. Cada jugador ve sus PS exactos y los del rival como `x/100`. Los bots **solo** reciben su perspectiva (`AgentContext.log`); para reconstruir el campo, `BattleView.from(log)`.
+
+### Rebobinar
+
+La sesión guarda en qué punto del `inputLog` empezó cada turno y, para volver, reconstruye el combate desde la semilla reaplicando las elecciones hasta ese punto. `rewindableTurns()` dice a qué turnos se puede volver; `undoTarget()`, adónde iría `undo()`.
+
+### Elecciones rechazadas
+
+`choose` devuelve `{ ok: false, errors }` y la sesión sigue esperando. Hay dos tipos de rechazo de Showdown:
+
+- `[Invalid choice]`: la elección es ilegal. Con una `Choice` tipada no debería pasar nunca (el test de fuzz del bot lo comprueba).
+- `[Unavailable choice]`: depende de información oculta (por ejemplo, un rival con una habilidad que atrapa y que aún no se ha revelado). Showdown manda una petición actualizada y hay que volver a elegir. `playOut` lo reintenta.
+
+## Tests relevantes
+
+| Fichero | Qué cubre |
+|---|---|
+| `packages/core/test/team.test.ts` | Stats con Stat Points, límites, import/export, comprobación de equipos |
+| `packages/core/test/battle.test.ts` | Elecciones, objetivos en dobles, validación, `BattleView` |
+| `packages/engine/test/engine.test.ts` | Stats de core = motor en todos los sets estándar, validación, formatos, determinismo, replays, rebobinado, perspectivas |
+| `packages/bot/test/random-agent.test.ts` | Fuzz: 100 combates por modo sin elecciones inválidas. Más: `BOT_FUZZ_BATTLES=1000 npx vitest run packages/bot` |
+| `tools/cli/test/cli.test.ts` | `--auto` en ambos modos y una partida "humana" guionizada con deshacer y rebobinar |

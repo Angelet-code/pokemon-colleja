@@ -4,6 +4,32 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ## [Sin publicar]
 
+### Fase 3 — Dominio, motor y primer combate jugable (2026-10-07)
+
+#### Añadido
+
+- `packages/core` (`@colleja/core`): dominio puro, apto para navegador.
+  - Tipos `PokemonSet`, `Team`, `RulesetId`, `BattleOptions` y `SideId`.
+  - Stats de Champions como estrategia por reglamento (`championsStats`, `getStatCalculator`), también para la Mega Evolución.
+  - Stat Points: límites leídos del formato, puntos restantes, `setStatPoint` (con recorte) y problemas en español.
+  - Import/export en formato Showdown (`parseShowdownTeam`, `formatShowdownTeam`) con problemas en español.
+  - Comprobación rápida de equipos para la UI (`checkTeam`): tamaño, cláusulas de especie y objeto, learnsets, habilidades y Stat Points.
+  - Peticiones del motor tipadas, elecciones tipadas (`Choice`) con su serializador y parser, `getSlotOptions` (movimientos, objetivos en dobles, cambios, Mega) y `validateChoice`.
+  - `BattleView`: estado del combate reconstruido desde el protocolo de una perspectiva.
+  - `BattleAgent`/`AgentContext` (interfaz de los jugadores) y `SeededRandom`.
+- `packages/engine` (`@colleja/engine`, solo Node):
+  - `validateTeam` con el `TeamValidator` de Showdown, conversión de sets y `resolveFormat` (modo + opciones → formatid con reglas `@@@`).
+  - `BattleSession` síncrona sobre `Battle`: eventos por perspectiva, pre-comprobación de elecciones, `rewindTo`/`undo`, `exportReplay`/`fromReplay` y opciones de práctica (sin vista previa, equipo abierto).
+  - `playOut` para enfrentar dos agentes.
+- `packages/bot` (`@colleja/bot`): `RandomAgent`, bot de nivel 0 (port tipado de `RandomPlayerAI`).
+- `tools/cli`: `npm run play`, combate en la terminal contra el bot en individuales y dobles, con menús numerados, narración en español, `deshacer`, `rebobinar N`, `exportar` (a `storage/replays/`) y `salir`, también al terminar el combate.
+- Tests (101 en total):
+  - Stats de core = stats del motor en los ≈950 sets estándar.
+  - Determinismo, replays y rebobinado en ambos modos.
+  - Fuzz del bot: 200 combates sin elecciones inválidas en `npm run check` (2000 comprobados a mano).
+  - CLI `--auto` en ambos modos y una partida humana guionizada.
+- Documentación: `docs/guias/combate.md`, ADR-0003 y el brief de la fase 4 (`docs/fases/fase-4.md`).
+
 ### Preparación del traspaso (2026-10-07)
 
 #### Añadido
