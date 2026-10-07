@@ -1,12 +1,13 @@
 # Guía: combates (`core`, `engine`, `bot` y CLI)
 
-Cómo se juega un combate en el proyecto, desde la terminal o desde código. Decisión de arquitectura: [ADR-0003](../adr/0003-sesion-de-combate.md).
+Cómo se juega un combate en el proyecto, desde la terminal o desde código. Decisión de arquitectura: [ADR-0003](../adr/0003-sesion-de-combate.md). Los bots, el generador de equipos y el arena tienen su propia guía: [bot.md](bot.md).
 
 ## Jugar en la terminal
 
 ```bash
-npm run play                                  # individuales con los equipos por defecto
+npm run play                                  # individuales contra el bot táctico (nivel 2) con un equipo aleatorio
 npm run play -- --mode doubles                # dobles
+npm run play -- --bot 1                       # rival más fácil (0 aleatorio, 1 agresivo, 2 táctico)
 npm run play -- --team mi-equipo.txt          # tu equipo, en formato export de Showdown
 npm run play -- --seed hola                   # combate reproducible
 npm run play -- --no-preview --open-team-sheets
@@ -16,13 +17,14 @@ npm run play -- --help
 | Opción | Qué hace |
 |---|---|
 | `--mode singles\|doubles` | Individuales (6 → 3) o dobles (6 → 4). Por defecto, individuales |
+| `--bot <0\|1\|2>` | Nivel del bot: 0 aleatorio, 1 agresivo, 2 táctico. Por defecto, 2 |
 | `--team <fichero>` | Tu equipo (por defecto `tools/smoke/fixtures/equipo-a.txt`) |
-| `--opponent-team <fichero>` | Equipo del bot (por defecto `equipo-b.txt`). Los equipos aleatorios llegan en la fase 4 |
+| `--opponent-team <fichero>\|random` | Equipo del bot. Por defecto, `random` (generado con `@colleja/teamgen` a partir de la semilla). Los fixtures siguen disponibles: `--opponent-team tools/smoke/fixtures/equipo-b.txt` |
 | `--seed <texto>` | Semilla. Misma semilla + mismas elecciones = mismo combate. Sin ella se genera una y se muestra al empezar |
 | `--no-preview` | Sin vista previa: cada uno saca sus primeros 3 o 4, en orden, y no ve el equipo rival |
 | `--open-team-sheets` | Ves los sets completos del rival en la vista previa |
 | `--name <nombre>` | Tu nombre en el combate |
-| `--auto` | Bot contra bot sin preguntas (lo usan los tests) |
+| `--auto` | Bot contra bot (del nivel de `--bot`) sin preguntas (lo usan los tests) |
 
 En cada pregunta se elige con números. En dobles se pide además el objetivo y, si se puede, si megaevolucionar. Comandos que funcionan en cualquier pregunta (también al terminar el combate):
 
@@ -42,13 +44,15 @@ El log se narra en español con un formateador mínimo (`tools/cli/src/narrator.
 |---|---|---|
 | `@colleja/core` | Navegador y Node | `PokemonSet`/`Team`, stats (`championsStats`), Stat Points, import/export de Showdown, comprobación rápida de equipos, peticiones y elecciones tipadas, `getSlotOptions`/`validateChoice`, `BattleView`, `BattleAgent`, `SeededRandom` |
 | `@colleja/engine` | Solo Node | `validateTeam`, `resolveFormat`, `BattleSession`, `playOut`, replays, conversión de sets a Showdown |
-| `@colleja/bot` | Navegador y Node | `RandomAgent` (nivel 0). Los niveles 1 y 2 llegan en la fase 4 |
+| `@colleja/bot` | Navegador y Node | Niveles 0–2 (`createBot`, `BOT_LEVELS`) y su análisis con `@smogon/calc` ([guía](bot.md)) |
+| `@colleja/teamgen` | Navegador y Node | `generateTeam`: equipos aleatorios legales desde los sets estándar |
 | `tools/cli` | Node | `npm run play` |
+| `tools/arena` | Node | `npm run arena`: torneos bot contra bot |
 
 ## Usar el motor desde código
 
 ```ts
-import { RandomAgent } from '@colleja/bot';
+import { createBot } from '@colleja/bot';
 import { actionsChoice, moveAction, parseShowdownTeam } from '@colleja/core';
 import { BattleSession, playOut } from '@colleja/engine';
 
@@ -75,7 +79,7 @@ session.undo();                                  // un paso atrás
 const replay = session.exportReplay();           // JSON reproducible
 BattleSession.fromReplay(replay);                // mismo combate
 
-await playOut(session, { p1: new RandomAgent({ seed: 'a' }), p2: new RandomAgent({ seed: 'b' }) });
+await playOut(session, { p1: createBot(2, { seed: 'a' }), p2: createBot(0, { seed: 'b' }) });
 ```
 
 ### Elecciones
@@ -93,7 +97,7 @@ En dobles, `+N` es la posición N del rival y `-N` la posición N propia (aliado
 
 ### Perspectivas
 
-`getLog(perspectiva)` admite `p1`, `p2`, `omniscient` y `spectator`. Cada jugador ve sus PS exactos y los del rival como `x/100`. Los bots **solo** reciben su perspectiva (`AgentContext.log`); para reconstruir el campo, `BattleView.from(log)`.
+`getLog(perspectiva)` admite `p1`, `p2`, `omniscient` y `spectator`. Cada jugador ve sus PS exactos y los del rival como `x/100`. Los bots **solo** reciben su perspectiva (`AgentContext.log`); para reconstruir el campo, `BattleView.from(log)`. Además del campo, `BattleView` sigue lo revelado de cada Pokémon (objeto y habilidad, también por etiquetas `[from] item:`/`[from] ability:`, movimientos, Mega), el turno en que entró y su último movimiento.
 
 ### Rebobinar
 
@@ -113,5 +117,5 @@ La sesión guarda en qué punto del `inputLog` empezó cada turno y, para volver
 | `packages/core/test/team.test.ts` | Stats con Stat Points, límites, import/export, comprobación de equipos |
 | `packages/core/test/battle.test.ts` | Elecciones, objetivos en dobles, validación, `BattleView` |
 | `packages/engine/test/engine.test.ts` | Stats de core = motor en todos los sets estándar, validación, formatos, determinismo, replays, rebobinado, perspectivas |
-| `packages/bot/test/random-agent.test.ts` | Fuzz: 100 combates por modo sin elecciones inválidas. Más: `BOT_FUZZ_BATTLES=1000 npx vitest run packages/bot` |
-| `tools/cli/test/cli.test.ts` | `--auto` en ambos modos y una partida "humana" guionizada con deshacer y rebobinar |
+| `packages/bot/test/*.test.ts` | Bots: ver la [guía de bots](bot.md#tests) |
+| `tools/cli/test/cli.test.ts` | `--auto` en ambos modos (nivel 2 y equipo aleatorio), `--bot 0/1` con fixtures y una partida "humana" guionizada con deshacer y rebobinar |

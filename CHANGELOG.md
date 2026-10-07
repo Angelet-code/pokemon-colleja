@@ -4,6 +4,36 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ## [Sin publicar]
 
+### Fase 4 — Bot (niveles 1 y 2), generador de equipos y arena (2026-10-07)
+
+#### Añadido
+
+- `packages/teamgen` (`@colleja/teamgen`, apto para navegador): `generateTeam(modo, { seed })`, equipos aleatorios legales a partir de los sets estándar, deterministas por semilla. Cláusulas de especie y objeto, **como mucho una megapiedra** (decisión de producto) y como mucho 3 miembros débiles al mismo tipo.
+- `@colleja/bot`:
+  - **Nivel 1, agresivo** (`AggressiveAgent`): el máximo daño esperado por posición, prioridad que asegura KOs, nunca golpea al aliado salvo que sea inmune, Mega en cuanto puede.
+  - **Nivel 2, táctico** (`TacticalAgent`): valora cada opción **simulando sus consecuencias** con daño esperado. Duelos en individuales (KO races, cambios que reciben el golpe, sacrificar o salvar, mejoras, estados, recuperación, Protección, Sorpresa) y turnos 2 contra 2 en dobles (concentrar ataques, Protección, Sorpresa, Refuerzo, Señuelo, Viento Afín, Espacio Raro, pantallas, ataques en área). Vista previa por cobertura. Ver [ADR-0004](docs/adr/0004-bot-por-simulacion.md).
+  - Análisis compartido: estimador de daño con **`@smogon/calc` 0.12.0** (Champions = generación 0), modelo del rival (sets estándar filtrados por lo revelado, del más ofensivo al menos; el set real con equipo abierto), `createBot` y `BOT_LEVELS` (nombres y descripciones en español).
+  - Los bots **no conocen los sets del rival** con equipo cerrado (decisión de producto).
+- `tools/arena`: `npm run arena -- --a 2 --b 0 --battles 500` (`--mode singles|doubles|both`, `--seed`, `--no-preview`, `--open-team-sheets`). % de victorias con intervalo de confianza, turnos, tiempos, elecciones inválidas y replays de los combates que fallen en `storage/arena/`.
+- `npm run play`: `--bot 0|1|2` (por defecto **2**, decisión de producto) y `--opponent-team random` por defecto.
+- `BattleView` (core) sigue además el turno de entrada y el último movimiento de cada Pokémon, y los objetos y habilidades revelados por etiquetas `[from] item:` / `[from] ability:`.
+- Tests (130 en total): contraste de la calculadora con el motor (stats en todos los sets estándar y daño real en primeros golpes), modelo del rival, escenarios guionizados de los niveles, fuzz de los niveles 1 y 2 (100 combates por modo) y del 0 (ya con `teamgen`), equipos legales en 300 semillas por modo, arena (recuento, reproducibilidad y una prueba corta de fuerza) y CLI con `--bot`.
+- Documentación: `docs/guias/bot.md`, ADR-0004 y el brief de la fase 5 (`docs/fases/fase-5.md`).
+
+#### Resultados del arena (500 combates por modo, semilla `arena`, sin elecciones inválidas)
+
+| A contra B | Individuales | Dobles |
+|---|---|---|
+| Nivel 2 contra 0 | **93,6 %** (IC 95 %: 91,1–95,4) | **91,8 %** (89,1–93,9) |
+| Nivel 1 contra 0 | 93,8 % (91,3–95,6) | 94,0 % (91,6–95,8) |
+| Nivel 2 contra 1 | 61,2 % (56,9–65,4) | 67,2 % (63,0–71,2) |
+
+Tiempo por decisión: ≈1,3 ms el nivel 1 y ≈3 ms el nivel 2. Un combate entre bots dura ≈20–50 ms.
+
+#### Cambiado
+
+- El fuzz del nivel 0 usa `teamgen` en lugar de su generador mínimo.
+
 ### Fase 3 — Dominio, motor y primer combate jugable (2026-10-07)
 
 #### Añadido

@@ -6,7 +6,7 @@ Simulador de combates de **Pokémon Champions** para practicar en individuales y
 
 ## Estado
 
-✅ Fase 0 (investigación y plan) · ✅ Fase 1 (cimientos) · ✅ Fase 2 (datos) · ✅ Fase 3 (dominio + motor + combate en terminal) · ⏭️ Fase 4 (bot). Ver [CHANGELOG](CHANGELOG.md).
+✅ Fase 0 (investigación y plan) · ✅ Fase 1 (cimientos) · ✅ Fase 2 (datos) · ✅ Fase 3 (dominio + motor + combate en terminal) · ✅ Fase 4 (bot de 3 niveles, equipos aleatorios, arena) · ⏭️ Fase 5 (servidor + UI de combate). Ver [CHANGELOG](CHANGELOG.md).
 
 ## Puesta en marcha
 
@@ -24,7 +24,13 @@ npm install
 npm run play
 ```
 
-Juega un combate en la terminal contra el bot (aleatorio, por ahora). Con `-- --mode doubles` juegas en dobles y con `-- --team mi-equipo.txt` usas tu equipo en formato export de Showdown. Durante el combate puedes `deshacer`, `rebobinar N` y `exportar` el replay. Todas las opciones: `npm run play -- --help` y la [guía de combates](docs/guias/combate.md).
+Juega un combate en la terminal contra el bot táctico (nivel 2) con un equipo rival aleatorio. Con `-- --mode doubles` juegas en dobles, con `-- --bot 1` (agresivo) o `-- --bot 0` (aleatorio) el rival es más fácil y con `-- --team mi-equipo.txt` usas tu equipo en formato export de Showdown. Durante el combate puedes `deshacer`, `rebobinar N` y `exportar` el replay. Todas las opciones: `npm run play -- --help` y la [guía de combates](docs/guias/combate.md).
+
+```bash
+npm run arena -- --a 2 --b 0
+```
+
+Enfrenta a dos niveles del bot con equipos aleatorios y mide el porcentaje de victorias ([guía de bots](docs/guias/bot.md)).
 
 ```bash
 npm run smoke

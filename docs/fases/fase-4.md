@@ -1,5 +1,7 @@
 # Fase 4 — Bot (niveles 1 y 2), generador de equipos y arena
 
+> ✅ **Completada** (2026-10-07). Resultado: [guía de bots](../guias/bot.md) · [ADR-0004](../adr/0004-bot-por-simulacion.md) (el nivel 2 decide simulando, no con bonificaciones heurísticas) · siguiente: [fase 5](fase-5.md). Este brief se conserva por los hechos verificados.
+
 > **Brief de traspaso.** Escrito al cerrar la fase 3 (2026-10-07) para que una sesión nueva pueda empezar sin contexto previo.
 > Lee antes [AGENTS.md](../../AGENTS.md) (reglas y comandos), [PLAN.md](../PLAN.md) §6 (bot) y la [guía de combates](../guias/combate.md), que explica la API de `core`/`engine`/`bot` que ya existe.
 > Las decisiones de diseño aquí son **recomendaciones**: si al implementar encuentras algo mejor, adelante, pero documenta la decisión en un ADR.

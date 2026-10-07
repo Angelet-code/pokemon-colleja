@@ -14,9 +14,11 @@ Documentación de soporte:
 | [adr/0001-motor-de-combate.md](adr/0001-motor-de-combate.md) | Decisión: envolver el simulador de Showdown |
 | [adr/0002-pipeline-de-datos.md](adr/0002-pipeline-de-datos.md) | Decisión: datos generados y versionados, español desde PokeAPI |
 | [adr/0003-sesion-de-combate.md](adr/0003-sesion-de-combate.md) | Decisión: sesión síncrona sobre `Battle`, rebobinado por reconstrucción, agentes y vista en `core` |
+| [adr/0004-bot-por-simulacion.md](adr/0004-bot-por-simulacion.md) | Decisión: el bot táctico valora cada opción simulando con daño esperado (no con bonificaciones heurísticas) |
 | [guias/datos.md](guias/datos.md) | Guía del pipeline de datos, sprites y overrides |
 | [guias/combate.md](guias/combate.md) | Guía de combates: CLI, `BattleSession`, elecciones, rebobinado y replays |
-| [fases/](fases/) | **Briefs de traspaso** de cada fase pendiente: objetivo, diseño, hechos verificados, criterios de "hecho". Empieza por [fases/fase-4.md](fases/fase-4.md) |
+| [guias/bot.md](guias/bot.md) | Guía de bots: niveles, cómo deciden, `teamgen`, arena y cómo mejorarlos |
+| [fases/](fases/) | **Briefs de traspaso** de cada fase pendiente: objetivo, diseño, hechos verificados, criterios de "hecho". Empieza por [fases/fase-5.md](fases/fase-5.md) |
 
 ---
 
@@ -75,14 +77,14 @@ pokemon-colleja-simulator/
 │  ├─ core/                # ✅ Dominio puro: tipos, stats (SP), import/export, elecciones, vista del combate, agentes
 │  ├─ data/                # ✅ JSON generados + i18n (es/en) + sets estándar + overrides (apto para navegador)
 │  ├─ engine/              # ✅ BattleSession sobre Battle de Showdown: validación, perspectivas, rebobinado, replays
-│  ├─ bot/                 # Estrategias del bot (✅ aleatorio; agresivo, táctico) + elección de vista previa
-│  ├─ teamgen/             # Generador de equipos aleatorios legales a partir de sets estándar
+│  ├─ bot/                 # ✅ Bots: aleatorio, agresivo (daño esperado) y táctico (simulación), con @smogon/calc
+│  ├─ teamgen/             # ✅ Generador de equipos aleatorios legales a partir de sets estándar
 │  └─ protocol/            # Esquemas zod de los mensajes cliente↔servidor (compartidos)
 ├─ tools/
 │  ├─ setup/               # ✅ Prepara el submódulo de Showdown (deps + build + tipos), idempotente
 │  ├─ smoke/               # ✅ Combates headless deterministas entre bots aleatorios
 │  ├─ data-pipeline/       # ✅ Genera packages/data desde Showdown + PokeAPI y descarga sprites
-│  ├─ arena/               # Torneos bot contra bot (métricas, búsqueda de crashes)
+│  ├─ arena/               # ✅ Torneos bot contra bot (`npm run arena`: % de victorias, tiempos, fallos)
 │  └─ cli/                 # ✅ Combate en terminal contra el bot (`npm run play`)
 ├─ vendor/
 │  └─ pokemon-showdown/    # Submódulo git fijado a un commit concreto
@@ -118,7 +120,11 @@ graph LR
   smoke[tools/smoke] --> bridge
   cli[tools/cli] --> engine
   cli --> bot
+  cli --> teamgen
   cli --> core
+  arena[tools/arena] --> engine
+  arena --> bot
+  arena --> teamgen
 ```
 
 **Regla dura:** solo `packages/showdown` accede a `vendor/`. Showdown se compila como CommonJS y el puente lo carga con `createRequire`, junto con sus `.d.ts`. Es Node-only: nunca se importa desde `apps/web`.
@@ -266,12 +272,13 @@ Cada nivel implementa `BattleAgent` (de `@colleja/core`): recibe un `AgentContex
 | Nivel | Nombre | Comportamiento |
 |---|---|---|
 | 0 | Aleatorio ✅ | Elección legal al azar (`RandomAgent`, port tipado de `RandomPlayerAI`). Sirve de base y para tests |
-| 1 | Agresivo | Maximiza el daño esperado con `@smogon/calc`. Prioriza los KOs y usa prioridad cuando le asegura el KO. Supone el set rival a partir de los sets estándar y lo que ya se ha revelado |
-| 2 | Táctico | Nivel 1 más heurísticas: cambia cuando el matchup es malo, Protección en dobles, Sorpresa en el turno 1, momento de la Mega, control de velocidad (Viento Afín y Espacio Raro), concentrar ataques en un rival, no golpear al aliado con ataques en área y movimientos de estado con valor |
+| 1 | Agresivo ✅ | Maximiza el daño esperado con `@smogon/calc`. Prioriza los KOs y usa prioridad cuando le asegura el KO. Supone el set rival a partir de los sets estándar y lo que ya se ha revelado |
+| 2 | Táctico ✅ | Valora cada opción **simulando sus consecuencias** con daño esperado ([ADR-0004](adr/0004-bot-por-simulacion.md)): duelos en individuales y turnos 2 contra 2 en dobles. Así cubre cambios cuando el matchup es malo, Protección, Sorpresa, momento de la Mega, Viento Afín y Espacio Raro, concentrar ataques, no golpear al aliado con ataques en área y movimientos de estado con valor. Gana al nivel 1 un 61 % (individuales) y un 67 % (dobles) |
 | 3 | Experto (futuro) | Mira una jugada por delante (lookahead de 1 ply) clonando el combate (`Battle.fromJSON`), o MCTS con sets muestreados |
 
-- **Vista previa**: puntúa cada matchup (tipos, velocidad, amenazas) para elegir sus 3 o 4.
-- **Arena** (`tools/arena`): torneos bot contra bot con N combates. Mide el porcentaje de victorias y detecta elecciones inválidas o cuelgues.
+- **Vista previa**: el nivel 1 puntúa cada enfrentamiento (daño hecho y recibido, velocidad); el 2 elige el grupo que mejor cubre a cada especie rival según duelos simulados.
+- **Información oculta**: los bots no conocen los sets rivales con equipo cerrado (decisión de producto). Suponen los sets estándar compatibles con lo revelado, del más ofensivo al menos.
+- **Arena** (`tools/arena`, `npm run arena`): torneos bot contra bot con N combates. Mide el porcentaje de victorias y detecta elecciones inválidas o cuelgues. Detalle en [guias/bot.md](guias/bot.md).
 - **Modo explicación** (fase 8): el bot puede mostrar por qué eligió su jugada, lo que también sirve para aprender.
 
 ---
@@ -305,8 +312,8 @@ Tamaños orientativos: S (pocas sesiones) · M · L.
 | **1. Cimientos** ✅ | S | `git init`, monorepo, TS/Biome/Vitest, submódulo de Showdown fijado y compilado, CLAUDE.md del proyecto | ✅ `npm run smoke`: 22 combates (fixtures VGC/BSS + aleatorios) sin errores. 14 tests, deterministas por semilla |
 | **2. Datos** ✅ | M | Pipeline de datos, i18n ES, sets estándar, overrides, script de descarga de sprites | ✅ Datos deterministas: 231 especies, 82 Megas, 166 objetos y unos 950 sets validados. Test de consistencia con el motor |
 | **3. Dominio + motor** ✅ | M | `core` (stats SP, import/export, validación, elecciones, vista) y `engine` (sesión, semillas, rebobinar, replays). Bot nivel 0. CLI para jugar en terminal | ✅ `npm run play` en individuales y dobles. Mismo log con misma semilla y entradas, rebobinado y stats = motor (tests). 101 tests |
-| **4. Bot** ⏭️ | M | Niveles 1–2, elección en vista previa, `teamgen`, arena. Brief: [fases/fase-4.md](fases/fase-4.md) | El nivel 2 gana al menos el 80 % de 500 combates contra el nivel 0 en cada modo, sin elecciones inválidas |
-| **5. Servidor + UI de combate** | L | Fastify + WS, app React, pantalla de combate de individuales y luego de dobles. Importación de equipo pegado | Combate completo en el navegador en ambos modos |
+| **4. Bot** ✅ | M | Niveles 1–2, elección en vista previa, `teamgen`, arena | ✅ El nivel 2 gana el 93,6 % (individuales) y el 91,8 % (dobles) de 500 combates al nivel 0, sin elecciones inválidas. 130 tests |
+| **5. Servidor + UI de combate** ⏭️ | L | Fastify + WS, app React, pantalla de combate de individuales y luego de dobles. Importación de equipo pegado. Brief: [fases/fase-5.md](fases/fase-5.md) | Combate completo en el navegador en ambos modos |
 | **6. Teambuilder** | L | Editor completo con SP, validación y persistencia | Crear un equipo legal desde cero y usarlo en combate |
 | **7. Rivales editables** | S–M | Generar, editar y guardar rivales; elegir rival y dificultad | Practicar contra un equipo concreto guardado |
 | **8. Herramientas de práctica** | M | Calculadora, rebobinar, replays, equipo abierto, explicación del bot | — |
@@ -323,7 +330,7 @@ Tamaños orientativos: S (pocas sesiones) · M · L.
 | `core` | Cálculo de stats con SP frente a valores conocidos de Showdown y de la calculadora. Ida y vuelta de import/export. Reglas de formato |
 | `data` | Recuentos y legalidad del snapshot. Muestras puntuales (stats base, cambios de movimientos de Champions) |
 | `engine` | Determinismo por semilla. Logs de referencia de combates guionizados. Rebobinado correcto. Traducción de elecciones (objetivos en dobles, Mega) |
-| `bot` | Fuzzing: miles de combates bot contra bot sin elecciones inválidas ni cuelgues. Porcentaje de victorias por nivel |
+| `bot` | Fuzzing: cientos de combates bot contra bot en el check (miles a mano) sin elecciones inválidas ni cuelgues. Calculadora contrastada con el motor. Escenarios guionizados. Porcentaje de victorias por nivel con el arena |
 | `server` / `web` | Esquemas del protocolo. Componentes críticos (selector de objetivo, editor de SP). E2E con Playwright más adelante |
 
 Las mecánicas en sí **no se re-testean**: son responsabilidad del motor (Showdown tiene 359 ficheros de test propios). Solo se comprueba nuestra integración con él.
@@ -348,6 +355,8 @@ Las mecánicas en sí **no se re-testean**: son responsabilidad del motor (Showd
 | Cambios de API o protocolo de Showdown al actualizar el commit | Adaptador único, tests de integración y actualizaciones deliberadas |
 | `@pkmn/client` va con datos de Champions de junio (le faltan las Megas de M-C) | Comprobarlo al principio de la fase 5 (la UI). Plan B ya iniciado: `BattleView` de `core` (estado propio desde el protocolo) más las peticiones y `@colleja/data` |
 | La sesión usa la API interna de `Battle` (`choose`, `setPlayer`, `sendUpdates`, `inputLog`) | Aislada en `engine/src/session.ts` y cubierta por tests de determinismo, rebobinado y perspectivas ([ADR-0003](adr/0003-sesion-de-combate.md)) |
+| El bot adivina los sets rivales con los sets estándar: contra equipos humanos poco comunes puede equivocarse | Filtra por lo revelado y supone el set más ofensivo. Con equipo abierto juega con los sets reales. El nivel 3 (futuro) podrá muestrear sets |
+| `@smogon/calc` puede ir por detrás de nuestro commit de Showdown | Test de contraste con el motor (stats de todos los sets estándar y daño real). Si falla tras actualizar Showdown, revisar antes de actualizar la calculadora |
 | Filtro de red (Sophos) | Usar solo npm y GitHub. Sprites y nombres desde repos de GitHub |
 | Licencias: el arte es © Nintendo/TPC, y los sets de Smogon tienen copyright | Uso personal, assets fuera de git, sets base desde el repo MIT de Showdown |
 | Crecimiento del alcance | MVP cerrado (fases 1–5) y el resto planificado por fases |
