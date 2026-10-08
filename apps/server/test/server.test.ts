@@ -7,7 +7,17 @@ import type {
 } from '@colleja/protocol';
 import type { FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { fixtureText, SocketPlayer, startMessage, TestClient, testServer } from './helpers';
+import { buildServer } from '../src/server';
+import {
+  fixtureText,
+  SocketPlayer,
+  startMessage,
+  TestClient,
+  tempOpponentsDir,
+  tempReplaysDir,
+  tempTeamsDir,
+  testServer,
+} from './helpers';
 
 let app: FastifyInstance;
 
@@ -84,6 +94,28 @@ describe('REST API', () => {
     });
     expect(response.statusCode).toBe(400);
     expect(response.json<ApiError>().error).toBe('Petición no válida.');
+  });
+});
+
+describe('development mode', () => {
+  it('sends pages to Vite instead of serving a possibly stale build', async () => {
+    const dev = await buildServer({
+      spritesDir: null,
+      sweepIntervalMs: 0,
+      devWebUrl: 'http://127.0.0.1:5173/',
+      teamsDir: tempTeamsDir(),
+      opponentsDir: tempOpponentsDir(),
+      replaysDir: tempReplaysDir(),
+    });
+    try {
+      const page = await dev.inject({ method: 'GET', url: '/equipos?x=1' });
+      expect(page.statusCode).toBe(302);
+      expect(page.headers.location).toBe('http://127.0.0.1:5173/equipos?x=1');
+      const api = await dev.inject({ method: 'GET', url: '/api/nope' });
+      expect(api.statusCode).toBe(404);
+    } finally {
+      await dev.close();
+    }
   });
 });
 

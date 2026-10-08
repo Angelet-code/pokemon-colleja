@@ -68,7 +68,7 @@ apps/web (React)  ──REST /api/*──▶  apps/server (Fastify)
 - **El servidor solo envía la perspectiva p1** y las peticiones de p1 (`BattleRoom`). Un test compara lo recibido con `getLog('p1')` y comprueba que los PS del rival llegan en porcentaje.
 - El store de la web **solo cambia con mensajes del servidor**: la UI no adivina el resultado de una elección. `busy` bloquea los controles hasta la respuesta.
 - Las cifras que se muestran (tipo, potencia, precisión, PP) salen de la petición y de `@colleja/data`, nunca de memoria.
-- El servidor escucha en `127.0.0.1` (variables `SERVER_PORT` y `SERVER_HOST`). La web usa `WEB_PORT` (por defecto 5173).
+- El servidor escucha en `127.0.0.1` (variables `SERVER_PORT` y `SERVER_HOST`). La web usa `WEB_PORT` (por defecto 5173). Con `npm run dev`, el servidor no sirve `apps/web/dist` (podría ser una compilación vieja): redirige las páginas a Vite (`WEB_DEV_URL`).
 
 ## Añadir una pantalla
 

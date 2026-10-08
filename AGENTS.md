@@ -165,7 +165,7 @@ assets/     → sprites descargados: local, no versionado
 - El estado del combate en la web sale de `BattleView` (core) y el log de `@colleja/narration` (port de `BattleTextParser` de Showdown). **No uses `@pkmn/client`/`@pkmn/dex`**: sus datos no son los de Champions ([ADR-0005](docs/adr/0005-servidor-web-y-narracion.md)). Las cifras que se muestran salen de la petición o de `@colleja/data`.
 - El store de la web solo cambia con mensajes del servidor; nunca adivines el resultado de una elección en el cliente.
 - Para los bots en el servidor (o en cualquier bucle humano contra bot), usa `decideFor` de `engine`: reintenta tras `[Unavailable choice]`.
-- El servidor escucha en `127.0.0.1` y usa `SERVER_PORT`/`SERVER_HOST` (no `PORT`, que las herramientas de desarrollo suelen fijar para la web). La web usa `WEB_PORT`. `STORAGE_DIR` lleva equipos, rivales y replays a otra carpeta (los E2E usan una temporal).
+- El servidor escucha en `127.0.0.1` y usa `SERVER_PORT`/`SERVER_HOST` (no `PORT`, que las herramientas de desarrollo suelen fijar para la web). La web usa `WEB_PORT`. `STORAGE_DIR` lleva equipos, rivales y replays a otra carpeta (los E2E usan una temporal). Con `npm run dev`, el servidor recibe `WEB_DEV_URL` y redirige las páginas a Vite en lugar de servir `apps/web/dist` (que puede ser una compilación vieja).
 - Champions añade el color de la barra de PS al 20 % y al 50 % justos (`50/100y`): usa siempre `parseCondition` de `core` para leer condiciones.
 
 ## Particularidades del diseño de la web

@@ -22,6 +22,11 @@ export interface ServerOptions extends BattleManagerOptions {
   spritesDir?: string | null;
   /** Built web app served at `/` (omitted or missing: API only, Vite serves the UI). */
   webDir?: string | null;
+  /**
+   * Development (`npm run dev`): the web app lives in Vite at this URL. The server then skips
+   * `webDir` (a stale build there would show an old UI) and redirects page requests to Vite.
+   */
+  devWebUrl?: string;
   /** How often idle battles are swept (ms). `0` disables the timer (tests). */
   sweepIntervalMs?: number;
   /** Folder of the saved teams (default `storage/teams/`; tests use a temporary one). */
@@ -57,7 +62,15 @@ export async function buildServer(options: ServerOptions = {}): Promise<FastifyI
   }
 
   const webDir = options.webDir === undefined ? WEB_DIST_DIR : options.webDir;
-  if (webDir && existsSync(webDir)) {
+  if (options.devWebUrl) {
+    const devWebUrl = options.devWebUrl.replace(/\/$/, '');
+    app.setNotFoundHandler((request, reply) => {
+      if (request.method === 'GET' && !request.url.startsWith(API_PREFIX)) {
+        return reply.redirect(`${devWebUrl}${request.url}`);
+      }
+      return reply.code(404).send({ error: 'No encontrado.' });
+    });
+  } else if (webDir && existsSync(webDir)) {
     await app.register(fastifyStatic, { root: webDir, prefix: '/', wildcard: false });
     // Client-side routes (React Router): unknown paths outside the API get the app shell.
     app.setNotFoundHandler((request, reply) => {

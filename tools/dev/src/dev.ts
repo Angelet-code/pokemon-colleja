@@ -6,10 +6,17 @@ import { type ChildProcess, spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
+const WEB_URL = `http://127.0.0.1:${process.env.WEB_PORT ?? 5173}`;
 
 const PROCESSES = [
-  { name: 'server', color: 36, args: ['run', 'dev', '-w', '@colleja/server'] },
-  { name: 'web', color: 35, args: ['run', 'dev', '-w', '@colleja/web'] },
+  // The server sends page requests to Vite instead of serving a possibly stale apps/web/dist.
+  {
+    name: 'server',
+    color: 36,
+    args: ['run', 'dev', '-w', '@colleja/server'],
+    env: { WEB_DEV_URL: WEB_URL },
+  },
+  { name: 'web', color: 35, args: ['run', 'dev', '-w', '@colleja/web'], env: {} },
 ] as const;
 
 const children: ChildProcess[] = [];
@@ -32,9 +39,13 @@ function stop(code: number): void {
   process.exitCode = code;
 }
 
-for (const { name, color, args } of PROCESSES) {
+for (const { name, color, args, env } of PROCESSES) {
   // A single command string through the shell works the same on Windows (npm.cmd) and Unix.
-  const child = spawn(`npm ${args.join(' ')}`, { cwd: ROOT, shell: true });
+  const child = spawn(`npm ${args.join(' ')}`, {
+    cwd: ROOT,
+    shell: true,
+    env: { ...process.env, ...env },
+  });
   child.stdout?.on('data', (chunk: Buffer) => console.log(prefix(name, color, chunk)));
   child.stderr?.on('data', (chunk: Buffer) => console.error(prefix(name, color, chunk)));
   child.on('exit', (code) => {
@@ -45,7 +56,7 @@ for (const { name, color, args } of PROCESSES) {
 }
 
 console.log(
-  'Servidor en http://127.0.0.1:3001 · Web en \x1b[1mhttp://127.0.0.1:5173\x1b[0m (Ctrl+C para parar)',
+  `Servidor en http://127.0.0.1:3001 · Web en \x1b[1m${WEB_URL}\x1b[0m (Ctrl+C para parar)`,
 );
 process.on('SIGINT', () => stop(0));
 process.on('SIGTERM', () => stop(0));
