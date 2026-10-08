@@ -27,7 +27,8 @@ El proyecto avanza **por fases** (PLAN §8). Cuando te pidan *"continúa con la 
 | Rediseño de la web | ✅ ([guía](docs/guias/web.md#sistema-de-diseño), [ADR-0009](docs/adr/0009-sistema-de-diseno.md)) |
 | 9. Bot nivel 3 "Experto" | ✅ ([brief](docs/fases/fase-9.md), [ADR-0010](docs/adr/0010-bot-experto-con-sandbox.md), [guía](docs/guias/bot.md)) |
 | 10. Pulido de herramientas y nivel 3 más fuerte | ✅ ([brief](docs/fases/fase-10.md), [ADR-0011](docs/adr/0011-nivel-3-con-equipo-completo.md), guías de [herramientas](docs/guias/herramientas.md) y [bot](docs/guias/bot.md)) |
-| **11. Siguiente ampliación** | ⏭️ **Siguiente**: [docs/fases/fase-11.md](docs/fases/fase-11.md) (propuesta: el usuario elige) |
+| 11. El nivel 3 predice al rival (sets y estilo) | ✅ ([brief](docs/fases/fase-11.md), [ADR-0012](docs/adr/0012-deduccion-de-sets-y-estilo-del-rival.md), [guía](docs/guias/bot.md)) |
+| **12. Banco de pruebas de equipos** | ⏭️ **Siguiente**: [docs/fases/fase-12.md](docs/fases/fase-12.md) |
 
 ### Protocolo de cierre de fase
 
@@ -60,6 +61,8 @@ El proyecto avanza **por fases** (PLAN §8). Cuando te pidan *"continúa con la 
   - Herramientas (2026-10-08): calculadora **en el servidor**; replays guardados **solo si el usuario lo pide**; explicación del bot **tras cada turno**; visor de replays omnisciente con interruptor "Como jugador"; con equipo cerrado, la explicación **oculta lo no revelado**.
   - Bot nivel 3 (2026-10-08): es el **rival por defecto**; puede pensar **hasta ~3 s** por decisión y debe pensar **mientras el jugador elige**; si una mejora no llega al objetivo, **averiguar qué falla** antes de rebajarlo.
   - Fase 10 (2026-10-08): «Calcular» abre la calculadora **en otra pestaña**; E2E con Playwright **aparte del check** (`npm run e2e`) y con su job en la CI; el nivel 3 con **≤ ~1 s de media**. El nivel 3 se quedó en ≈ 64 % contra el 2 en individuales (objetivo 65 %): el usuario decidió **cerrar con lo conseguido** y dejar la deducción de sets del rival para otra fase. Le importa que el bot **prediga al rival** (qué hará, a quién cambiará, qué Pokémon y sets tiene).
+  - Fase 11 (2026-10-08): deducción de sets y estilo del rival **solo en el nivel 3**; se enseña **lo que cree de tu equipo**; variantes de reparto para sets propios. Objetivo ≥ 67 % cumplido (67,1 %).
+  - Fase 12 (2026-10-08): el **banco de pruebas de equipos** (para ayudarle a montar su equipo perfecto), después de cerrar la 11. Otras ideas para más adelante: tablas de tipos, velocidades y daños, y optimizador de Stat Points.
 
 ## Puesta en marcha
 
@@ -150,7 +153,8 @@ assets/     → sprites descargados: local, no versionado
 - El modelo del rival solo usa lo que el bot puede ver (`BattleView` de su perspectiva) y los sets estándar. Nunca le pases el log omnisciente ni el equipo rival con equipo cerrado.
 - Los tests de fuerza son cortos en el check (40 combates por modo); las cifras de referencia (500 por modo) se apuntan en el CHANGELOG al cambiar el bot. El nivel 3 no tiene test de fuerza en el check (sería lento): sus tests usan `LIGHT_SEARCH` (`packages/bot/test/helpers.ts`) y sus cifras van al CHANGELOG.
 - **Nivel 3 y sandbox** ([ADR-0010](docs/adr/0010-bot-experto-con-sandbox.md)): el bot solo usa la interfaz `BattleSandbox` de `core` (`AgentContext.sandbox`); **la implementación vive en `engine/src/sandbox.ts`** y es la que garantiza que un fork no tiene información oculta (sets supuestos, PS del rival en %, generador nuevo con suerte común por acción, sueño sorteado otra vez, sin elecciones ya hechas ni `inputLog`). Si tocas el sandbox, que siga en verde el test de invariancia (`packages/bot/test/expert.test.ts`: misma decisión aunque cambie lo que oculta el rival). El sandbox solo existe al elegir movimientos.
-- Para mejorar el nivel 3, mejora la valoración de sus hojas (la estimación del nivel 2 y la **cadena de equipo completo**, `analysis/team-chain.ts`, [ADR-0011](docs/adr/0011-nivel-3-con-equipo-completo.md)) o el modelo del rival, y mídelo con el arena contra el nivel 2. Más muestras por opción ya no ayudan. Lo que más le limita es la información oculta (con equipo abierto gana ~7 puntos más). Los pesos y el esfuerzo están en `SEARCH_SETTINGS` (`chainWeight`, `loopPenalty`…), nunca en constantes sueltas.
+- **Deducción y estilo del rival** ([ADR-0012](docs/adr/0012-deduccion-de-sets-y-estilo-del-rival.md)): solo del nivel 3 (`Situation` con `beliefs: 'infer'`; sin eso, nivel 2 intacto). Salen **solo del log de la perspectiva del bot** (`inference/`): mismo log → mismas creencias y mismo estilo. Una observación que no cuadra nunca descarta un set (verosimilitud 0,05), porque hay efectos que el modelo no conoce. `RivalStyle` es estado del agente durante un combate.
+- Para mejorar el nivel 3, mejora la valoración de sus hojas (la estimación del nivel 2 y la **cadena de equipo completo**, `analysis/team-chain.ts`, [ADR-0011](docs/adr/0011-nivel-3-con-equipo-completo.md)) o el modelo del rival, y mídelo con el arena contra el nivel 2. Más muestras por opción ya no ayudan. Lo que más le limita sigue siendo la información oculta (con equipo abierto, 70,7 % frente al 67,1 % con equipo cerrado y deducción). Los pesos y el esfuerzo están en `SEARCH_SETTINGS` (`chainWeight`, `loopPenalty`…), nunca en constantes sueltas.
 - **Mide con cuidado**: 600 combates dan ±2 puntos de ruido. Compara variantes con la misma semilla y confirma con otra antes de quedarte una (en la fase 10, una mejora de +1 en una semilla fue −3 en otra). El arena puede tardar mucho si dos bots entran en un bucle de cambios: el nivel 3 los penaliza (`loopPenalty`).
 
 ## Particularidades del servidor y la web

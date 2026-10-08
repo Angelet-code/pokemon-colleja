@@ -4,6 +4,35 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ## [Sin publicar]
 
+### Fase 11 — El nivel 3 deduce los sets del rival y se adapta a su estilo (2026-10-08)
+
+#### Añadido
+
+- **Deducción de sets** en el nivel 3 (`packages/bot/src/inference/`, [ADR-0012](docs/adr/0012-deduccion-de-sets-y-estilo-del-rival.md)):
+  - `extractObservations` saca del log de la perspectiva del bot los golpes (daño exacto o en %, crítico, KO) y el orden de los movimientos de la misma prioridad.
+  - `inferBeliefs` da a cada set candidato de cada rival su probabilidad: prior uniforme, cláusula de objeto, y verosimilitud 1 o 0,05 según alguna tirada o la velocidad explique lo observado. Una megapiedra sin usar pierde peso.
+  - Con sets propios, si nada cuadra, entran **variantes de reparto** (ataque, velocidad, resistencia, defensas, Pañuelo Elección).
+  - Las suposiciones de la búsqueda se reparten por cuantiles de esa probabilidad, y el set supuesto es el más probable, no el más ofensivo.
+- **Estilo del rival** (`RivalStyle`, `styleAdjustment`): el nivel 3 apunta la respuesta evidente del rival y su contrapredicción, y comprueba en el turno siguiente qué hizo. Con un rival evidente afina sus predicciones; con uno que intenta adivinar su jugada, pesa la contrapredicción. `SEARCH_SETTINGS.counterCandidates` (6).
+- **«Lo que cree de tu equipo»** en «Por qué jugó así el bot»: las 2–3 hipótesis más probables de cada uno de tus Pokémon (objeto, naturaleza, Stat Points, movimientos y %). `DecisionExplanation.beliefs` (core) y opcional en `TurnExplanationSchema` (los replays viejos siguen valiendo).
+- Decisiones de producto: deducción y estilo **solo en el nivel 3**; se enseña lo que deduce de tu equipo; variantes de reparto para sets propios; objetivo ≥ 67 % en individuales. La [fase 12](docs/fases/fase-12.md) será el banco de pruebas de equipos.
+- Tests (310 en `npm run check`): observaciones, creencias (incluida la invariancia frente a lo oculto), variantes, cláusula de objeto, estilo y olvido tras rebobinar; ida y vuelta del protocolo con `beliefs`; el panel de la web.
+- Documentación: [ADR-0012](docs/adr/0012-deduccion-de-sets-y-estilo-del-rival.md), [guía del bot](docs/guias/bot.md) y brief de la [fase 12](docs/fases/fase-12.md).
+
+#### Cambiado
+
+- **Nivel 3 contra nivel 2** (arena, equipos aleatorios con vista previa, equipo cerrado): **individuales 67,1 %** en 2387 combates con dos semillas (67,7 % y 66,5 %; la configuración de la fase 10 da 64,2 % en la primera). **Dobles 80,8 %** en 608 combates (fase 10 con las mismas semillas: 80,3 %). Tiempo medio por decisión: 0,41 s en individuales y 0,55 s en dobles. Objetivo cumplido.
+
+#### Aprendido
+
+| Variante (individuales, semilla 1, ≈ 1200 combates) | Victorias |
+|---|---|
+| Fase 10 (sin deducción ni estilo) | 64,2 % |
+| **Deducción + estilo** | **67,7 %** |
+| … + hojas con el set de la suposición del fork | 67,1 % (descartada) |
+
+En dobles (304 combates por variante, semilla d1), sin estilo 80,3 % y sin deducción 82,9 %: dentro del ruido, así que se deja todo activo en los dos modos.
+
 ### Iconos de los objetos (2026-10-08)
 
 - Web: **iconos de los objetos** (`ItemIcon`) en la lista de miembros y el selector de objeto del teambuilder, la ficha del combate, la vista previa de equipos y «Cargar set» de la calculadora.

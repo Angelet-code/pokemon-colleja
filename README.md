@@ -6,7 +6,7 @@ Simulador de combates de **Pokémon Champions** para practicar en individuales y
 
 ## Estado
 
-✅ Fase 0 (investigación y plan) · ✅ Fase 1 (cimientos) · ✅ Fase 2 (datos) · ✅ Fase 3 (dominio + motor + combate en terminal) · ✅ Fase 4 (bot de 3 niveles, equipos aleatorios, arena) · ✅ Fase 5 (servidor + UI de combate: **MVP**) · ✅ Fase 6 (teambuilder y equipos guardados) · ✅ Fase 7 (rivales guardados) · ✅ Fase 8 (calculadora, replays y explicación del bot) · ✅ Rediseño de la web · ✅ Fase 9 (bot nivel 3 "Experto", ahora el rival por defecto) · ✅ Fase 10 («Calcular» desde el combate, críticos y efectos en la calculadora, replays renombrables, E2E y un nivel 3 más fuerte en individuales) · ⏭️ Fase 11 (eliges la siguiente ampliación). Ver [CHANGELOG](CHANGELOG.md).
+✅ Fase 0 (investigación y plan) · ✅ Fase 1 (cimientos) · ✅ Fase 2 (datos) · ✅ Fase 3 (dominio + motor + combate en terminal) · ✅ Fase 4 (bot de 3 niveles, equipos aleatorios, arena) · ✅ Fase 5 (servidor + UI de combate: **MVP**) · ✅ Fase 6 (teambuilder y equipos guardados) · ✅ Fase 7 (rivales guardados) · ✅ Fase 8 (calculadora, replays y explicación del bot) · ✅ Rediseño de la web · ✅ Fase 9 (bot nivel 3 "Experto", ahora el rival por defecto) · ✅ Fase 10 («Calcular» desde el combate, críticos y efectos en la calculadora, replays renombrables, E2E y un nivel 3 más fuerte en individuales) · ✅ Fase 11 (el nivel 3 deduce tus sets y se adapta a tu estilo) · ⏭️ Fase 12 (banco de pruebas de equipos). Ver [CHANGELOG](CHANGELOG.md).
 
 ## Puesta en marcha
 

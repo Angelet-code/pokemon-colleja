@@ -1,62 +1,94 @@
-# Fase 11 — Siguiente ampliación (propuesta para elegir)
+# Fase 11 — El nivel 3 deduce lo que oculta el rival y se adapta a su estilo
 
-> **Brief de traspaso.** Escrito al cerrar la fase 10 (2026-10-08). Este brief **no fija la fase**: propone ampliaciones con su diseño de partida para que el usuario elija una (o varias, por orden).
-> Lee antes [AGENTS.md](../../AGENTS.md) y [PLAN.md](../PLAN.md) §2.2, §6, §8 y §11. Cuando el usuario elija, convierte la opción en un brief completo (`fase-11.md` reescrito con objetivo, hechos verificados, diseño, tests y criterios de "hecho") **antes** de implementar, y pregúntale las decisiones de producto que salgan.
+> **Brief de la fase.** Escrito el 2026-10-08 a partir de la propuesta A del cierre de la fase 10, con las decisiones del usuario.
+> Lee antes [AGENTS.md](../../AGENTS.md), [ADR-0010](../adr/0010-bot-experto-con-sandbox.md), [ADR-0011](../adr/0011-nivel-3-con-equipo-completo.md) y la [guía del bot](../guias/bot.md).
 
-## Punto de partida (ya hecho)
+## Objetivo
 
-| Área | Estado |
-|---|---|
-| Combate | Individuales y dobles de Champions (Reg M-C) en el navegador y en la terminal, con deshacer, rebobinar, replays y explicación del bot |
-| Bot | Niveles 0–3. El 3 "Experto" (por defecto) mira un turno por adelantado con el simulador real y valora las posiciones también con el equipo entero de los dos lados ([ADR-0010](../adr/0010-bot-experto-con-sandbox.md), [ADR-0011](../adr/0011-nivel-3-con-equipo-completo.md)). Cifras en el CHANGELOG de la fase 10 |
-| Herramientas | Calculadora (críticos, efectos de dobles y de campo) que se abre desde el combate, replays renombrables, explicación del bot |
-| Calidad | Tests unitarios y de componentes en `npm run check`, smoke, **E2E con Playwright** (`npm run e2e`) y CI con los dos jobs |
+Que el nivel 3 **prediga al rival**:
 
-## Opciones
+1. **Sets**: deducir qué set lleva cada Pokémon rival con lo que ha visto (daño recibido y hecho, quién se movió antes, objetos de otros Pokémon) y repartir sus suposiciones según esa probabilidad, en lugar de suponer siempre «el más ofensivo».
+2. **Estilo**: aprender durante el combate cómo juega el rival. Si siempre hace lo evidente, esperar lo evidente; si intenta adivinar nuestra jugada, jugar en torno a eso (petición del usuario del 2026-10-08).
+3. **Qué trajo**: revisar con los pesos nuevos qué Pokémon no vistos es más probable que haya traído.
 
-### A. El bot deduce lo que oculta el rival (recomendada)
+Y **enseñarlo**: en «Por qué jugó así el bot», qué set cree que lleva cada uno de tus Pokémon.
 
-- **Para qué**: es lo que más limita al nivel 3. Con equipo abierto gana al nivel 2 un 70,7 % en individuales; con equipo cerrado, ≈ 64 % (CHANGELOG de la fase 10). Al usuario le importa que el bot **prediga al rival**: qué hará, a quién cambiará y qué Pokémon y sets tiene.
-- **Diseño de partida**:
-  - **Sets**: descartar candidatos de `OpponentModel` con lo observado además de lo revelado: el daño recibido y hecho (¿cuadra con esa naturaleza y esos Stat Points?), quién se movió antes (velocidad: Pañuelo Elección, naturaleza), recuperaciones (Restos), y dar a cada candidato un peso en vez de "el más ofensivo primero". El nivel 3 repartiría sus suposiciones según esos pesos.
-  - **Qué Pokémon trajo**: se probó en la fase 10 ordenar los no vistos según lo que le conviene traer al rival (la vista previa del nivel 2 desde su lado) y no mejoró de forma clara (+1 y −3 puntos en dos semillas). Revisar con los pesos de arriba.
-  - Medirlo también con equipo abierto como techo.
-- **Riesgos**: deducir con daño exige repetir el cálculo con cada candidato (caché por contenido ya existe); el ruido del arena obliga a medir con ≥ 1200 combates.
+## Decisiones del usuario (2026-10-08)
 
-### B. Modo clásico IV/EV/Tera
+- La deducción y la adaptación son **solo del nivel 3**. El nivel 2 no cambia: es la referencia fija del arena.
+- **Se enseña** lo que deduce el bot de tus Pokémon, en «Por qué jugó así el bot» (solo habla de tus Pokémon: no revela nada oculto del rival).
+- Con **sets propios** (no estándar), si ningún candidato cuadra con lo observado, el bot prueba **variantes de reparto** (más ataque, más defensa, más velocidad, Pañuelo…).
+- **Fase 12 ya decidida**: al cerrar esta fase, el brief de `fase-12.md` es el **banco de pruebas de equipos** (no una propuesta abierta): el bot juega tu equipo guardado contra tu lista de rivales guardados N combates con el arena y da el % de victorias por rival y por modo. Ideas relacionadas para después (tabla de tipos, de velocidades y de daños; optimizador de Stat Points): mencionarlas como ampliaciones posibles.
+- **Objetivo**: nivel 3 contra nivel 2 con equipo cerrado **≥ 67 % en individuales** (hoy ≈ 64,4 % en 1800 combates; techo con equipo abierto 70,7 %), medido con **≥ 1200 combates** y confirmado con otra semilla, **sin empeorar dobles** (81 %) y con **≤ ~1 s de media** por decisión. Si no se llega, averiguar qué falla e informar pronto con datos.
 
-- **Para qué**: practicar también formatos de Escarlata/Púrpura.
-- **Diseño de partida**: `RulesetId` nuevo con su `StatCalculator` (la estrategia por formato ya existe en `core/team/stats.ts`), formatos de Showdown nuevos en `engine/formats.ts`, learnsets y sets del juego principal en el pipeline, y el teambuilder con EVs/IVs/Tera según el ruleset. El sandbox y el nivel 3 funcionarían sin cambios (usan el motor real); el nivel 2, la cadena de equipo y la calculadora tendrían que entender la Teracristalización.
-- **Riesgos**: es casi duplicar los datos y la validación.
+## Punto de partida
 
-### C. App instalable (PWA) y uso desde el móvil
+- `OpponentModel.candidates` (`analysis/opponent-model.ts`) filtra los sets estándar con lo revelado (Mega, objeto, habilidad, movimientos) y los ordena **del más ofensivo al menos**. `Situation` usa el primero como `combatant` y hasta tres como `variants`.
+- `rivalAssumptions` (`search/assumptions.ts`) toma el candidato `index % n` en la suposición `index`: la primera es siempre la más ofensiva. Los no vistos se barajan.
+- Las respuestas del rival en la búsqueda (`rivalReplies`, `search/lookahead.ts`) son las mejores del nivel 2 jugando su lado, con pesos softmax de temperatura fija (`replyTemperature` 10).
+- Las hojas de la búsqueda crean `Situation` nuevas que vuelven a suponer el set más ofensivo, aunque el fork tenga otro.
 
-- **Para qué**: abrirla desde el móvil en la red de casa.
-- **Diseño de partida**: manifiesto y service worker; opción del servidor para escuchar en la red local (hoy solo `127.0.0.1`, decisión de seguridad); revisar las pantallas a 375 px (los E2E pueden añadir un proyecto móvil de Playwright). Con el nivel 3 pensando en el servidor, el móvil solo muestra.
-- **Riesgos**: exponer el servidor en la red local exige pensar en quién puede conectarse.
+## Hechos verificados
 
-### D. Rivales a partir de estadísticas de uso
+- **Sets estándar**: 260 especies por modo. En individuales, 110 tienen un solo set, 97 dos, 35 tres y 18 cuatro o más; de las 150 con varios, 95 difieren en reparto o naturaleza y 121 en objeto (dobles: 149 / 90 / 142). Ej.: Garchomp tiene seis (Casco Dentado defensivo, Baya Ziuela, dos Megas distintas…).
+- **`teamgen` elige sets uniformemente** (baraja todos y coge con cláusulas): en el arena, el set real de cada rival está entre los candidatos y el **prior uniforme** es el correcto.
+- **Cláusula de objeto**: los formatos de Champions usan `Flat Rules` con `Item Clause = 1` (`vendor/.../data/rulesets.ts`): un objeto revelado en un Pokémon descarta ese objeto en el resto.
+- **Log de una perspectiva** (comprobado con `playOut`): PS propios exactos (`|-damage|p1a: Medicham|28/137`) y del rival en % entero (`|-damage|p2a: Victreebel|90/100`); `|-crit|` y `|-supereffective|` van **antes** de su `|-damage|`; los daños indirectos llevan `[from]` (`[from] item: Life Orb`); un KO es `0 fnt` (solo da una cota inferior del daño).
+- El orden de los `|move|` de un turno dice quién fue más rápido entre movimientos de la misma prioridad (salvo Garra Rápida, Prankster y similares: tolerancia).
+- `estimateDamage` ya cachea por contenido y devuelve las 16 tiradas (`rolls`); acepta `{ crit }`.
 
-- **Para qué**: rivales que se parezcan a lo que se juega de verdad, y un modelo del rival mejor (el nivel 3 sacaría partido de saber qué sets son probables).
-- **Diseño de partida**: descargar en el pipeline las estadísticas de uso de Champions (si existen para Reg M-C) y generar sets y equipos por uso en `teamgen`; usar las frecuencias en `OpponentModel` (y con ellas, los pesos de las suposiciones del nivel 3).
-- **Riesgos**: fuente externa que puede no existir aún o cambiar de formato; la VPN del usuario bloquea esas webs a veces (AGENTS.md).
+## Diseño recomendado
 
-### E. El bot en un hilo de trabajo
+### 1. Deducción de sets (`packages/bot/src/inference/`)
 
-- **Para qué**: que el servidor no quede bloqueado mientras piensa el nivel 3 (síncrono, ≈ 0,3–1 s por decisión).
-- **Diseño de partida**: un `worker_thread` por sala o un pool que reciba el `AgentContext` (el sandbox tendría que crearse dentro del worker a partir del estado serializado).
-- **Riesgos**: el sandbox vive sobre el `Battle` real; pasarlo a otro hilo exige serializarlo con cuidado de no filtrar información oculta.
+- `observations.ts`: recorre el log de la perspectiva del bot con un `BattleView` y extrae, con el estado del momento (cambios de características, objeto, campo, estado):
+  - **Golpes**: atacante, defensor, movimiento, crítico, daño (exacto si el defensor es del bot; en % si es del rival) y si fue KO. Se descartan los ambiguos: multigolpe, sustituto, daño con `[from]`.
+  - **Orden**: pares de movimientos de lados distintos en el mismo turno con la misma prioridad, sin Espacio Raro cambiando a mitad.
+- `beliefs.ts`: `inferBeliefs(...)` → `SetBeliefs`: para cada rival (visto, y los no vistos de la vista previa), los candidatos con su **probabilidad**. Prior uniforme sobre los candidatos de `OpponentModel`, descartando objetos ya revelados en otro Pokémon. Verosimilitud por observación: 1 si cuadra con alguna tirada (con tolerancia de redondeo del %), ε (≈ 0,05) si no, para tolerar efectos no modelados.
+- **Variantes de reparto** (sets propios): si el mejor candidato no explica alguna observación, se añaden variantes del más probable (ataque al máximo, defensa física, defensa especial, velocidad, Pañuelo Elección si el objeto no se conoce y la cláusula lo permite) y se ponderan igual.
+- Se calcula **una vez por decisión real** del nivel 3 y se reutiliza en la búsqueda.
 
-### F. Nivel 3 en dobles y en las decisiones que aún son del nivel 2
+### 2. Uso en el nivel 3
 
-- **Para qué**: en dobles el nivel 3 ya gana con holgura, pero sus relevos y su vista previa siguen siendo los del nivel 2, y la cadena de equipo solo existe en individuales.
-- **Diseño de partida**: una estimación de equipo completo para dobles (parejas en lugar de duelos), la vista previa de dobles con ella y el sandbox también en las peticiones de cambio forzoso.
-- **Riesgos**: medir cada idea cuesta cientos de combates; en dobles cada decisión ya ronda 0,4 s.
+- `Situation` acepta `beliefs` opcionales: candidatos ordenados por probabilidad (`FoeMember.weights`) y el `combatant` es el más probable. Sin `beliefs`, todo como hoy (nivel 2).
+- `rivalAssumptions` reparte las suposiciones por **cuantiles** de la probabilidad (estratificado), no por `index % n`.
+- Las `Situation` de las hojas usan **el set de la suposición del fork** (creencias fijadas), no el más ofensivo.
+- Qué trajo el rival: probar a ordenar los no vistos por probabilidad (lo que conviene traer contra nuestra vista previa) y medir. Si no mejora, se documenta y se deja.
 
-## Pregunta para el usuario
+### 3. Estilo del rival (`inference/style.ts`)
 
-- **¿Qué ampliación quieres ahora?** Recomendación: **A** si lo que más te importa es que el bot juegue mejor; **C** si quieres jugar desde el móvil; **D** si quieres rivales más realistas (y ayuda también a la A).
+- En cada decisión de movimientos el nivel 3 apunta lo que **esperaba** del rival: su respuesta más evidente (la mejor del nivel 2 desde su lado) y la que mejor responde a **nuestra** jugada evidente (la mejor del nivel 2 para nosotros).
+- En el turno siguiente lee en el log qué hizo el rival (movimiento o cambio voluntario) y lo clasifica: evidente, contrapredicción u otra cosa.
+- Con esos recuentos (prior suave para no sobrerreaccionar al principio) ajusta las respuestas del rival en `rivalReplies`: un rival **evidente** baja la temperatura (más peso a la mejor respuesta); uno que **predice** mezcla la contrapredicción con peso proporcional a su frecuencia. Parámetros en `SEARCH_SETTINGS`.
+- Determinista: mismo log → mismo estilo. Es estado del agente durante un combate y se reinicia al empezar otro.
 
-## Al cerrar la fase
+### 4. Explicación
 
-Sigue el **protocolo de cierre de fase** de [AGENTS.md](../../AGENTS.md): docs, CHANGELOG, el brief de la siguiente fase en `docs/fases/fase-12.md` (o una nueva propuesta como esta), commit y push.
+- `DecisionExplanation.beliefs?` (core): por cada Pokémon tuyo visto, las 2–3 hipótesis más probables (objeto, naturaleza, Stat Points destacados, movimientos supuestos y %). Opcional en `TurnExplanationSchema` (los replays viejos siguen valiendo; no cambia la versión).
+- Web: bajo las opciones de «Por qué jugó así el bot», «Lo que cree de tu equipo» con chips por hipótesis. Solo del nivel 3; sin redacción (es tu equipo).
+
+## Medición
+
+- `npm run arena -- --a 3 --b 2 --mode singles --battles 600 --seed X` en paralelo (16 hilos) con semillas distintas. Variantes contra la configuración de la fase 10 con **las mismas semillas**, confirmando con otra antes de quedarse una. Techo con `--open-team-sheets`.
+- Dobles: 300 combates para comprobar que no empeora.
+- Precisión de la deducción: % de rivales cuyo set real es el más probable a mitad y al final del combate (script de diagnóstico, no versionado).
+
+## Tests
+
+- Observaciones: golpes, críticos, KO, `[from]` descartado, orden por velocidad, sobre logs reales de `BattleSession`.
+- Creencias: un daño que solo cuadra con un reparto lo deja casi seguro; la cláusula de objeto descarta; un Pañuelo se deduce de un orden imposible sin él; las variantes aparecen solo cuando nada cuadra; nunca usa información oculta (invariancia: mismo log de perspectiva → mismas creencias aunque cambie el equipo real).
+- Estilo: un rival guionizado «evidente» y otro que «predice» se clasifican bien.
+- Nivel 3: el test de invariancia de `expert.test.ts` sigue en verde; determinismo; explicaciones sin cambiar decisiones (`explain.test.ts`).
+- Protocolo: ida y vuelta con `beliefs`; web: el panel las muestra.
+
+## Criterios de «hecho»
+
+- Objetivo del usuario cumplido (≥ 67 % en individuales con ≥ 1200 combates y otra semilla; dobles ≥ 81 % ± ruido; ≤ ~1 s de media), o diagnóstico con datos y decisión del usuario.
+- `npm run check` y `npm run e2e` en verde; CI en verde.
+- Docs: ADR-0012, guía del bot, CHANGELOG con cifras, AGENTS, PLAN, README y brief de la fase 12.
+
+## Fuera de alcance
+
+- Que el nivel 2 deduzca o se adapte.
+- Estadísticas de uso externas (opción D de la propuesta).
+- Aprender el estilo del rival entre combates (solo dentro de uno).

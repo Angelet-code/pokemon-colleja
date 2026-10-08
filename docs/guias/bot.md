@@ -9,7 +9,7 @@ Cómo deciden los bots, cómo se miden y cómo se mejoran. Decisiones de arquite
 | 0 · Aleatorio | `RandomAgent` | Al azar entre las acciones legales (objetivos útiles en dobles, Mega a veces) |
 | 1 · Agresivo | `AggressiveAgent` | En cada posición, el movimiento y objetivo con más daño esperado (+ bonus de KO). Prioridad si asegura el KO. Nunca golpea al aliado salvo que sea inmune. Mega en cuanto puede. Solo cambia si ningún movimiento hace nada |
 | 2 · Táctico | `TacticalAgent` | Simula las consecuencias de cada opción con daño esperado (duelos en individuales, turnos 2 contra 2 en dobles) y elige la de mejor balance de PS. Vista previa por cobertura |
-| 3 · Experto | `ExpertAgent` | El nivel 2 más un turno por adelantado con el **simulador real**: juega cada opción contra las respuestas probables del rival bajo varias suposiciones de sus sets y valora las posiciones resultantes (en individuales, también con los dos equipos enteros). En individuales elige los relevos por la cadena de equipo completo. Vista previa, la del nivel 2 |
+| 3 · Experto | `ExpertAgent` | El nivel 2 más un turno por adelantado con el **simulador real**: juega cada opción contra las respuestas probables del rival bajo varias suposiciones de sus sets y valora las posiciones resultantes (en individuales, también con los dos equipos enteros). **Deduce los sets del rival** por lo observado y **se adapta a su estilo**. En individuales elige los relevos por la cadena de equipo completo. Vista previa, la del nivel 2 |
 
 ```ts
 import { BOT_LEVELS, createBot, DEFAULT_BOT_LEVEL } from '@colleja/bot';
@@ -35,7 +35,12 @@ Todos los bots solo ven su `AgentContext` (su perspectiva). **No conocen los set
 | `analysis/doubles-sim.ts` / `doubles-plan.ts` | Simulación 2 contra 2 y búsqueda de la mejor pareja de acciones |
 | `analysis/team-selection.ts` | Vista previa por cobertura (el grupo que mejor responde a cada especie rival) |
 | `analysis/move-knowledge.ts` | Para qué sirve cada movimiento de estado (Protección, mejoras, estados, recuperación, pantallas, trampas…) |
-| `search/assumptions.ts` | Nivel 3: suposiciones completas de los sets rivales (vistos y no vistos) a partir del modelo del rival |
+| `analysis/own-sets.ts` | `findOwnSet`: el set de uno de los Pokémon propios a partir de la petición y el equipo |
+| `inference/observations.ts` | Nivel 3: golpes (daño exacto o en %, crítico, KO) y órdenes de movimiento extraídos del log de la perspectiva del bot, con el estado de cada momento |
+| `inference/beliefs.ts` | Nivel 3: `inferBeliefs` → `SetBeliefs`, la probabilidad de cada set de cada rival según las observaciones y la cláusula de objeto, con variantes de reparto para sets propios |
+| `inference/style.ts` | Nivel 3: `RivalStyle`, cuánto hace el rival lo evidente y cuánto intenta adivinar la jugada del bot |
+| `inference/explain-beliefs.ts` | Las hipótesis más probables de cada Pokémon rival para la explicación |
+| `search/assumptions.ts` | Nivel 3: suposiciones completas de los sets rivales (vistos y no vistos), repartidas por la probabilidad de las creencias (cuantiles) |
 | `search/lineups.ts` | Nivel 3: alineaciones para la cadena (los tuyos vivos y los del rival según la suposición, en el combate real o en un fork) |
 | `search/lookahead.ts` | Nivel 3: `searchMoves` (búsqueda a un turno con el sandbox), `SEARCH_SETTINGS` (esfuerzo y pesos por modo) y `recentSwitches` |
 
@@ -45,13 +50,19 @@ El motor pone en `AgentContext.sandbox` (solo al elegir movimientos) un `BattleS
 
 Para cada suposición (`assumptions`), `searchMoves`:
 
-1. obtiene las respuestas probables del rival: el nivel 2 jugando su lado en el fork, sus `rivalReplies` mejores opciones con pesos softmax (`replyTemperature`);
+1. obtiene las respuestas probables del rival: el nivel 2 jugando su lado en el fork, sus `rivalReplies` mejores opciones con pesos softmax (`replyTemperature`), ajustadas a su **estilo** (ver más abajo);
 2. juega `turns` turnos por cada opción propia (las `ownOptions` mejores del nivel 2), cada uno contra una respuesta muestreada de forma estratificada por esos pesos. Con la misma semilla para todas las opciones y **suerte común por acción** (cada acción saca sus números de su propio flujo), las opciones se comparan con la misma suerte del rival;
 3. valora cada posición resultante, tras los relevos forzosos (del nivel 2): balance de PS × 100 más `positionWeight` × el cambio que el nivel 2 espera desde ahí (su mejor puntuación menos la que tendría si no pasara nada: `singlesBaseline`/`doublesBaseline`) y, en individuales, `chainWeight` × lo que la **cadena de equipo completo** (`teamChainValue`, con los banquillos de los dos lados en el fork) cambia ese balance; ±200 si el combate acaba.
 
 Elige la media más alta, restando `loopPenalty` a las opciones con un cambio por cada cambio voluntario propio de los últimos 4 turnos (sin esto, dos bots pueden cambiar de Pokémon en bucle para siempre). En individuales, los **relevos forzosos** son para el Pokémon cuya cadena de equipo completo acaba mejor contra las suposiciones del rival. Sin sandbox (otra perspectiva o la vista previa) juega como el nivel 2. El esfuerzo es fijo, nunca por reloj, para que sea reproducible.
 
-Lo que limita al nivel 3 es, sobre todo, la **información oculta**: con equipo abierto la misma configuración gana al nivel 2 un 70,7 % en individuales, frente a un 63–64 % con equipo cerrado (CHANGELOG de la fase 10). Más muestras (`turns`, `assumptions`) ya no ayudan.
+Lo que limita al nivel 3 es, sobre todo, la **información oculta**: con equipo abierto gana al nivel 2 un 70,7 % en individuales. Con equipo cerrado, la deducción de la fase 11 lo sube de ≈ 64,4 % a **67,1 %** ([ADR-0012](../adr/0012-deduccion-de-sets-y-estilo-del-rival.md)). Más muestras (`turns`, `assumptions`) ya no ayudan.
+
+### Nivel 3: qué deduce del rival
+
+- **Sets** ([ADR-0012](../adr/0012-deduccion-de-sets-y-estilo-del-rival.md)): en cada decisión, `inferBeliefs` repasa lo observado (`extractObservations`). Para cada candidato de `OpponentModel` comprueba si alguna tirada de `estimateDamage` explica cada golpe (con el redondeo del %) y si su velocidad explica cada orden de movimiento. Parte de un prior uniforme, aplica la cláusula de objeto y da una verosimilitud de 0,05 a lo que no cuadra (`CONTRADICTION_LIKELIHOOD`), nunca cero. Con sets propios, si nada cuadra, prueba variantes de reparto (`spreadVariants`). El combatiente supuesto pasa a ser el set más probable y las suposiciones se reparten por cuantiles de la probabilidad.
+- **Estilo**: `RivalStyle` apunta en cada búsqueda la respuesta **evidente** del rival y su **contrapredicción** (la que más castiga la opción evidente del bot, entre sus `counterCandidates` mejores). En el turno siguiente compara con lo que hizo. `styleAdjustment` afina las respuestas: un rival evidente baja la temperatura y uno que contrapredice más que el azar pesa su contrapredicción (hasta un 60 %).
+- Todo sale del log de la perspectiva del bot: mismo log → mismas creencias y mismo estilo. Las creencias se ven en la explicación («Lo que cree de tu equipo»).
 
 ### Qué modela la simulación (nivel 2)
 
@@ -116,6 +127,7 @@ Cada nivel implementa `explain()` (de `BattleAgent`): devuelve la explicación d
 | `packages/bot/test/opponent-model.test.ts` | Filtrado de sets por lo revelado, orden pesimista, equipo abierto, especies sin sets |
 | `packages/bot/test/levels.test.ts` | Registro de niveles. Escenarios: elige el KO, no golpea al aliado con Terremoto, el nivel 2 cambia a un Pokémon que gana el duelo. Fuzz: 100 combates por modo nivel 1 contra 2 sin elecciones inválidas |
 | `packages/bot/test/expert.test.ts` | Nivel 3: KO evidente, sin sandbox = nivel 2, **misma decisión y explicación aunque cambie lo que oculta el rival**, determinismo, combates contra el nivel 2 sin elecciones inválidas |
+| `packages/bot/test/inference.test.ts` | Observaciones sobre logs reales (golpes en los dos sentidos, PS exactos y en %, orden, KO como cota inferior), creencias (el set estándar que explica daño y velocidad, el set defensivo, variantes de reparto legales solo si nada cuadra, cláusula de objeto, invariancia frente a lo oculto) y estilo (qué hizo el rival, evidente o contrapredicción, olvido tras rebobinar) |
 | `packages/bot/test/team-chain.test.ts` | `teamChainValue` cuenta los banquillos de los dos lados; `recentSwitches` cuenta solo los cambios voluntarios |
 | `packages/engine/test/sandbox.test.ts` | El sandbox: solo al elegir movimientos, sustituye los sets vistos y no vistos, PS al % visible, reproducible, no toca el combate real, rechaza posiciones viejas |
 | `packages/bot/test/random-agent.test.ts` | Fuzz del nivel 0 |
