@@ -122,17 +122,24 @@ export function attackDamage(
   return damage;
 }
 
-/** Plays out the duel. `mine` and `foe` start with their current HP. */
+/** HP the duelists start with when it is not their current HP (whole-team chains). */
+export interface DuelStart {
+  mineHp?: number;
+  foeHp?: number;
+}
+
+/** Plays out the duel. `mine` and `foe` start with their current HP (or `start`'s). */
 export function simulateDuel(
   situation: Situation,
   mineStart: Combatant,
   foeStart: Combatant,
   opening: Opening = {},
+  start: DuelStart = {},
 ): DuelResult {
   let mine = mineStart;
   let foe = foeStart;
-  let mineHp = mine.hp;
-  let foeHp = foe.hp;
+  let mineHp = start.mineHp ?? mine.hp;
+  let foeHp = start.foeHp ?? foe.hp;
   let mineSleep = mine.status === 'slp' ? SLEEP_TURNS : 0;
   let foeSleep = foe.status === 'slp' ? SLEEP_TURNS : 0;
   // Choice items lock the holder into the first move it uses.
@@ -301,6 +308,12 @@ export function withBoosts(
     }
     return { ...combatant, boosts: next };
   });
+}
+
+/** Copy of a combatant that has (or has not) moved since entering (memoised). */
+export function withFreshness(combatant: Combatant, fresh: boolean): Combatant {
+  if ((combatant.fresh ?? true) === fresh) return combatant;
+  return variant(combatant, `fresh:${fresh}`, () => ({ ...combatant, fresh }));
 }
 
 export function withStatus(combatant: Combatant, status: string): Combatant {

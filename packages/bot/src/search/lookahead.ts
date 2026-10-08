@@ -1,10 +1,11 @@
 /**
- * Level 3 search (ADR-0010): one turn ahead with the real simulator.
+ * Level 3 search (ADR-0010, ADR-0011): one turn ahead with the real simulator.
  *
  * For each assumption about the rival's hidden sets, the bot forks the battle and plays this
  * turn for real with every pair (own option, likely rival reply). Each resulting position is
- * valued as the material balance plus part of the change level 2 expects from there. The
- * rival's replies and their weights come from level 2 playing the rival's side in the fork.
+ * valued as the material balance plus part of the change level 2 expects from there and, in
+ * singles, part of the whole-team chain (both benches). The rival's replies and their weights
+ * come from level 2 playing the rival's side in the fork.
  */
 
 import type { BattleAgent } from '@colleja/core';
@@ -24,7 +25,9 @@ import { doublesBaseline, planDoubles } from '../analysis/doubles-plan';
 import { pickBest } from '../analysis/evaluation';
 import { planSingles, singlesBaseline } from '../analysis/singles-plan';
 import { Situation } from '../analysis/situation';
+import { teamChainValue } from '../analysis/team-chain';
 import { type Assumption, rivalAssumptions } from './assumptions';
+import { forkFoeLineup, ownLineup } from './lineups';
 
 export interface SearchSettings {
   /** Assumptions about the rival's sets (forks of the position). */
@@ -42,6 +45,16 @@ export interface SearchSettings {
   replyTemperature: number;
   /** Weight of the change level 2 expects from each resulting position (see `outlook`). */
   positionWeight: number;
+  /**
+   * Weight of the whole-team chain (`teamChainValue`, both benches) in each resulting
+   * position, as its change from the material balance. Singles only (0 in doubles).
+   */
+  chainWeight: number;
+  /**
+   * Score points an option with a switch loses per own voluntary switch in the last 4 turns
+   * (`recentSwitches`): stops two players from switching back and forth forever.
+   */
+  loopPenalty: number;
 }
 
 export const SEARCH_SETTINGS: Record<'singles' | 'doubles', SearchSettings> = {
@@ -52,6 +65,8 @@ export const SEARCH_SETTINGS: Record<'singles' | 'doubles', SearchSettings> = {
     turns: 8,
     replyTemperature: 10,
     positionWeight: 0.5,
+    chainWeight: 0.4,
+    loopPenalty: 4,
   },
   doubles: {
     assumptions: 2,
@@ -60,6 +75,8 @@ export const SEARCH_SETTINGS: Record<'singles' | 'doubles', SearchSettings> = {
     turns: 4,
     replyTemperature: 10,
     positionWeight: 0.5,
+    chainWeight: 0,
+    loopPenalty: 4,
   },
 };
 
@@ -139,9 +156,12 @@ export function searchMoves(
     }
   });
 
+  const loop = settings.loopPenalty * recentSwitches(situation.context.log, situation.me, 4);
   const options = own.flatMap((option, o) => {
     const total = totals[o] as { sum: number; count: number };
-    return total.count > 0 ? [{ actions: option.actions, score: total.sum / total.count }] : [];
+    if (total.count === 0) return [];
+    const switches = option.actions.some((action) => action.type === 'switch');
+    return [{ actions: option.actions, score: total.sum / total.count - (switches ? loop : 0) }];
   });
   const chosen = pickBest(options, random);
   return chosen ? { options, chosen } : { options: own, chosen: own[0] as ScoredOption };
@@ -177,6 +197,38 @@ function rivalReplies(
     choice: actions(option.actions),
     weight: (weights[i] ?? 0) / sum,
   }));
+}
+
+/**
+ * Voluntary switches of `side` in the last `turns` turns of `log` (replacements after one of
+ * its Pokémon fainted do not count): how long it has been switching back and forth.
+ */
+export function recentSwitches(log: readonly string[], side: SideId, turns: number): number {
+  // Leads are sent out before turn 1: not switches.
+  let start = Math.max(
+    0,
+    log.findIndex((line) => line.startsWith('|turn|')),
+  );
+  let seen = 0;
+  for (let i = log.length - 1; i >= 0; i--) {
+    if (!log[i]?.startsWith('|turn|')) continue;
+    if (++seen > turns) {
+      start = i + 1;
+      break;
+    }
+  }
+  let fainted = 0;
+  let switches = 0;
+  for (let i = start; i < log.length; i++) {
+    const [, type, ident = ''] = (log[i] as string).split('|');
+    if (!ident.startsWith(side)) continue;
+    if (type === 'faint') fainted++;
+    else if (type === 'switch') {
+      if (fainted > 0) fainted--;
+      else switches++;
+    }
+  }
+  return switches;
 }
 
 /** The reply at cumulative weight `quantile` (0–1). */
@@ -225,11 +277,18 @@ function positionValue(
     return material + (winner === me ? WIN_VALUE : winner === foe ? -WIN_VALUE : 0);
   }
   const request = leaf.request(me);
-  if (!request || requestKind(request) !== 'move' || tools.settings.positionWeight === 0) {
-    return material;
-  }
+  if (!request || requestKind(request) !== 'move') return material;
   const next = new Situation(ownContext(situation, request, leaf.log(me)));
-  return material + tools.settings.positionWeight * outlook(next, request as MoveRequest, tools);
+  const { positionWeight, chainWeight } = tools.settings;
+  let value = material;
+  if (positionWeight > 0) {
+    value += positionWeight * outlook(next, request as MoveRequest, tools);
+  }
+  if (chainWeight > 0 && !next.doubles) {
+    const chain = teamChainValue(next, ownLineup(next), forkFoeLineup(next, leaf, assumption));
+    value += chainWeight * (chain - material);
+  }
+  return value;
 }
 
 /**

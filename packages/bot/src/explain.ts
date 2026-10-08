@@ -28,8 +28,10 @@ export const EXPLANATION_METHODS = {
     'Balance de PS tras simular el intercambio (×100), en promedio sobre los sets posibles de tu Pokémon.',
   doubles: 'Balance de PS tras simular unos turnos 2 contra 2 (×100).',
   duels: 'Balance medio de los duelos del Pokémon que entra contra los tuyos en el campo (×100).',
+  teamChain:
+    'Balance de PS al final de los duelos de los dos equipos enteros con el Pokémon que entra (×100), en promedio sobre lo que puedes tener.',
   lookahead:
-    'Balance de PS tras jugar este turno con el simulador contra tus respuestas más probables, más la estimación táctica de cómo sigue (×100), en promedio sobre los sets posibles de tus Pokémon.',
+    'Balance de PS tras jugar este turno con el simulador contra tus respuestas más probables, más la estimación de cómo sigue (en individuales, con los dos equipos enteros) (×100), en promedio sobre los sets posibles de tus Pokémon.',
 } as const;
 
 /** Where the acting side stands: its request and what it sees of the field. */
