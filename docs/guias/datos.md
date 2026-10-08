@@ -73,8 +73,7 @@ En el resto de tipos de nombre: PokeAPI, luego la traducción de Showdown (`data
 
 ## Sprites (`npm run data:sprites`)
 
-- `assets/sprites/pokemon/<id>.png`: renders de Champions, 128 px. Hay uno para cada especie; Mimikyu-Busted usa el de la forma base.
-- `assets/sprites/icons/<id>.png`: iconos de Gen 8, 68×56 px. **Faltan 93**, los de las especies de Gen 9 y las Megas nuevas: no existen en PokeAPI. La UI usará el render reducido como respaldo.
+- `assets/sprites/pokemon/<id>.png`: renders de Champions, 128 px. Hay uno para cada especie; Mimikyu-Busted usa el de la forma base. La web los usa **a cualquier tamaño**, también en las miniaturas: todos tienen el mismo encuadre, así que un equipo se ve parejo. (Antes las miniaturas eran los iconos de Gen 8, pero faltaban los 93 de Gen 9 y las Megas nuevas, y al mezclarlos con renders las proporciones no cuadraban.)
 - `assets/sprites/items/<id>.png`: **faltan 40**, las megapiedras nuevas de Leyendas Z-A. La UI mostrará solo el nombre.
 - `assets/sprites/manifest.json` lista los respaldos y los que faltan.
 - El arte es © Nintendo/The Pokémon Company. Solo se usa en local y no se sube a git.

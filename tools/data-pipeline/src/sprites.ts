@@ -3,7 +3,7 @@
  * assets/sprites/. That folder is gitignored: the artwork is © Nintendo / The Pokémon Company and
  * is only kept locally for this personal project.
  *
- *   npm run data:sprites              # Champions renders, menu icons, item sprites
+ *   npm run data:sprites              # Champions renders and item sprites
  *   npm run data:sprites -- --shiny   # also shiny renders
  *   npm run data:sprites -- --force   # re-download existing files
  *
@@ -16,7 +16,7 @@ import { getSpecies, listItems, listSpecies } from '@colleja/data';
 import { rawGithubUrl, SOURCES, SPRITES_DIR } from './config';
 import { writeJson } from './util/json';
 
-type SpriteKind = 'pokemon' | 'pokemon-shiny' | 'icons' | 'items';
+type SpriteKind = 'pokemon' | 'pokemon-shiny' | 'items';
 
 interface SpriteJob {
   kind: SpriteKind;
@@ -27,7 +27,6 @@ interface SpriteJob {
 const REMOTE_PATHS: Record<SpriteKind, (key: string) => string> = {
   pokemon: (n) => `sprites/pokemon/versions/generation-ix/champions/${n}.png`,
   'pokemon-shiny': (n) => `sprites/pokemon/versions/generation-ix/champions/shiny/${n}.png`,
-  icons: (n) => `sprites/pokemon/versions/generation-viii/icons/${n}.png`,
   items: (name) => `sprites/items/${name}.png`,
 };
 
@@ -42,9 +41,7 @@ const { values } = parseArgs({
 
 function buildJobs(): SpriteJob[] {
   const jobs: SpriteJob[] = [];
-  const pokemonKinds: SpriteKind[] = values.shiny
-    ? ['pokemon', 'pokemon-shiny', 'icons']
-    : ['pokemon', 'icons'];
+  const pokemonKinds: SpriteKind[] = values.shiny ? ['pokemon', 'pokemon-shiny'] : ['pokemon'];
   for (const species of listSpecies('all')) {
     if (species.pokeapiId === null) continue;
     for (const kind of pokemonKinds) {
@@ -125,7 +122,7 @@ async function main(): Promise<void> {
   for (const ids of Object.values(missing)) ids?.sort();
   writeJson(join(SPRITES_DIR, 'manifest.json'), {
     source: SOURCES.sprites,
-    note: 'Missing icons: use the pokemon/ render scaled down. Missing items: show the name only.',
+    note: 'Missing items: show the name only.',
     fallbacks,
     missing,
   });

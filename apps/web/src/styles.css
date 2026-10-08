@@ -147,11 +147,6 @@ body {
   );
 }
 
-/* Pixel art icons (Gen 8 menu icons) keep their crisp edges when scaled. */
-.pixel {
-  image-rendering: pixelated;
-}
-
 /* Keyboard hint (1–4 moves, 5–9 switches). */
 kbd {
   font-family: var(--font-display);

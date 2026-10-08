@@ -14,6 +14,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 - **Equipos, rivales y replays** como listas de filas; **editor** con nombre editable como titular, estado en chips y ficha con sprite sobre el color de su tipo, deslizadores propios de Stat Points y movimientos numerados; **calculadora** con barra del rango de daño sobre los PS del defensor.
 - **Textos**: fuera subtítulos, explicaciones y *hints* redundantes; los estados son chips y las descripciones largas, `title`. Algunos nombres cambian: «Por qué jugó así el bot», «Combatir», «De mis equipos», «Nuevo rival».
 - Contraste WCAG AA en todos los textos de los dos temas; tema claro revisado.
+- **Miniaturas de Pokémon con el render de Champions** en lugar de los iconos de Gen 8. Faltaban 93 iconos (Gen 9 y las Megas nuevas) y su respaldo, el render, salía mucho más grande que el pixel art. `npm run data:sprites` ya no descarga `icons/` (puedes borrar `assets/sprites/icons/`).
 
 #### Añadido
 

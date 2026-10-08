@@ -1,7 +1,10 @@
-/** Pokémon sprites with fallbacks: icon → render → initials (when sprites are not downloaded). */
+/**
+ * Pokémon sprites: the Champions render at any size, or initials when sprites are not
+ * downloaded.
+ */
 import { getName } from '@colleja/data';
 import { useState } from 'react';
-import { pokemonIcon, pokemonSprite } from '../lib/sprites';
+import { pokemonSprite } from '../lib/sprites';
 
 export function PokemonIcon({
   species,
@@ -12,21 +15,17 @@ export function PokemonIcon({
   size?: number;
   fainted?: boolean;
 }) {
-  const icon = pokemonIcon(species);
-  const [source, setSource] = useState<'icon' | 'render' | 'none'>(
-    icon.isRender ? 'render' : 'icon',
-  );
-  const style = { width: size, height: size };
+  const [failed, setFailed] = useState(false);
   const dim = fainted ? 'opacity-30 grayscale' : '';
 
-  if (source === 'none') return <Initials species={species} size={size} className={dim} />;
+  if (failed) return <Initials species={species} size={size} className={dim} />;
   return (
     <img
-      src={source === 'icon' ? icon.src : pokemonSprite(species)}
+      src={pokemonSprite(species)}
       alt=""
-      style={style}
-      className={`shrink-0 object-contain ${source === 'icon' ? 'pixel' : ''} ${dim}`}
-      onError={() => setSource(source === 'icon' ? 'render' : 'none')}
+      style={{ width: size, height: size }}
+      className={`shrink-0 object-contain ${dim}`}
+      onError={() => setFailed(true)}
       loading="lazy"
       draggable={false}
     />
