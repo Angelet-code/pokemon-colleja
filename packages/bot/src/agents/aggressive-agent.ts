@@ -142,7 +142,9 @@ export class AggressiveAgent implements BattleAgent {
     const chosen: Candidate[] = [];
     const considered: { slot: SlotOptions; candidates: Candidate[] }[] = [];
     for (const slot of getSlotOptions(request)) {
-      const candidates = slot.mustPass ? [] : this.slotCandidates(situation, slot);
+      // Only one Pokémon can Mega Evolve: a later slot fights in its base form.
+      const megaTaken = chosen.some((c) => c.action.type === 'move' && c.action.mega);
+      const candidates = slot.mustPass ? [] : this.slotCandidates(situation, slot, !megaTaken);
       const compatible = candidates.filter((c) => chosen.every((other) => compatible2(c, other)));
       chosen.push(pickBest(compatible, this.random) ?? { action: PASS, score: 0 });
       considered.push({ slot, candidates: compatible });
@@ -162,11 +164,16 @@ export class AggressiveAgent implements BattleAgent {
     return { type: 'actions', actions: chosen.map((candidate) => candidate.action) };
   }
 
-  private slotCandidates(situation: Situation, slot: SlotOptions): Candidate[] {
+  private slotCandidates(
+    situation: Situation,
+    slot: SlotOptions,
+    megaAllowed: boolean,
+  ): Candidate[] {
     const member = situation.own[slot.index];
     if (!member) return [];
     // Mega Evolve at the first chance.
-    const attacker = slot.canMega ? megaEvolved(member.combatant) : member.combatant;
+    const mega = slot.canMega && megaAllowed;
+    const attacker = mega ? megaEvolved(member.combatant) : member.combatant;
     const moves: Candidate[] = [];
     for (const option of slot.moves) {
       if (option.disabled) continue;
@@ -174,7 +181,7 @@ export class AggressiveAgent implements BattleAgent {
       for (const target of targets) {
         const action: SlotAction = { type: 'move', move: option.slot };
         if (target !== undefined) action.target = target;
-        if (slot.canMega) action.mega = true;
+        if (mega) action.mega = true;
         moves.push({ action, score: moveScore(situation, slot, member, attacker, option, target) });
       }
     }

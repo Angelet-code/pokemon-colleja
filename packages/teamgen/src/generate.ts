@@ -21,15 +21,16 @@ export interface TeamGenOptions {
   /** Team size. Defaults to the format's (6). */
   size?: number;
   /**
-   * Max Mega Stones per team. Only one Pokémon can Mega Evolve per battle, so the default is 1
-   * (product decision, 2026-10-07).
+   * Max Mega Stones per team. The format allows any number (Item Clause only forbids repeats),
+   * but only one Pokémon can Mega Evolve per battle, so the default is 2 to keep a choice
+   * (product decision, 2026-10-09).
    */
   maxMegaStones?: number;
   /** Max members weak to the same attacking type, for a bit of coherence. Default 3. */
   maxSharedWeakness?: number;
 }
 
-export const DEFAULT_MAX_MEGA_STONES = 1;
+export const DEFAULT_MAX_MEGA_STONES = 2;
 export const DEFAULT_MAX_SHARED_WEAKNESS = 3;
 
 /** Converts a standard set from `@colleja/data` into a team member. */

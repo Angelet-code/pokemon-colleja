@@ -27,7 +27,7 @@ describe('generateTeam', () => {
       const items = team.flatMap((set) => (set.item ? [set.item] : []));
       expect(new Set(items).size).toBe(items.length);
       const megas = team.filter((set) => isMegaStone(set.item)).length;
-      expect(megas).toBeLessThanOrEqual(1);
+      expect(megas).toBeLessThanOrEqual(2);
       if (megas > 0) withMega++;
       const counts = new Map<string, number>();
       for (const set of team) {

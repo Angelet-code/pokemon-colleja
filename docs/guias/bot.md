@@ -82,7 +82,7 @@ generateTeam('doubles', { seed: 'x' }); // 6 sets estándar legales, determinist
 ```
 
 - Cláusula de especie (por número de Pokédex) y de objeto.
-- **Como mucho una megapiedra** (decisión de producto del 2026-10-07; `maxMegaStones` para cambiarlo).
+- **Como mucho dos megapiedras** (decisión de producto del 2026-10-09; antes una. Solo se megaevoluciona una vez por combate; `maxMegaStones` para cambiarlo).
 - Como mucho 3 miembros débiles al mismo tipo (`maxSharedWeakness`).
 - Apto para navegador. El test genera cientos de equipos y los valida con `checkTeam` y con el validador de Showdown.
 

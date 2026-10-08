@@ -4,7 +4,15 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ## [Sin publicar]
 
+### Cambiado
+
+- Los equipos aleatorios (`teamgen`) pueden llevar **hasta dos megapiedras** (antes una). El formato no limita las megapiedras (solo prohíbe repetir objeto); solo se megaevoluciona una vez por combate. Decisión de producto del 2026-10-09.
+- Los nombres de equipos y rivales admiten como mucho 48 caracteres (antes 60).
+
 ### Corregido
+
+- En «Nuevo combate», los nombres largos de equipos y rivales guardados ensanchaban la lista y se salían del panel; ahora se recortan.
+- Nivel 1 en dobles: con dos Pokémon capaces de megaevolucionar en el campo, la segunda posición pasaba turno (todas sus opciones llevaban mega). Ahora ataca sin megaevolucionar.
 
 - Con `npm run dev`, abrir la web en el puerto del servidor (3001) mostraba `apps/web/dist`, una compilación que podía ser vieja (por ejemplo, con los iconos Gen 8 pixelados en lugar de los renders de Champions). Ahora el servidor de desarrollo redirige las páginas a Vite (`WEB_DEV_URL`, que pone `npm run dev`).
 

@@ -53,7 +53,7 @@ El proyecto avanza **por fases** (PLAN §8). Cuando te pidan *"continúa con la 
   - Solo Stat Points de Champions; el modo clásico IV/EV queda para el futuro.
   - Nombres en español con selector de inglés.
   - Sets estándar "cualesquiera" por ahora: el usuario los editará más adelante.
-  - Bot: el rival por defecto es el **nivel más alto** (2); los equipos aleatorios llevan **como mucho una megapiedra**; el bot **no conoce los sets del rival** con equipo cerrado (solo con equipo abierto).
+  - Bot: el rival por defecto es el **nivel más alto** (2); los equipos aleatorios llevan **como mucho dos megapiedras** (era una hasta el 2026-10-09); el bot **no conoce los sets del rival** con equipo cerrado (solo con equipo abierto).
   - Web (2026-10-07): pantalla de combate al estilo Showdown (campo arriba, controles abajo, log a la derecha), tema oscuro por defecto con opción clara, animaciones mínimas, y el selector ES/EN cambia los **nombres** (la interfaz y el log siguen en español).
   - Teambuilder (2026-10-08): un equipo con problemas **se guarda como borrador** (solo se exige legalidad para combatir); el modo del equipo es el **preferido** y vale para los dos si es legal; lista a la izquierda y ficha a la derecha; botón de set sugerido.
   - Rivales (2026-10-08): **colección aparte** con su dificultad (se pueden copiar de tus equipos); **solo se guarda la dificultad**, no las opciones de práctica; en el inicio **se aplica la dificultad del rival y se puede cambiar**; un rival generado **hay que guardarlo** para combatir contra él.
