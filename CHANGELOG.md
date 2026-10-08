@@ -16,6 +16,39 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 - Con `npm run dev`, abrir la web en el puerto del servidor (3001) mostraba `apps/web/dist`, una compilación que podía ser vieja (por ejemplo, con los iconos Gen 8 pixelados en lugar de los renders de Champions). Ahora el servidor de desarrollo redirige las páginas a Vite (`WEB_DEV_URL`, que pone `npm run dev`).
 
+### Fase 12 — Banco de pruebas de equipos (2026-10-09)
+
+#### Añadido
+
+- **Banco de pruebas** ([ADR-0013](docs/adr/0013-banco-de-pruebas-con-hilos.md), [guía](docs/guias/banco.md)): tu equipo guardado contra tus rivales guardados, bot contra bot, con el % de victorias por rival y modo, su IC 95 % y el total (cada rival pesa igual).
+  - **A/B en pares**: dos versiones del equipo con las mismas semillas, lados y bots; se mide la diferencia por par. Con el mismo equipo en los dos lados, la diferencia es exactamente 0.
+  - **Parada temprana**: para cuando el IC del total (o de la diferencia) llega al margen, o, en A/B, cuando la diferencia es claramente distinta de 0 (Bonferroni sobre las rondas). Siempre con un tope.
+  - **Reparto de Neyman**: tras 6 combates por rival, los siguientes van a los rivales más inciertos.
+  - **Hilos de trabajo** (`node:worker_threads`, todos los núcleos menos uno) con una cola de combates sueltos y **combates especulativos**: la tabla es la misma con cualquier número de hilos.
+  - Los combates que el bot no termina cuentan como **error**, nunca como derrota, y se guardan con su semilla.
+- `@colleja/bench` (paquete nuevo, solo Node) y `playBotBattle` en `engine`, que ahora usa también el arena (mismas cifras). `teamProblems` pasa a `engine`.
+- **Web**: pantalla **Banco** (`/banco`) con equipo, versión B (otro equipo o texto), modo, rivales, nivel de cada lado (Táctico o Experto) y precisión (± 10, ± 5 o fijo). La tabla se llena en vivo con el rival más flojo arriba, cada rival tiene «Jugar contra él» y el **historial del equipo** queda en `storage/bench/`.
+- **Servidor**: `POST/GET /api/bench`, `GET/DELETE /api/bench/:id` y el WebSocket `/ws/bench` (`bench:watch` → `bench:progress`/`bench:result`). Un banco a la vez (409).
+- **Terminal**: `npm run bench` (equipo guardado o fichero, `--versus`, `--margin`, `--battles`, `--screen` para cribar con el nivel 2, `--json`) y `npm run bench:calc` (matriz de daño contra los sets de tus rivales).
+- Decisiones de producto: banco en la web y en la terminal; en la web, niveles entre los dos más altos; margen con parada temprana; resultados guardados; A/B dentro de la fase.
+- Tests (343 en `npm run check` + 6 E2E): estadística con datos sintéticos (incluida la tasa de paradas falsas con dos versiones iguales), planificador (orden de llegada indiferente), banco con hilos reales, cancelación, rivales ilegales saltados, servidor (404, 400, 409, progreso en orden, resultado igual al del banco directo), protocolo, formulario de la web y un E2E del banco.
+- Documentación: [ADR-0013](docs/adr/0013-banco-de-pruebas-con-hilos.md), [guía del banco](docs/guias/banco.md) y la propuesta de la [fase 13](docs/fases/fase-13.md).
+
+#### Medido
+
+Equipo «Collejas pingüi» del usuario, dobles, Ryzen 7 5800X con 15 hilos:
+
+| Prueba | Resultado | Tiempo |
+|---|---|---|
+| 5 rivales × 20 combates, nivel 3 contra 3 | 44,0 % ± 9,7 | 152 s |
+| A/B v1 contra v2, 20 rivales, nivel 3 contra 3, ± 5 | v1 mejor: B − A = −4,2 ± 4,9 (560 combates) | 874 s |
+| A/B v1 contra v2, ± 10, nivel 3 contra 3 | v1 mejor: −5,7 ± 8,3 (240 combates: el mínimo de 6 por rival) | 467 s |
+| A/B v1 contra v2, ± 10, tu bot 3 contra rivales 2 | sin diferencia: +0,8 ± 8,6 (240 combates) | 248 s |
+| Criba v0–v4, nivel 2 contra 2, 2000 combates por variante | v4 42,9 · v1 42,8 · v2 38,5 · v0 35,7 · v3 34,7 % | ≈ 45 s por variante |
+
+- La **criba con el nivel 2** elige las mismas dos variantes (v1 y v4) que el nivel 3 de la prueba manual, así que `--screen` se ofrece. Con los rivales en nivel 2 la ventaja de v1 no aparece: el nivel de los rivales cambia lo que se mide, y la decisión final conviene tomarla con los dos en 3.
+- **No se alcanza** el objetivo de la A/B en ≤ 5 min con el nivel 3 contra 3. La estadística ya ahorra ≈ 3×; el resto es el coste del nivel 3 (≈ 1 s por decisión con 15 hilos: 30 % simulador de Showdown, 11,5 % calculadora, 11 % `doubles-sim`). Decisión del usuario: aceptarlo, documentar el flujo rápido y proponer acelerar el nivel 3 en la fase 13.
+
 ### Fase 11 — El nivel 3 deduce los sets del rival y se adapta a su estilo (2026-10-08)
 
 #### Añadido

@@ -6,7 +6,7 @@ Simulador de combates de **Pokémon Champions** para practicar en individuales y
 
 ## Estado
 
-✅ Fase 0 (investigación y plan) · ✅ Fase 1 (cimientos) · ✅ Fase 2 (datos) · ✅ Fase 3 (dominio + motor + combate en terminal) · ✅ Fase 4 (bot de 3 niveles, equipos aleatorios, arena) · ✅ Fase 5 (servidor + UI de combate: **MVP**) · ✅ Fase 6 (teambuilder y equipos guardados) · ✅ Fase 7 (rivales guardados) · ✅ Fase 8 (calculadora, replays y explicación del bot) · ✅ Rediseño de la web · ✅ Fase 9 (bot nivel 3 "Experto", ahora el rival por defecto) · ✅ Fase 10 («Calcular» desde el combate, críticos y efectos en la calculadora, replays renombrables, E2E y un nivel 3 más fuerte en individuales) · ✅ Fase 11 (el nivel 3 deduce tus sets y se adapta a tu estilo) · ⏭️ Fase 12 (banco de pruebas de equipos). Ver [CHANGELOG](CHANGELOG.md).
+✅ Fase 0 (investigación y plan) · ✅ Fase 1 (cimientos) · ✅ Fase 2 (datos) · ✅ Fase 3 (dominio + motor + combate en terminal) · ✅ Fase 4 (bot de 3 niveles, equipos aleatorios, arena) · ✅ Fase 5 (servidor + UI de combate: **MVP**) · ✅ Fase 6 (teambuilder y equipos guardados) · ✅ Fase 7 (rivales guardados) · ✅ Fase 8 (calculadora, replays y explicación del bot) · ✅ Rediseño de la web · ✅ Fase 9 (bot nivel 3 "Experto", ahora el rival por defecto) · ✅ Fase 10 («Calcular» desde el combate, críticos y efectos en la calculadora, replays renombrables, E2E y un nivel 3 más fuerte en individuales) · ✅ Fase 11 (el nivel 3 deduce tus sets y se adapta a tu estilo) · ✅ Fase 12 (banco de pruebas de equipos) · ⏭️ Fase 13 (por elegir). Ver [CHANGELOG](CHANGELOG.md).
 
 ## Puesta en marcha
 
@@ -30,6 +30,8 @@ En **Equipos** (http://127.0.0.1:5173/equipos) creas equipos desde cero o import
 
 En **Rivales** (http://127.0.0.1:5173/rivales) preparas equipos para el bot con su dificultad: genera uno aleatorio, cópialo de tus equipos, impórtalo o créalo, edítalo con el mismo editor y guárdalo. En el inicio eliges ese rival guardado y practicas contra él ([guía de rivales](docs/guias/rivales.md)).
 
+En **Banco** (http://127.0.0.1:5173/banco) el bot juega tu equipo guardado contra tus rivales guardados y te da el **% de victorias por rival y en total**, con su margen de error, mientras la tabla se llena en vivo. También compara **dos versiones** de tu equipo (o una pegada como texto) en los mismos combates, guarda cada prueba en el historial del equipo y te lleva a jugar contra el rival donde flojeas ([guía del banco](docs/guias/banco.md)).
+
 Para aprender de cada combate: **Calculadora** (http://127.0.0.1:5173/calculadora) con las reglas de Champions y el mismo cálculo que usa el bot (críticos, climas, campos, pantallas, Refuerzo, Compiescolta, Gravedad y las zonas), que se abre con **«Calcular»** desde el propio combate con los Pokémon en el campo; **Replays** guardados al terminar, para revivirlos turno a turno y renombrarlos; y el panel **"Por qué jugó así el bot"** en el combate, que enseña lo que valoró el bot en cada turno ya jugado sin revelar lo que aún no has visto ([guía de herramientas](docs/guias/herramientas.md)).
 
 ```bash
@@ -43,6 +45,12 @@ npm run arena -- --a 3 --b 2
 ```
 
 Enfrenta a dos niveles del bot con equipos aleatorios y mide el porcentaje de victorias ([guía de bots](docs/guias/bot.md)).
+
+```bash
+npm run bench -- --team "Mi equipo" --versus version-b.txt
+```
+
+El banco en la terminal: tu equipo contra tus rivales guardados, bot contra bot en todos los núcleos, hasta saber el resultado con ± 5 puntos. Con `--screen` criba muchas versiones con el bot táctico y compara las dos mejores, y `npm run bench:calc -- --team "Mi equipo"` saca la matriz de daño contra los sets de tus rivales sin combatir ([guía del banco](docs/guias/banco.md)).
 
 ```bash
 npm run smoke

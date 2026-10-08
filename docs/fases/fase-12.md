@@ -117,6 +117,13 @@ Meta: comparar dos versiones de un equipo contra 19 rivales con el nivel 3 en **
 - `npm run check` y `npm run e2e` en verde; CI en verde.
 - Docs: ADR-0013 (hilos de trabajo y combate entre bots en `engine`), guía nueva `docs/guias/banco.md`, CHANGELOG, AGENTS, PLAN, README y el brief de la fase 13.
 
+> **Estado**: ✅ cerrada el 2026-10-09.
+> - Decisiones del usuario: en la web y en la terminal; en la web, niveles entre los dos más altos; margen con parada temprana; resultados guardados; A/B en esta fase.
+> - 5 rivales × 20 con el nivel 3: 152 s (≈ 2 min rozado).
+> - A/B v1 contra v2 con ± 5: v1 mejor (−4,2 ± 4,9) en ≈ 14 min. **No llega a 5 min**: el usuario lo aceptó y quedó documentado el flujo rápido.
+> - La criba con el nivel 2 elige las mismas finalistas que el nivel 3, y se ofrece (`--screen`).
+> - Detalle en [ADR-0013](../adr/0013-banco-de-pruebas-con-hilos.md) y el [CHANGELOG](../../CHANGELOG.md).
+
 ## Fuera de alcance (ampliaciones posibles para después)
 
 - **Tabla de tipos** en el teambuilder: debilidades compartidas y huecos de cobertura.

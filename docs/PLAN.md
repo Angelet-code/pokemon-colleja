@@ -72,13 +72,14 @@ Documentación de soporte:
 ```
 pokemon-colleja-simulator/
 ├─ apps/
-│  ├─ web/                 # ✅ React + Vite: inicio, combate, teambuilder, rivales, calculadora y replays (sistema de diseño: ADR-0009)
-│  └─ server/              # ✅ Node + Fastify + WebSocket: combates contra el bot, API REST, lo guardado y la calculadora
+│  ├─ web/                 # ✅ React + Vite: inicio, combate, teambuilder, rivales, banco, calculadora y replays (sistema de diseño: ADR-0009)
+│  └─ server/              # ✅ Node + Fastify + WebSocket: combates contra el bot, API REST, lo guardado, la calculadora y el banco
 ├─ packages/
 │  ├─ showdown/            # ✅ Puente único y tipado hacia vendor/pokemon-showdown (Node-only)
 │  ├─ core/                # ✅ Dominio puro: tipos, stats (SP), import/export, elecciones, vista del combate, agentes
 │  ├─ data/                # ✅ JSON generados + i18n (es/en) + sets estándar + overrides (apto para navegador)
-│  ├─ engine/              # ✅ BattleSession sobre Battle de Showdown: validación, perspectivas, rebobinado, replays y sandbox (forks sin información oculta)
+│  ├─ engine/              # ✅ BattleSession sobre Battle de Showdown: validación, perspectivas, rebobinado, replays, sandbox (forks sin información oculta) y combate entre bots
+│  ├─ bench/               # ✅ Banco de pruebas de equipos: hilos de trabajo, parada temprana, reparto adaptativo y A/B en pares (Node-only, ADR-0013)
 │  ├─ bot/                 # ✅ Bots: aleatorio, agresivo (daño esperado), táctico (simulación) y experto (búsqueda con el sandbox, cadena de equipo completo, deducción de sets y estilo del rival), con @smogon/calc
 │  ├─ teamgen/             # ✅ Generador de equipos aleatorios legales a partir de sets estándar
 │  ├─ narration/           # ✅ Log del combate en español/inglés con las plantillas de Showdown (web y CLI)
@@ -88,12 +89,13 @@ pokemon-colleja-simulator/
 │  ├─ smoke/               # ✅ Combates headless deterministas entre bots aleatorios
 │  ├─ data-pipeline/       # ✅ Genera packages/data desde Showdown + PokeAPI y descarga sprites
 │  ├─ arena/               # ✅ Torneos bot contra bot (`npm run arena`: % de victorias, tiempos, fallos)
+│  ├─ bench/               # ✅ Banco de pruebas en terminal (`npm run bench`, criba con `--screen`) y matriz de daño (`npm run bench:calc`)
 │  ├─ cli/                 # ✅ Combate en terminal contra el bot (`npm run play`)
 │  ├─ dev/                 # ✅ `npm run dev`: servidor + Vite a la vez
 │  └─ e2e/                 # ✅ Tests E2E con Playwright (`npm run e2e`, fuera del check; job propio en la CI)
 ├─ vendor/
 │  └─ pokemon-showdown/    # Submódulo git fijado a un commit concreto
-├─ storage/                # Datos del usuario: equipos ✅ (teams/), rivales ✅ (opponents/), replays ✅ (replays/), JSON legibles
+├─ storage/                # Datos del usuario: equipos ✅ (teams/), rivales ✅ (opponents/), replays ✅ (replays/), bancos ✅ (bench/), JSON legibles
 ├─ docs/                   # Plan, investigación, ADRs, guías
 └─ assets/                 # Sprites descargados (no versionados, no se redistribuyen)
 ```
@@ -115,6 +117,10 @@ graph LR
   server --> bot
   server --> teamgen
   server --> core
+  server --> bench[packages/bench]
+  bench --> engine
+  bench --> bot
+  bench --> core
   core --> data
   engine --> core
   engine --> data
@@ -136,6 +142,8 @@ graph LR
   arena[tools/arena] --> engine
   arena --> bot
   arena --> teamgen
+  benchcli[tools/bench] --> bench
+  benchcli --> protocol
 ```
 
 **Regla dura:** solo `packages/showdown` accede a `vendor/`. Showdown se compila como CommonJS y el puente lo carga con `createRequire`, junto con sus `.d.ts`. Es Node-only: nunca se importa desde `apps/web`, que solo usa paquetes aptos para navegador (`core`, `data`, `protocol`, `narration` y, de `bot`, solo la entrada `@colleja/bot/opponent-model`, sin la calculadora; lo comprueban unos tests).
@@ -238,8 +246,8 @@ El adaptador **valida siempre** los dos equipos con `TeamValidator` antes de cre
 
 ### 3.7 Persistencia
 
-- `storage/teams/*.json` ✅ (fase 6), `storage/opponents/*.json` ✅ (fase 7) y `storage/replays/*.json` ✅ (fase 8, solo los que el usuario guarda), todos legibles y editables a mano. Cada equipo y cada rival incluye también su export de Showdown.
-- Acceso a través de interfaces `TeamRepository` ✅, `OpponentRepository` ✅ y `ReplayRepository` ✅, todas sobre el repositorio genérico `FileJsonRepository` (un fichero por elemento, escritura atómica, ids seguros: [ADR-0006](adr/0006-equipos-guardados-y-teambuilder.md), [ADR-0007](adr/0007-rivales-guardados.md)). La implementación inicial usa el sistema de archivos y puede pasar a SQLite si el proyecto crece.
+- `storage/teams/*.json` ✅ (fase 6), `storage/opponents/*.json` ✅ (fase 7), `storage/replays/*.json` ✅ (fase 8, solo los que el usuario guarda) y `storage/bench/*.json` ✅ (fase 12, cada banco terminado o cancelado, con los equipos tal como estaban), todos legibles y editables a mano. Cada equipo y cada rival incluye también su export de Showdown.
+- Acceso a través de interfaces `TeamRepository` ✅, `OpponentRepository` ✅, `ReplayRepository` ✅ y `BenchRepository` ✅, todas sobre el repositorio genérico `FileJsonRepository` (un fichero por elemento, escritura atómica, ids seguros: [ADR-0006](adr/0006-equipos-guardados-y-teambuilder.md), [ADR-0007](adr/0007-rivales-guardados.md)). La implementación inicial usa el sistema de archivos y puede pasar a SQLite si el proyecto crece.
 - Un rival guardado es un equipo más su dificultad (`botLevel`); las opciones de práctica no se guardan con él.
 - Un equipo guardado puede ser un **borrador ilegal**: la legalidad se informa siempre y solo se exige para combatir.
 
@@ -338,10 +346,11 @@ Tamaños orientativos: S (pocas sesiones) · M · L.
 | **9. Bot nivel 3** ✅ | M | Sandbox en el motor (forks sin información oculta), nivel 3 "Experto" por defecto y el bot pensando mientras el jugador elige ([brief](fases/fase-9.md)) | ✅ Gana al nivel 2 el 61,8 % (602 combates, individuales) y el 78,6 % (308, dobles), sin elecciones inválidas y en ≈ 1 s como mucho por decisión. 285 tests |
 | **10. Pulido de herramientas y nivel 3** ✅ | M | «Calcular» desde el combate, críticos y efectos en la calculadora, replays renombrables, E2E con Playwright y el nivel 3 con la cadena de equipo completo ([brief](fases/fase-10.md), [ADR-0011](adr/0011-nivel-3-con-equipo-completo.md)) | ✅ Herramientas con tests y E2E en la CI. Nivel 3 contra el 2: 65,8 % en individuales en la semilla de validación (≈ 64,4 % en 1800 combates; objetivo 65 % rozado, cerrado así por decisión del usuario) y 81,3 % en dobles, ≈ 0,5 s por decisión. 296 tests + 5 E2E |
 | **11. El nivel 3 predice al rival** ✅ | M | Deducción de los sets del rival por el daño y la velocidad observados, adaptación a su estilo y «Lo que cree de tu equipo» en la explicación ([brief](fases/fase-11.md), [ADR-0012](adr/0012-deduccion-de-sets-y-estilo-del-rival.md)) | ✅ Nivel 3 contra el 2: 67,1 % en individuales (2387 combates, dos semillas; objetivo 67 %) y 80,8 % en dobles, ≈ 0,4–0,6 s por decisión. 310 tests + 5 E2E |
-| **12. Banco de pruebas de equipos** ⏭️ | M | El bot juega tu equipo guardado contra tus rivales guardados y da el % de victorias por rival y modo ([brief](fases/fase-12.md)) | — |
+| **12. Banco de pruebas de equipos** ✅ | M | El bot juega tu equipo guardado contra tus rivales guardados en hilos de trabajo, con parada temprana, reparto adaptativo, A/B en pares, criba con el nivel 2 y matriz de daño; pantalla «Banco» con historial ([brief](fases/fase-12.md), [ADR-0013](adr/0013-banco-de-pruebas-con-hilos.md)) | ✅ 5 rivales × 20 combates con el nivel 3 en 152 s; A/B v1 contra v2 (20 rivales, nivel 3, ± 5) da v1 mejor (−4,2 ± 4,9) en ≈ 14 min (objetivo 5 min no alcanzado: aceptado y documentado el flujo rápido); la criba del nivel 2 elige las mismas dos variantes que el nivel 3. 343 tests + 6 E2E |
+| **13. Propuesta** ⏭️ | — | Ampliaciones a elegir ([brief](fases/fase-13.md)) | — |
 | **Futuro** | — | Modo clásico IV/EV/Tera, PWA/móvil, PvP, rivales basados en uso real | — |
 
-**MVP = fases 1–5** ✅. Con la fase 6 ✅ los equipos se crean y guardan en el navegador, y con la 7 ✅ también los rivales: la experiencia que pediste está completa. Con la 8 ✅ llegan las herramientas para aprender de cada combate, con la 9 ✅ un rival más fuerte con la 10 ✅ se pulen las herramientas y el rival mira los dos equipos enteros, y con la 11 ✅ el rival deduce tus sets y se adapta a tu estilo. Lo siguiente, ya decidido: el banco de pruebas de equipos ([fase 12](fases/fase-12.md)).
+**MVP = fases 1–5** ✅. Con la fase 6 ✅ los equipos se crean y guardan en el navegador, y con la 7 ✅ también los rivales: la experiencia que pediste está completa. Con la 8 ✅ llegan las herramientas para aprender de cada combate, con la 9 ✅ un rival más fuerte con la 10 ✅ se pulen las herramientas y el rival mira los dos equipos enteros, con la 11 ✅ el rival deduce tus sets y se adapta a tu estilo, y con la 12 ✅ el banco de pruebas mide tu equipo contra tus rivales. Lo siguiente está por elegir ([propuesta de la fase 13](fases/fase-13.md)).
 
 ---
 
@@ -381,7 +390,8 @@ Las mecánicas en sí **no se re-testean**: son responsabilidad del motor (Showd
 | La sesión usa la API interna de `Battle` (`choose`, `setPlayer`, `sendUpdates`, `inputLog`) | Aislada en `engine/src/session.ts` y cubierta por tests de determinismo, rebobinado y perspectivas ([ADR-0003](adr/0003-sesion-de-combate.md)) |
 | El bot adivina los sets rivales con los sets estándar: contra equipos humanos poco comunes puede equivocarse | Filtra por lo revelado. El nivel 3 pondera los sets por el daño y la velocidad observados y, si ninguno cuadra, prueba variantes de reparto ([ADR-0012](adr/0012-deduccion-de-sets-y-estilo-del-rival.md)). Con equipo abierto juega con los sets reales |
 | Dos bots pueden cambiar de Pokémon en bucle (combates sin fin en el arena) | El nivel 3 penaliza los cambios repetidos ([ADR-0011](adr/0011-nivel-3-con-equipo-completo.md)). Un humano siempre puede romper el bucle |
-| El nivel 3 piensa de forma síncrona (≈ 0,3–1 s): mientras, el servidor no atiende otros mensajes | Piensa después de enviar el turno al jugador, así que coincide con su tiempo de decisión. Si molestara, moverlo a un hilo de trabajo |
+| El nivel 3 piensa de forma síncrona (≈ 0,3–1 s): mientras, el servidor no atiende otros mensajes | Piensa después de enviar el turno al jugador, así que coincide con su tiempo de decisión. El banco ya juega en hilos de trabajo ([ADR-0013](adr/0013-banco-de-pruebas-con-hilos.md)); el combate humano podría moverse igual si molestara |
+| El nivel 3 es caro para el banco (≈ 1 s por decisión en dobles con 15 hilos): una A/B con ± 5 contra 20 rivales tarda ≈ 14 min y la CPU va al 100 % | Pares, reparto de Neyman y parada temprana (≈ 3× menos combates); criba con el nivel 2 y márgenes de ± 10. Un banco a la vez. Acelerar el nivel 3 está propuesto para la [fase 13](fases/fase-13.md) |
 | El sandbox usa la serialización interna de Showdown (`toJSON`/`fromJSON`) y borra campos del estado por nombre | Aislado en `engine/src/sandbox.ts` y cubierto por tests (incluido uno de invariancia frente a lo oculto). Revisarlo al actualizar Showdown |
 | `@smogon/calc` puede ir por detrás de nuestro commit de Showdown | Test de contraste con el motor (stats de todos los sets estándar y daño real). Si falla tras actualizar Showdown, revisar antes de actualizar la calculadora |
 | VPN ocasional del usuario (Sophos) que bloquea webs de Pokémon | Los scripts usan solo npm y GitHub. Si una web falla, comprobar si la VPN está activa |
@@ -404,3 +414,4 @@ Las mecánicas en sí **no se re-testean**: son responsabilidad del motor (Showd
 | 7 | Herramientas (2026-10-08) | Calculadora **en el servidor**; replays guardados **solo si se piden**; explicación del bot **tras cada turno** y **sin lo no revelado** con equipo cerrado; visor omnisciente con interruptor "Como jugador" ([ADR-0008](adr/0008-herramientas-de-practica.md)) |
 | 8 | Fase 10 (2026-10-08) | «Calcular» abre la calculadora **en otra pestaña** desde el combate; E2E con Playwright **en un comando aparte y su propio job de CI**; el nivel 3 con **≤ ~1 s de media** por decisión |
 | 9 | Fase 11 (2026-10-08) | Deducción de sets y estilo del rival **solo en el nivel 3** (el 2 es la referencia fija); se enseña **lo que cree de tu equipo**; **variantes de reparto** para sets propios; objetivo ≥ 67 % en individuales. La fase 12 será el **banco de pruebas de equipos** |
+| 10 | Fase 12 (2026-10-09) | Banco **en la web y en la terminal**; en la web, niveles de cada lado **entre los dos más altos**; **margen con parada temprana** (± 10 por defecto); resultados **guardados** en un historial por equipo; **A/B en pares** dentro de la fase. El objetivo de la A/B en ≤ 5 min con el nivel 3 no se alcanza (≈ 14 min con ± 5): **se acepta** y se documenta el flujo rápido (criba con el nivel 2, ± 10) ([ADR-0013](adr/0013-banco-de-pruebas-con-hilos.md)) |

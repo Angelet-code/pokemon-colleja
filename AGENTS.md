@@ -28,7 +28,8 @@ El proyecto avanza **por fases** (PLAN §8). Cuando te pidan *"continúa con la 
 | 9. Bot nivel 3 "Experto" | ✅ ([brief](docs/fases/fase-9.md), [ADR-0010](docs/adr/0010-bot-experto-con-sandbox.md), [guía](docs/guias/bot.md)) |
 | 10. Pulido de herramientas y nivel 3 más fuerte | ✅ ([brief](docs/fases/fase-10.md), [ADR-0011](docs/adr/0011-nivel-3-con-equipo-completo.md), guías de [herramientas](docs/guias/herramientas.md) y [bot](docs/guias/bot.md)) |
 | 11. El nivel 3 predice al rival (sets y estilo) | ✅ ([brief](docs/fases/fase-11.md), [ADR-0012](docs/adr/0012-deduccion-de-sets-y-estilo-del-rival.md), [guía](docs/guias/bot.md)) |
-| **12. Banco de pruebas de equipos** | ⏭️ **Siguiente**: [docs/fases/fase-12.md](docs/fases/fase-12.md) |
+| 12. Banco de pruebas de equipos | ✅ ([brief](docs/fases/fase-12.md), [ADR-0013](docs/adr/0013-banco-de-pruebas-con-hilos.md), [guía](docs/guias/banco.md)) |
+| **13. Por elegir** | ⏭️ **Siguiente**: propuesta en [docs/fases/fase-13.md](docs/fases/fase-13.md) (pregunta al usuario cuál) |
 
 ### Protocolo de cierre de fase
 
@@ -63,6 +64,7 @@ El proyecto avanza **por fases** (PLAN §8). Cuando te pidan *"continúa con la 
   - Fase 10 (2026-10-08): «Calcular» abre la calculadora **en otra pestaña**; E2E con Playwright **aparte del check** (`npm run e2e`) y con su job en la CI; el nivel 3 con **≤ ~1 s de media**. El nivel 3 se quedó en ≈ 64 % contra el 2 en individuales (objetivo 65 %): el usuario decidió **cerrar con lo conseguido** y dejar la deducción de sets del rival para otra fase. Le importa que el bot **prediga al rival** (qué hará, a quién cambiará, qué Pokémon y sets tiene).
   - Fase 11 (2026-10-08): deducción de sets y estilo del rival **solo en el nivel 3**; se enseña **lo que cree de tu equipo**; variantes de reparto para sets propios. Objetivo ≥ 67 % cumplido (67,1 %).
   - Fase 12 (2026-10-08): el **banco de pruebas de equipos** (para ayudarle a montar su equipo perfecto), después de cerrar la 11. Otras ideas para más adelante: tablas de tipos, velocidades y daños, y optimizador de Stat Points.
+  - Banco (2026-10-09): en la **web y en la terminal**; en la web, el nivel de cada lado se elige **entre los dos más altos**; **margen con parada temprana**; resultados **guardados** (historial por equipo); **A/B en pares**. Le importa que medir variantes sea **rápido sin perder calidad**. La A/B con el nivel 3 tarda ≈ 14 min con ± 5 (objetivo 5 min): **aceptado**, con el flujo rápido documentado (criba con el nivel 2, ± 10); acelerar el nivel 3 queda propuesto.
 
 ## Puesta en marcha
 
@@ -86,6 +88,7 @@ npm run dev          # servidor + web: http://127.0.0.1:5173
 | `npm run dev` | Servidor (127.0.0.1:3001, con recarga) + web con Vite (http://127.0.0.1:5173) a la vez ([guía](docs/guias/web.md)). Los equipos guardados van a `storage/teams/` ([guía](docs/guias/teambuilder.md)) y los rivales a `storage/opponents/` ([guía](docs/guias/rivales.md)). Calculadora, replays y explicación del bot: [guía](docs/guias/herramientas.md) |
 | `npm run build` / `npm start` | Compila la web (`apps/web/dist`) / la compila y la sirve desde el servidor en http://127.0.0.1:3001 |
 | `npm run play` | Combate en la terminal contra el bot. Admite `-- --mode doubles --bot 0\|1\|2\|3 --team <fichero> --opponent-team <fichero>\|random --seed X --no-preview --open-team-sheets --auto` ([guía](docs/guias/combate.md)) |
+| `npm run bench` | Banco de pruebas: tu equipo guardado (o un fichero) contra tus rivales guardados, bot contra bot en hilos de trabajo. Admite `-- --team <id\|nombre\|fichero> --versus <…> --opponents all\|<ids> --mode --level --rival-level --margin 5 --battles N --screen <ficheros> --seed --threads --json <fichero>` ([guía](docs/guias/banco.md)). `npm run bench:calc -- --team …` da la matriz de daño sin combatir |
 | `npm run arena` | Torneo bot contra bot con equipos aleatorios. Admite `-- --a 3 --b 2 --mode singles\|doubles\|both --battles N --seed X` ([guía](docs/guias/bot.md)). El nivel 3 tarda ≈ 0,3–0,4 s por decisión: para cientos de combates, lanza varios arenas en paralelo con semillas distintas |
 | `npm run smoke` | Combates headless de Champions (fixtures + aleatorios). Admite `-- --random N --seed X --verbose` |
 | `npm run data:build` | Regenera `packages/data/generated/` desde Showdown + PokeAPI (determinista). Después, revisa el diff |
@@ -100,18 +103,18 @@ npm run dev          # servidor + web: http://127.0.0.1:5173
 
 ```
 apps/       → aplicaciones (web, server). Pueden depender de packages/*
-packages/   → librerías: showdown (puente al motor), data (datos del juego), core (dominio), engine (sesiones), bot, teamgen, narration (log), protocol (mensajes web ↔ servidor)
-tools/      → scripts: setup, smoke, data-pipeline, cli, arena, dev, e2e (Playwright)
+packages/   → librerías: showdown (puente al motor), data (datos del juego), core (dominio), engine (sesiones), bot, teamgen, narration (log), protocol (mensajes web ↔ servidor), bench (banco de pruebas)
+tools/      → scripts: setup, smoke, data-pipeline, cli, arena, bench, dev, e2e (Playwright)
 vendor/pokemon-showdown → submódulo git fijado a un commit (NO editar)
 docs/       → PLAN, research/, adr/, guias/, fases/ (briefs de cada fase)
-storage/    → datos del usuario (teams/, opponents/ y replays/: equipos, rivales y replays guardados): local, no versionado
+storage/    → datos del usuario (teams/, opponents/, replays/ y bench/: equipos, rivales, replays y bancos guardados): local, no versionado
 assets/     → sprites descargados: local, no versionado
 ```
 
 - **Solo `packages/showdown` toca `vendor/`.** El resto importa `@colleja/showdown`. Esto es una regla dura.
 - `@colleja/showdown` es Node-only (usa `createRequire`). Nunca se importa desde `apps/web` ni desde `packages/core`.
-- **Capas** (ver PLAN §3.3): `core` → `data`; `bot` → `core`, `data`, `@smogon/calc`; `teamgen` → `core`, `data`; `narration` → `core`, `data`; `protocol` → `core` (tipos), `zod`; `engine` → `core`, `data`, `showdown`; apps y tools → lo que necesiten. Nadie depende de `apps/*` ni de `tools/*`. `engine` y `teamgen` pueden ser dependencias **de desarrollo** de `bot` (sus tests juegan combates).
-- **`@colleja/core`, `@colleja/bot`, `@colleja/teamgen`, `@colleja/narration` y `@colleja/protocol` son aptos para navegador**: sin `node:*` ni Showdown. **`apps/web` solo importa paquetes aptos para navegador** (nunca `engine`, `showdown` ni `node:*`; lo comprueba `apps/web/test/dependencies.test.ts`). `@colleja/engine` es solo Node y es el **único paquete de dominio que importa `@colleja/showdown`** (además de `tools/smoke` y `tools/data-pipeline`).
+- **Capas** (ver PLAN §3.3): `core` → `data`; `bot` → `core`, `data`, `@smogon/calc`; `teamgen` → `core`, `data`; `narration` → `core`, `data`; `protocol` → `core` (tipos), `zod`; `engine` → `core`, `data`, `showdown`; `bench` → `core`, `data`, `engine`, `bot`; apps y tools → lo que necesiten. Nadie depende de `apps/*` ni de `tools/*`. `engine` y `teamgen` pueden ser dependencias **de desarrollo** de `bot` (sus tests juegan combates).
+- **`@colleja/core`, `@colleja/bot`, `@colleja/teamgen`, `@colleja/narration` y `@colleja/protocol` son aptos para navegador**: sin `node:*` ni Showdown. **`apps/web` solo importa paquetes aptos para navegador** (nunca `engine`, `showdown` ni `node:*`; lo comprueba `apps/web/test/dependencies.test.ts`). `@colleja/engine` es solo Node y es el **único paquete de dominio que importa `@colleja/showdown`** (además de `tools/smoke` y `tools/data-pipeline`). `@colleja/bench` también es solo Node (hilos de trabajo).
 - **`@colleja/data` es apto para navegador**: solo lee los JSON generados. Los datos del juego (roster, movimientos, nombres en español…) **se consultan ahí**, nunca a mano ni de memoria.
 - `packages/data/generated/` **no se edita a mano**: se regenera con `npm run data:build`. Las correcciones van en `packages/data/overrides/` (sets propios en formato export, nombres en español y plantillas de mensajes de combate en español que falten en Showdown).
 - El pipeline importa `@colleja/data/schema` (tipos y constantes), nunca `@colleja/data`, porque este carga los JSON que el propio pipeline genera.
@@ -165,7 +168,7 @@ assets/     → sprites descargados: local, no versionado
 - El estado del combate en la web sale de `BattleView` (core) y el log de `@colleja/narration` (port de `BattleTextParser` de Showdown). **No uses `@pkmn/client`/`@pkmn/dex`**: sus datos no son los de Champions ([ADR-0005](docs/adr/0005-servidor-web-y-narracion.md)). Las cifras que se muestran salen de la petición o de `@colleja/data`.
 - El store de la web solo cambia con mensajes del servidor; nunca adivines el resultado de una elección en el cliente.
 - Para los bots en el servidor (o en cualquier bucle humano contra bot), usa `decideFor` de `engine`: reintenta tras `[Unavailable choice]`.
-- El servidor escucha en `127.0.0.1` y usa `SERVER_PORT`/`SERVER_HOST` (no `PORT`, que las herramientas de desarrollo suelen fijar para la web). La web usa `WEB_PORT`. `STORAGE_DIR` lleva equipos, rivales y replays a otra carpeta (los E2E usan una temporal). Con `npm run dev`, el servidor recibe `WEB_DEV_URL` y redirige las páginas a Vite en lugar de servir `apps/web/dist` (que puede ser una compilación vieja).
+- El servidor escucha en `127.0.0.1` y usa `SERVER_PORT`/`SERVER_HOST` (no `PORT`, que las herramientas de desarrollo suelen fijar para la web). La web usa `WEB_PORT`. `STORAGE_DIR` lleva equipos, rivales, replays y bancos a otra carpeta (los E2E usan una temporal). Con `npm run dev`, el servidor recibe `WEB_DEV_URL` y redirige las páginas a Vite en lugar de servir `apps/web/dist` (que puede ser una compilación vieja).
 - Champions añade el color de la barra de PS al 20 % y al 50 % justos (`50/100y`): usa siempre `parseCondition` de `core` para leer condiciones.
 
 ## Particularidades del diseño de la web
@@ -178,7 +181,7 @@ assets/     → sprites descargados: local, no versionado
 ## Particularidades de los equipos y rivales guardados y el teambuilder
 
 - **Lo guardado pasa por un repositorio**: `TeamRepository` (`apps/server/src/teams/team-repository.ts`) y `OpponentRepository` (`apps/server/src/opponents/opponent-repository.ts`), ambos sobre `FileJsonRepository` (`apps/server/src/storage/json-repository.ts`). Nunca escribas ficheros a mano desde otra parte. Un fichero por elemento en `storage/<colección>/<id>.json`; el nombre del fichero es el id y solo admite letras, números y guiones (`SavedIdSchema`). Una colección nueva es un `JsonFileFormat` y una subclase.
-- **Los tests nunca escriben en `storage/`**: usa `testServer()`, `tempTeamsDir()`, `tempOpponentsDir()` y `tempReplaysDir()` de `apps/server/test/helpers.ts` (carpetas temporales).
+- **Los tests nunca escriben en `storage/`**: usa `testServer()`, `tempTeamsDir()`, `tempOpponentsDir()`, `tempReplaysDir()` y `tempBenchDir()` de `apps/server/test/helpers.ts` (carpetas temporales).
 - **Legalidad informada, no impuesta**: se guarda cualquier equipo que cumpla los límites estructurales de `TeamSchema` (6 miembros, 4 movimientos, 0–32 SP por stat). Los `problems` (core y después el validador de Showdown, con `teamProblems`) van en cada respuesta, y la legalidad solo se exige al empezar un combate.
 - El texto importado pasa por `fitTeamToLimits` (core), que recorta lo que no cabe y devuelve cada ajuste para enseñárselo al usuario.
 - Para mostrar un problema junto a su campo usa `checkTeamIssues`/`checkSetIssues` (core). No partas los textos de `checkTeam`.
@@ -194,6 +197,16 @@ assets/     → sprites descargados: local, no versionado
 - **Una explicación nunca cambia una decisión**: los bots guardan lo que ya calcularon y construyen la explicación en `explain()`, bajo demanda y sin tocar el generador aleatorio. `packages/bot/test/explain.test.ts` juega con y sin explicaciones y exige el mismo `inputLog`.
 - **La explicación es información oculta**: la sala (`BattleRoom`) solo envía las de turnos ya resueltos y, con equipo cerrado, pasadas por `redactExplanation` (core). Si tocas la sala, que siga en verde el test de `apps/server/test/tools.test.ts`.
 - **Los replays solo los crea el servidor** a partir de una sala terminada (`battle:save-replay`); no hay `POST /api/replays`. `ReplayDataSchema` (protocol) replica `ReplayData` (engine): si cambias uno, cambia el otro y sube la versión.
+
+## Particularidades del banco de pruebas
+
+- **Todo combate entre bots pasa por `playBotBattle` (engine)**: el arena y el banco. Los agentes llegan ya creados (engine no depende del bot).
+- El banco ([ADR-0013](docs/adr/0013-banco-de-pruebas-con-hilos.md), [guía](docs/guias/banco.md)) juega en **hilos de trabajo** (`WorkerPool`). Un hilo no hereda el cargador de TypeScript: su entrada `worker-entry.mjs` registra `tsx`. En los tests, `threads: 0` (`InlineRunner`) o pocos hilos; el servidor de los tests usa `benchThreads: 0`.
+- **El resultado depende solo de la semilla**: cada combate, de `semilla:rival:modo:índice`, y el plan crece por rondas que solo miran rondas cerradas. Los combates especulativos nunca cuentan. Si tocas `BenchScheduler`, que siga en verde el test de determinismo con distinto número de hilos.
+- La estadística vive en `packages/bench/src/stats.ts` (funciones puras con test). El total pesa **igual por rival y modo**. Los combates con error **nunca cuentan como derrota**.
+- `BenchSummarySchema` (protocol) replica `BenchSummary` (bench): si cambias uno, cambia el otro (el servidor deja de compilar si divergen). Los bancos los guarda solo el servidor (`FileBenchRepository`, `storage/bench/`) y hay **uno a la vez**.
+- El progreso va por su propio WebSocket (`/ws/bench`, `bench:watch`), que responde enseguida con el estado actual: reconectar no necesita nada más.
+- El nivel 3 es caro (≈ 1 s por decisión en dobles con 15 hilos). Para medir variantes rápido: criba con el nivel 2 (`--screen`, comprobado que elige las mismas finalistas que el 3) y márgenes de ± 10.
 
 ## Actualizar Showdown (nueva regulación o fixes)
 
