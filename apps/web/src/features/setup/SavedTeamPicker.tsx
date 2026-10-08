@@ -34,7 +34,7 @@ export function SavedTeamPicker<T extends TeamSummary>({
   if (teams.length === 0) return <p className="px-2 py-3 text-sm text-muted">{empty}</p>;
   const mark = side === 'p1' ? 'bg-accent' : 'bg-rival';
   return (
-    <fieldset className="flex flex-col gap-0.5">
+    <fieldset className="flex min-w-0 flex-col gap-0.5">
       <legend className="sr-only">{legend}</legend>
       {teams.map((team) => {
         const selected = team.id === value;

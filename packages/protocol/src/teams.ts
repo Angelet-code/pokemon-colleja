@@ -14,7 +14,7 @@ export const TEAM_LIMITS = {
   moves: 4,
   statPointsPerStat: 32,
   nickname: 18,
-  name: 60,
+  name: 48,
   notes: 2000,
 } as const;
 

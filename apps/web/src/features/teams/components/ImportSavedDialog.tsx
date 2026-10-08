@@ -1,5 +1,6 @@
 /** Imports Showdown text from a list page as a new saved team or opponent (name and mode). */
 import type { GameMode } from '@colleja/data';
+import { TEAM_LIMITS } from '@colleja/protocol';
 import { type ReactNode, useState } from 'react';
 import { Field, Segmented, TextInput } from '../../../components/ui';
 import { ApiRequestError } from '../../../lib/api';
@@ -50,7 +51,7 @@ export function ImportSavedDialog({
         <Field label="Nombre" className="min-w-48 flex-1">
           <TextInput
             value={name}
-            maxLength={60}
+            maxLength={TEAM_LIMITS.name}
             onChange={(event) => setName(event.target.value)}
           />
         </Field>

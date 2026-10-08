@@ -6,6 +6,7 @@
  * It edits your teams (`/equipos/nuevo`, `/equipos/:id`) and the saved opponents
  * (`/rivales/nuevo`, `/rivales/:id`, with their difficulty), depending on the `destination`.
  */
+import { TEAM_LIMITS } from '@colleja/protocol';
 import { useEffect, useMemo, useState } from 'react';
 import {
   Link,
@@ -165,7 +166,7 @@ export function TeamEditorPage({ destination }: { destination: EditorDestination
             <span className="sr-only">{texts.nameLabel}</span>
             <input
               value={draft.name}
-              maxLength={60}
+              maxLength={TEAM_LIMITS.name}
               placeholder="Sin nombre"
               onChange={(event) =>
                 editor.edit((current) => ({ ...current, name: event.target.value }))
