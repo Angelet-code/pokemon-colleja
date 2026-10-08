@@ -120,7 +120,7 @@ export class FileJsonRepository<K extends string, T extends { id: string }, C ex
   }
 
   /** Atomic write: a temporary file in the same folder, then a rename over the old one. */
-  private async write(candidate: C & { id: string }): Promise<Stored<K, T>> {
+  protected async write(candidate: C & { id: string }): Promise<Stored<K, T>> {
     const path = this.pathOf(candidate.id);
     if (!path) throw new Error(`Id no válido: "${candidate.id}".`);
     // Never write what `readFile` would later refuse (the item would silently disappear).

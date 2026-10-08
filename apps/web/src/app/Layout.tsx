@@ -7,6 +7,7 @@ const SECTIONS: { to: string; label: string; end?: boolean }[] = [
   { to: '/', label: 'Combate', end: true },
   { to: '/equipos', label: 'Equipos' },
   { to: '/rivales', label: 'Rivales' },
+  { to: '/banco', label: 'Banco' },
   { to: '/calculadora', label: 'Calculadora' },
   { to: '/replays', label: 'Replays' },
 ];

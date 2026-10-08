@@ -14,6 +14,9 @@ export const OPPONENTS_DIR = fileURLToPath(new URL('storage/opponents/', REPO_RO
 /** Replays the player chose to save, one JSON file each. */
 export const REPLAYS_DIR = fileURLToPath(new URL('storage/replays/', REPO_ROOT));
 
+/** Finished benches (the history of each team), one JSON file each. */
+export const BENCH_DIR = fileURLToPath(new URL('storage/bench/', REPO_ROOT));
+
 /** Production build of the web app (`npm run build`). */
 export const WEB_DIST_DIR = fileURLToPath(new URL('apps/web/dist/', REPO_ROOT));
 

@@ -4,9 +4,9 @@
  * team bias. Everything derives from one base seed, so a run is reproducible.
  */
 import { type BotLevel, createBot } from '@colleja/bot';
-import type { BattleAgent, SideId } from '@colleja/core';
+import type { SideId } from '@colleja/core';
 import type { GameMode } from '@colleja/data';
-import { BattleSession, playOut, type ReplayData } from '@colleja/engine';
+import { playBotBattle, type ReplayData } from '@colleja/engine';
 import { generateTeam } from '@colleja/teamgen';
 
 export interface ArenaOptions {
@@ -73,23 +73,6 @@ export function wilsonInterval(successes: number, total: number, z = 1.96): [num
   return [Math.max(0, center - margin), Math.min(1, center + margin)];
 }
 
-/** Times every decision of an agent. */
-class TimedAgent implements BattleAgent {
-  ms = 0;
-  decisions = 0;
-  constructor(private readonly agent: BattleAgent) {}
-  get name(): string {
-    return this.agent.name;
-  }
-  async choose(context: Parameters<BattleAgent['choose']>[0]) {
-    const start = performance.now();
-    const choice = await this.agent.choose(context);
-    this.ms += performance.now() - start;
-    this.decisions++;
-    return choice;
-  }
-}
-
 export async function playArenaBattle(options: ArenaOptions, index: number): Promise<BattleRecord> {
   const { mode, seed } = options;
   const pair = Math.floor(index / 2);
@@ -97,56 +80,44 @@ export async function playArenaBattle(options: ArenaOptions, index: number): Pro
   const teamY = generateTeam(mode, { seed: `${seed}:${mode}:${pair}:y` });
   // Even battles: A plays team X on p1. Odd: B plays team X on p1 and A gets team Y.
   const aSide: SideId = index % 2 === 0 ? 'p1' : 'p2';
+  const bSide: SideId = aSide === 'p1' ? 'p2' : 'p1';
   const battleSeed = `${seed}:${mode}:${index}`;
-  const a = new TimedAgent(createBot(options.a, { seed: `${battleSeed}:a` }));
-  const b = new TimedAgent(createBot(options.b, { seed: `${battleSeed}:b` }));
+  const a = createBot(options.a, { seed: `${battleSeed}:a` });
+  const b = createBot(options.b, { seed: `${battleSeed}:b` });
   const agents = aSide === 'p1' ? { p1: a, p2: b } : { p1: b, p2: a };
 
-  const session = BattleSession.create({
+  const battle = await playBotBattle({
     mode,
     seed: battleSeed,
     options: {
       teamPreview: options.teamPreview ?? true,
       openTeamSheets: options.openTeamSheets ?? false,
     },
-    players: {
-      p1: { name: `Bot ${aSide === 'p1' ? 'A' : 'B'}`, team: teamX },
-      p2: { name: `Bot ${aSide === 'p2' ? 'A' : 'B'}`, team: teamY },
-    },
+    p1: { name: `Bot ${aSide === 'p1' ? 'A' : 'B'}`, team: teamX, agent: agents.p1 },
+    p2: { name: `Bot ${aSide === 'p2' ? 'A' : 'B'}`, team: teamY, agent: agents.p2 },
   });
-  let invalidChoices = 0;
-  let unavailableChoices = 0;
-  session.on((event) => {
-    if (event.type !== 'error') return;
-    if (event.message.startsWith('[Invalid choice]')) invalidChoices++;
-    else if (event.message.startsWith('[Unavailable choice]')) unavailableChoices++;
-  });
-
-  const start = performance.now();
-  let outcome: BattleOutcome;
-  let error: string | undefined;
-  try {
-    const winner = await playOut(session, agents, { maxRetries: 2 });
-    outcome = winner === null ? 'tie' : winner === aSide ? 'a' : 'b';
-  } catch (caught) {
-    outcome = 'error';
-    error = caught instanceof Error ? caught.message : String(caught);
-  }
+  const outcome: BattleOutcome =
+    battle.winner === 'error'
+      ? 'error'
+      : battle.winner === null
+        ? 'tie'
+        : battle.winner === aSide
+          ? 'a'
+          : 'b';
   const record: BattleRecord = {
     index,
     seed: battleSeed,
     aSide,
     outcome,
-    turns: session.turn,
-    ms: performance.now() - start,
-    invalidChoices,
-    unavailableChoices,
-    decisionMs: { a: a.ms, b: b.ms },
-    decisions: { a: a.decisions, b: b.decisions },
+    turns: battle.turns,
+    ms: battle.ms,
+    invalidChoices: battle.invalidChoices,
+    unavailableChoices: battle.unavailableChoices,
+    decisionMs: { a: battle.decisionMs[aSide], b: battle.decisionMs[bSide] },
+    decisions: { a: battle.decisions[aSide], b: battle.decisions[bSide] },
   };
-  if (error) record.error = error;
-  if (outcome === 'error' || invalidChoices > 0) record.replay = session.exportReplay();
-  session.dispose();
+  if (battle.error !== undefined) record.error = battle.error;
+  if (battle.replay) record.replay = battle.replay;
   return record;
 }
 

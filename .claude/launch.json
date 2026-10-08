@@ -7,6 +7,14 @@
       "runtimeArgs": ["run", "dev"],
       "port": 5173,
       "url": "http://127.0.0.1:5173"
+    },
+    {
+      "name": "dev-alt",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "env": { "SERVER_PORT": "3002", "WEB_PORT": "5174" },
+      "port": 5174,
+      "url": "http://127.0.0.1:5174"
     }
   ]
 }

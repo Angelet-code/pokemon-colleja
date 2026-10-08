@@ -1,24 +1,14 @@
 /** Team legality with Spanish messages: our own checks first, Showdown's validator last. */
 import { checkTeam, type PokemonSet, parseShowdownTeam } from '@colleja/core';
 import type { GameMode } from '@colleja/data';
-import { validateTeam } from '@colleja/engine';
+import { teamProblems } from '@colleja/engine';
+
+export { teamProblems };
 
 export interface TeamReading {
   team: PokemonSet[];
   /** Empty when the team is legal. */
   problems: string[];
-}
-
-/**
- * Problems of a team: first our own checks (Spanish, precise), then Showdown's validator as
- * the final authority (its messages are in English, prefixed). Empty when legal.
- */
-export function teamProblems(members: readonly PokemonSet[], mode: GameMode): string[] {
-  const own = checkTeam(members, mode);
-  if (own.length > 0) return own;
-  return validateTeam([...members], mode).problems.map(
-    (problem) => `Validador de Showdown: ${problem}`,
-  );
 }
 
 /** Parses Showdown export text and checks it. */

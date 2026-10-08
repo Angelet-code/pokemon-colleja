@@ -2,6 +2,13 @@
  * `@colleja/engine`: battle engine on top of the vendored Showdown simulator (Node-only).
  * The rest of the project talks to it with `@colleja/core` types.
  */
+export {
+  type BotBattleConfig,
+  type BotBattlePlayer,
+  type BotBattleResult,
+  playBotBattle,
+  TimedAgent,
+} from './bot-battle';
 export { type ResolvedFormat, resolveFormat } from './formats';
 export { PERSPECTIVES, type Perspective, splitByPerspective } from './protocol';
 export { REPLAY_VERSION, type ReplayData } from './replay';
@@ -16,4 +23,9 @@ export {
   type ChoiceResult,
 } from './session';
 export { fromShowdownSet, toShowdownSet } from './sets';
-export { type TeamValidation, TeamValidationError, validateTeam } from './validate';
+export {
+  type TeamValidation,
+  TeamValidationError,
+  teamProblems,
+  validateTeam,
+} from './validate';

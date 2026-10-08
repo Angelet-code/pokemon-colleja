@@ -1,4 +1,4 @@
-import { DEFAULT_RULESET, type PokemonSet, type RulesetId } from '@colleja/core';
+import { checkTeam, DEFAULT_RULESET, type PokemonSet, type RulesetId } from '@colleja/core';
 import type { GameMode } from '@colleja/data';
 import { type ShowdownPokemonSet, TeamValidator } from '@colleja/showdown';
 import { resolveFormat } from './formats';
@@ -23,6 +23,17 @@ export function validateTeam(
 ): TeamValidation {
   const { ok, problems } = validateForBattle(team, mode, ruleset);
   return { ok, problems };
+}
+
+/**
+ * Problems of a team with Spanish messages: first our own checks (`checkTeam`, precise), then
+ * Showdown's validator as the final authority (its messages are in English, prefixed). Empty
+ * when the team is legal in `mode`.
+ */
+export function teamProblems(members: readonly PokemonSet[], mode: GameMode): string[] {
+  const own = checkTeam(members, mode);
+  if (own.length > 0) return own;
+  return validateTeam(members, mode).problems.map((problem) => `Validador de Showdown: ${problem}`);
 }
 
 export function validateForBattle(

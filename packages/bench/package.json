@@ -1,0 +1,23 @@
+{
+  "name": "@colleja/bench",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Banco de pruebas de equipos: tu equipo contra tus rivales en hilos de trabajo, con parada temprana, reparto adaptativo y comparación A/B en pares (solo Node).",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@colleja/bot": "*",
+    "@colleja/core": "*",
+    "@colleja/data": "*",
+    "@colleja/engine": "*",
+    "tsx": "^4.23.15"
+  },
+  "devDependencies": {
+    "@colleja/teamgen": "*"
+  }
+}

@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {
+    "@colleja/bench": "*",
     "@colleja/bot": "*",
     "@colleja/core": "*",
     "@colleja/data": "*",

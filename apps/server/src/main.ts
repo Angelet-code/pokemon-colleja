@@ -4,7 +4,7 @@
  *   SERVER_PORT=3001 SERVER_HOST=127.0.0.1 LOG_LEVEL=info STORAGE_DIR=storage
  *
  * (Own variable names: tools that launch dev servers often set `PORT` for the web app.)
- * `STORAGE_DIR` moves the saved teams, opponents and replays elsewhere (the E2E tests use a
+ * `STORAGE_DIR` moves the saved teams, opponents, replays and benches elsewhere (the E2E tests use a
  * temporary folder). `WEB_DEV_URL` (set by `npm run dev`) sends page requests to Vite instead of
  * serving `apps/web/dist`, which may be an old build.
  */
@@ -24,6 +24,7 @@ const app = await buildServer({
         teamsDir: join(storage, 'teams'),
         opponentsDir: join(storage, 'opponents'),
         replaysDir: join(storage, 'replays'),
+        benchDir: join(storage, 'bench'),
       }
     : {}),
 });

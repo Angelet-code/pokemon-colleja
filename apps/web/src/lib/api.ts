@@ -2,11 +2,13 @@
 import {
   API_PREFIX,
   type ApiError,
+  type BenchResponse,
   type CalcRequest,
   type CalcResponse,
   type GameModeValue,
   type ImportOpponentRequest,
   type ImportTeamRequest,
+  type ListBenchesResponse,
   type ListOpponentsResponse,
   type ListReplaysResponse,
   type ListTeamsResponse,
@@ -15,6 +17,8 @@ import {
   type OpponentResponse,
   type RandomTeamResponse,
   type ReplayResponse,
+  type StartBenchRequest,
+  type StartBenchResponse,
   type TeamContent,
   type TeamResponse,
   type ValidateTeamResponse,
@@ -96,4 +100,14 @@ export const api = {
     request<ReplayResponse>(`/replays/${encodeURIComponent(id)}`, json('PATCH', { name })),
   deleteReplay: (id: string) =>
     request<void>(`/replays/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+
+  // Team bench (progress on the bench WebSocket)
+  startBench: (body: StartBenchRequest) =>
+    request<StartBenchResponse>('/bench', json('POST', body)),
+  listBenches: (teamId?: string) =>
+    request<ListBenchesResponse>(teamId ? `/bench?teamId=${encodeURIComponent(teamId)}` : '/bench'),
+  getBench: (id: string) => request<BenchResponse>(`/bench/${encodeURIComponent(id)}`),
+  /** Cancels the bench if it is running; otherwise deletes it from the history. */
+  deleteBench: (id: string) =>
+    request<void>(`/bench/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 };

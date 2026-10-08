@@ -1,5 +1,6 @@
 import { createBrowserRouter, RouterProvider } from 'react-router';
 import { BattlePage } from '../features/battle/BattlePage';
+import { BenchPage } from '../features/bench/BenchPage';
 import { CalculatorPage } from '../features/calc/CalculatorPage';
 import { ReplaysPage } from '../features/replays/ReplaysPage';
 import { ReplayViewerPage } from '../features/replays/ReplayViewerPage';
@@ -22,6 +23,7 @@ const router = createBrowserRouter([
       { path: '/rivales', element: <OpponentsPage /> },
       { path: '/rivales/nuevo', element: <TeamEditorPage destination={OPPONENT_DESTINATION} /> },
       { path: '/rivales/:id', element: <TeamEditorPage destination={OPPONENT_DESTINATION} /> },
+      { path: '/banco', element: <BenchPage /> },
       { path: '/calculadora', element: <CalculatorPage /> },
       { path: '/replays', element: <ReplaysPage /> },
       { path: '/replays/:id', element: <ReplayViewerPage /> },
