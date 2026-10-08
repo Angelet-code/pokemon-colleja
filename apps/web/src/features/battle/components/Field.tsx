@@ -9,6 +9,7 @@ import { parseCondition } from '@colleja/core';
 import { type Locale, toId } from '@colleja/data';
 import { abilityName, itemName, speciesName, statusName, statusShort } from '@colleja/narration';
 import type { CSSProperties } from 'react';
+import { ItemIcon } from '../../../components/ItemIcon';
 import { PokemonIcon, PokemonSprite } from '../../../components/PokemonIcon';
 import { Chip } from '../../../components/ui';
 import { useSettings } from '../../../stores/settings';
@@ -182,10 +183,13 @@ function HpCard({
         </ul>
       )}
       {(item || ability) && (
-        <p className="mt-1.5 truncate text-xs text-muted">
-          {ability && abilityName(ability, locale)}
-          {ability && item ? ' · ' : ''}
-          {item && itemName(item, locale)}
+        <p className="mt-1.5 flex items-center gap-1 text-xs text-muted">
+          <span className="truncate">
+            {ability && abilityName(ability, locale)}
+            {ability && item ? ' · ' : ''}
+            {item && itemName(item, locale)}
+          </span>
+          {item && <ItemIcon item={toId(item)} size={20} className="-my-1" />}
         </p>
       )}
     </div>

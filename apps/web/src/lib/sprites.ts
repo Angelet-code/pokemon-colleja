@@ -4,12 +4,13 @@
  * to the name, and a missing folder just shows names (the components handle image errors).
  */
 interface SpriteManifest {
-  fallbacks: { pokemon: Record<string, string> };
-  missing: { items?: string[] };
+  /** Only lists the copies made in the last run: the copied files stay on disk. */
+  fallbacks?: { pokemon?: Record<string, string> };
+  missing?: { items?: string[] };
 }
 
 const BASE = '/sprites';
-let manifest: SpriteManifest = { fallbacks: { pokemon: {} }, missing: { items: [] } };
+let manifest: SpriteManifest = {};
 let missingItems = new Set<string>();
 
 /** Loads the manifest once at startup; without it every sprite is tried directly. */
@@ -18,7 +19,7 @@ export async function loadSpriteManifest(): Promise<void> {
     const response = await fetch(`${BASE}/manifest.json`);
     if (!response.ok) return;
     manifest = (await response.json()) as SpriteManifest;
-    missingItems = new Set(manifest.missing.items ?? []);
+    missingItems = new Set(manifest.missing?.items ?? []);
   } catch {
     // No sprites downloaded: the UI shows names only.
   }
@@ -30,7 +31,7 @@ export async function loadSpriteManifest(): Promise<void> {
  * megas, and mixing them with renders broke the proportions).
  */
 export function pokemonSprite(species: string): string {
-  const id = manifest.fallbacks.pokemon[species] ?? species;
+  const id = manifest.fallbacks?.pokemon?.[species] ?? species;
   return `${BASE}/pokemon/${id}.png`;
 }
 

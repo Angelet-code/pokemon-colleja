@@ -4,6 +4,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ## [Sin publicar]
 
+### Iconos de los objetos (2026-10-08)
+
+- Web: **iconos de los objetos** (`ItemIcon`) en la lista de miembros y el selector de objeto del teambuilder, la ficha del combate, la vista previa de equipos y «Cargar set» de la calculadora.
+- `npm run data:sprites`: los 41 objetos sin sprite en PokeAPI (megapiedras nuevas, Pluma Feérica, Puerro) se recortan de la hoja de iconos de Showdown por su `spritenum` (dependencia nueva del pipeline: `pngjs`).
+- Web: el manifest de sprites sin `fallbacks.pokemon` (una pasada con todo en caché) ya no rompe la página.
+
 ### Fase 10 — Pulido de herramientas y nivel 3 más fuerte en individuales (2026-10-08)
 
 #### Añadido

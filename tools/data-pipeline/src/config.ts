@@ -24,6 +24,13 @@ export const SOURCES = JSON.parse(
   readFileSync(new URL('../sources.json', import.meta.url), 'utf8'),
 ) as Sources;
 
+/**
+ * Showdown's item icon sheet (24 px icons, 16 per row, indexed by each item's `spritenum`). It
+ * fills the item sprites PokeAPI lacks (the Champions mega stones). Not pinned: Showdown only
+ * serves the current sheet, so the manifest records its Last-Modified date.
+ */
+export const SHOWDOWN_ITEM_SHEET = 'https://play.pokemonshowdown.com/sprites/itemicons-sheet.png';
+
 export function rawGithubUrl(repo: string, commit: string, path: string): string {
   return `https://raw.githubusercontent.com/${repo}/${commit}/${path}`;
 }

@@ -20,6 +20,7 @@ Después de un `data:build`, revisa siempre el diff de `packages/data/generated/
 | Showdown, mod `champions` | Submódulo `vendor/pokemon-showdown` | Legalidad, stats, movimientos, objetos, learnsets, formatos, sets aleatorios, textos en inglés, nombres de respaldo en español |
 | PokeAPI (CSV en GitHub) | `tools/data-pipeline/sources.json` | Nombres oficiales y descripciones del juego en español, ids de sprites |
 | PokeAPI/sprites | `tools/data-pipeline/sources.json` | Renders de Champions (128 px), iconos y sprites de objetos |
+| Hoja de objetos de Showdown | `SHOWDOWN_ITEM_SHEET` (`tools/data-pipeline/src/config.ts`) | Iconos de los objetos que faltan en PokeAPI (sin fijar: Showdown solo sirve la actual) |
 
 ## Ficheros generados
 
@@ -74,8 +75,8 @@ En el resto de tipos de nombre: PokeAPI, luego la traducción de Showdown (`data
 ## Sprites (`npm run data:sprites`)
 
 - `assets/sprites/pokemon/<id>.png`: renders de Champions, 128 px. Hay uno para cada especie; Mimikyu-Busted usa el de la forma base. La web los usa **a cualquier tamaño**, también en las miniaturas: todos tienen el mismo encuadre, así que un equipo se ve parejo. (Antes las miniaturas eran los iconos de Gen 8, pero faltaban los 93 de Gen 9 y las Megas nuevas, y al mezclarlos con renders las proporciones no cuadraban.)
-- `assets/sprites/items/<id>.png`: **faltan 40**, las megapiedras nuevas de Leyendas Z-A. La UI mostrará solo el nombre.
-- `assets/sprites/manifest.json` lista los respaldos y los que faltan.
+- `assets/sprites/items/<id>.png`: sprites de 30 px de PokeAPI. Los que PokeAPI no tiene (las megapiedras nuevas de Leyendas Z-A, la Pluma Feérica y el Puerro, 41 en total) se recortan de la **hoja de iconos de Showdown** por su `spritenum` (`showdown/item-icons.ts`; iconos de 24 px centrados en 30 px). La web los enseña junto al nombre del objeto (`ItemIcon`); si falta alguno, solo el nombre.
+- `assets/sprites/manifest.json` lista los respaldos de esa pasada (forma base, hoja de Showdown con su `Last-Modified`) y los que faltan. Los ficheros copiados se quedan en disco, así que una pasada con todo en caché deja los respaldos vacíos.
 - El arte es © Nintendo/The Pokémon Company. Solo se usa en local y no se sube a git.
 
 ## Tests que protegen los datos

@@ -4,6 +4,7 @@ import type { Locale } from '@colleja/data';
 import { itemName, speciesName } from '@colleja/narration';
 import { useMemo } from 'react';
 import { Combobox } from '../../../components/Combobox';
+import { ItemIcon } from '../../../components/ItemIcon';
 import { IconChevronDown, IconChevronUp } from '../../../components/icons';
 import { PokemonIcon } from '../../../components/PokemonIcon';
 import { Chip } from '../../../components/ui';
@@ -57,8 +58,11 @@ export function MemberList({
                 <PokemonIcon species={set.species} size={44} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-semibold">{set.nickname ?? name}</span>
-                  <span className="block truncate text-xs text-faint">
-                    {set.item ? itemName(set.item, locale) : 'Sin objeto'}
+                  <span className="flex items-center gap-1 text-xs text-faint">
+                    {set.item && <ItemIcon item={set.item} size={20} className="-my-1" />}
+                    <span className="truncate">
+                      {set.item ? itemName(set.item, locale) : 'Sin objeto'}
+                    </span>
                   </span>
                 </span>
                 {issues > 0 && (

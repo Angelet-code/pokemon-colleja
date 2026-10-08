@@ -3,6 +3,7 @@ import { type Choice, type PokemonSet, type TeamPreviewRequest, teamChoice } fro
 import { type Locale, toId } from '@colleja/data';
 import { abilityName, itemName, moveName, speciesName } from '@colleja/narration';
 import { useState } from 'react';
+import { ItemIcon } from '../../../components/ItemIcon';
 import { PokemonIcon } from '../../../components/PokemonIcon';
 import { Button } from '../../../components/ui';
 import { useSettings } from '../../../stores/settings';
@@ -166,6 +167,7 @@ export function TeamPreview({
 function SetSummary({ set, locale }: { set: PokemonSet; locale: Locale }) {
   return (
     <span className="block truncate text-xs text-muted">
+      {set.item && <ItemIcon item={set.item} size={20} className="-my-1 mr-1 inline-block" />}
       {[set.item && itemName(set.item, locale), abilityName(set.ability, locale)]
         .filter(Boolean)
         .join(' · ')}

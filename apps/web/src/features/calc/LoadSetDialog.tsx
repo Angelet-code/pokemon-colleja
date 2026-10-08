@@ -4,6 +4,7 @@ import { getName } from '@colleja/data';
 import type { TeamSummary } from '@colleja/protocol';
 import { useEffect, useState } from 'react';
 import { Dialog } from '../../components/Dialog';
+import { ItemIcon } from '../../components/ItemIcon';
 import { IconArrowLeft } from '../../components/icons';
 import { PokemonIcon } from '../../components/PokemonIcon';
 import { Loading, Notice } from '../../components/ui';
@@ -81,7 +82,10 @@ export function LoadSetDialog({
                 <PokemonIcon species={set.species} size={32} />
                 <span className="font-semibold">{getName('species', set.species, locale)}</span>
                 {set.item && (
-                  <span className="text-faint">{getName('items', set.item, locale)}</span>
+                  <span className="flex items-center gap-1 text-faint">
+                    <ItemIcon item={set.item} size={20} />
+                    {getName('items', set.item, locale)}
+                  </span>
                 )}
               </button>
             ))}

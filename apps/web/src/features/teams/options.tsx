@@ -19,6 +19,7 @@ import {
 } from '@colleja/data';
 import { statShort } from '@colleja/narration';
 import type { ComboOption } from '../../components/Combobox';
+import { ItemIcon } from '../../components/ItemIcon';
 import { PokemonIcon } from '../../components/PokemonIcon';
 import { TypeBadge } from '../../components/TypeBadge';
 import { CATEGORY_LABEL } from '../../lib/move-labels';
@@ -94,8 +95,9 @@ export function itemOptions(
         label,
         search: `${search} ${ITEM_CATEGORY[item.category]}`,
         render: (
-          <span className="flex items-center justify-between gap-2">
-            <span className="truncate">{label}</span>
+          <span className="flex items-center gap-2">
+            <ItemIcon item={item.id} reserve />
+            <span className="flex-1 truncate">{label}</span>
             <span className="shrink-0 text-xs text-muted">
               {holder ? (
                 <span className="text-warn">
