@@ -25,7 +25,8 @@ El proyecto avanza **por fases** (PLAN §8). Cuando te pidan *"continúa con la 
 | 7. Rivales guardados | ✅ ([guía](docs/guias/rivales.md), [ADR-0007](docs/adr/0007-rivales-guardados.md)) |
 | 8. Herramientas de práctica | ✅ ([guía](docs/guias/herramientas.md), [ADR-0008](docs/adr/0008-herramientas-de-practica.md)) |
 | Rediseño de la web | ✅ ([guía](docs/guias/web.md#sistema-de-diseño), [ADR-0009](docs/adr/0009-sistema-de-diseno.md)) |
-| **9. Siguiente ampliación** | ⏭️ **Siguiente**: [docs/fases/fase-9.md](docs/fases/fase-9.md) (propuesta: el usuario elige) |
+| 9. Bot nivel 3 "Experto" | ✅ ([brief](docs/fases/fase-9.md), [ADR-0010](docs/adr/0010-bot-experto-con-sandbox.md), [guía](docs/guias/bot.md)) |
+| **10. Siguiente ampliación** | ⏭️ **Siguiente**: [docs/fases/fase-10.md](docs/fases/fase-10.md) (propuesta: el usuario elige) |
 
 ### Protocolo de cierre de fase
 
@@ -36,7 +37,7 @@ El proyecto avanza **por fases** (PLAN §8). Cuando te pidan *"continúa con la 
    - `AGENTS.md`: tabla de estado, comandos nuevos y reglas o particularidades nuevas.
    - `README.md`: línea de estado y comandos de usuario.
    - Guías (`docs/guias/`) y ADRs (`docs/adr/`) si aplica.
-3. **Escribe el brief de la siguiente fase** en `docs/fases/fase-(N+1).md`, con el mismo formato que `fase-8.md` (si no hay fase planificada, una propuesta de ampliaciones como `fase-9.md`): objetivo, punto de partida, hechos verificados, diseño recomendado, tests, criterios de "hecho" y fuera de alcance. Así la siguiente sesión puede empezar sin contexto.
+3. **Escribe el brief de la siguiente fase** en `docs/fases/fase-(N+1).md`, con el mismo formato que `fase-9.md` (si no hay fase planificada, una propuesta de ampliaciones como `fase-10.md`): objetivo, punto de partida, hechos verificados, diseño recomendado, tests, criterios de "hecho" y fuera de alcance. Así la siguiente sesión puede empezar sin contexto.
 4. Commits con Conventional Commits y **push a `origin/main`** (el usuario trabaja así). La CI de GitHub ejecuta `npm run check` en cada push: compruébala.
 
 ## Preferencias del usuario
@@ -56,6 +57,7 @@ El proyecto avanza **por fases** (PLAN §8). Cuando te pidan *"continúa con la 
   - Rivales (2026-10-08): **colección aparte** con su dificultad (se pueden copiar de tus equipos); **solo se guarda la dificultad**, no las opciones de práctica; en el inicio **se aplica la dificultad del rival y se puede cambiar**; un rival generado **hay que guardarlo** para combatir contra él.
   - Rediseño (2026-10-08): dirección **«retransmisión de torneo»** (opción A de las tres del lienzo de Claude Design): tinta casi negra, voltio para el jugador, magenta para el rival, tipografía condensada; **sin textos explicativos redundantes**.
   - Herramientas (2026-10-08): calculadora **en el servidor**; replays guardados **solo si el usuario lo pide**; explicación del bot **tras cada turno**; visor de replays omnisciente con interruptor "Como jugador"; con equipo cerrado, la explicación **oculta lo no revelado**.
+  - Bot nivel 3 (2026-10-08): es el **rival por defecto**; puede pensar **hasta ~3 s** por decisión y debe pensar **mientras el jugador elige**; si una mejora no llega al objetivo, **averiguar qué falla** antes de rebajarlo.
 
 ## Puesta en marcha
 
@@ -78,8 +80,8 @@ npm run dev          # servidor + web: http://127.0.0.1:5173
 | `npm run setup` / `setup:force` | Sincroniza el submódulo, instala sus dependencias y compila `dist/` con tipos (idempotente) |
 | `npm run dev` | Servidor (127.0.0.1:3001, con recarga) + web con Vite (http://127.0.0.1:5173) a la vez ([guía](docs/guias/web.md)). Los equipos guardados van a `storage/teams/` ([guía](docs/guias/teambuilder.md)) y los rivales a `storage/opponents/` ([guía](docs/guias/rivales.md)). Calculadora, replays y explicación del bot: [guía](docs/guias/herramientas.md) |
 | `npm run build` / `npm start` | Compila la web (`apps/web/dist`) / la compila y la sirve desde el servidor en http://127.0.0.1:3001 |
-| `npm run play` | Combate en la terminal contra el bot. Admite `-- --mode doubles --bot 0\|1\|2 --team <fichero> --opponent-team <fichero>\|random --seed X --no-preview --open-team-sheets --auto` ([guía](docs/guias/combate.md)) |
-| `npm run arena` | Torneo bot contra bot con equipos aleatorios. Admite `-- --a 2 --b 0 --mode singles\|doubles\|both --battles N --seed X` ([guía](docs/guias/bot.md)) |
+| `npm run play` | Combate en la terminal contra el bot. Admite `-- --mode doubles --bot 0\|1\|2\|3 --team <fichero> --opponent-team <fichero>\|random --seed X --no-preview --open-team-sheets --auto` ([guía](docs/guias/combate.md)) |
+| `npm run arena` | Torneo bot contra bot con equipos aleatorios. Admite `-- --a 3 --b 2 --mode singles\|doubles\|both --battles N --seed X` ([guía](docs/guias/bot.md)). El nivel 3 tarda ≈ 0,3–0,4 s por decisión: para cientos de combates, lanza varios arenas en paralelo con semillas distintas |
 | `npm run smoke` | Combates headless de Champions (fixtures + aleatorios). Admite `-- --random N --seed X --verbose` |
 | `npm run data:build` | Regenera `packages/data/generated/` desde Showdown + PokeAPI (determinista). Después, revisa el diff |
 | `npm run data:sprites` | Descarga los sprites a `assets/sprites/` (no versionado). Admite `-- --shiny` y `-- --force` |
@@ -139,14 +141,17 @@ assets/     → sprites descargados: local, no versionado
 
 ## Particularidades del bot
 
-- **Todo bot se crea con `createBot(nivel, { seed })`** (o sus clases). Misma semilla y misma situación → misma decisión: los combates entre bots son reproducibles.
+- **Todo bot se crea con `createBot(nivel, { seed })`** (o sus clases). Misma semilla y misma situación → misma decisión: los combates entre bots son reproducibles. El nivel 3 tiene esfuerzo fijo (`SEARCH_SETTINGS`), **nunca por reloj**.
 - El nivel 2 decide **simulando** con daño esperado ([ADR-0004](docs/adr/0004-bot-por-simulacion.md)). Para mejorarlo, corrige el modelo (`analysis/duel.ts`, `doubles-sim.ts`), no añadas bonificaciones sueltas, y **mídelo con el arena** contra el nivel anterior (≥ 300 combates por modo; ±5 %).
 - El daño lo calcula `@smogon/calc` 0.12.0 con Champions como **generación 0**: los Stat Points van en `evs`. `analysis/damage.ts` es el único sitio que habla con la calculadora. Su test de contraste (`packages/bot/test/calc.test.ts`) debe seguir en verde al actualizar Showdown o la calculadora.
 - El modelo del rival solo usa lo que el bot puede ver (`BattleView` de su perspectiva) y los sets estándar. Nunca le pases el log omnisciente ni el equipo rival con equipo cerrado.
-- Los tests de fuerza son cortos en el check (40 combates por modo); las cifras de referencia (500 por modo) se apuntan en el CHANGELOG al cambiar el bot.
+- Los tests de fuerza son cortos en el check (40 combates por modo); las cifras de referencia (500 por modo) se apuntan en el CHANGELOG al cambiar el bot. El nivel 3 no tiene test de fuerza en el check (sería lento): sus tests usan `LIGHT_SEARCH` (`packages/bot/test/helpers.ts`) y sus cifras van al CHANGELOG.
+- **Nivel 3 y sandbox** ([ADR-0010](docs/adr/0010-bot-experto-con-sandbox.md)): el bot solo usa la interfaz `BattleSandbox` de `core` (`AgentContext.sandbox`); **la implementación vive en `engine/src/sandbox.ts`** y es la que garantiza que un fork no tiene información oculta (sets supuestos, PS del rival en %, generador nuevo con suerte común por acción, sueño sorteado otra vez, sin elecciones ya hechas ni `inputLog`). Si tocas el sandbox, que siga en verde el test de invariancia (`packages/bot/test/expert.test.ts`: misma decisión aunque cambie lo que oculta el rival). El sandbox solo existe al elegir movimientos.
+- Para mejorar el nivel 3, mejora la estimación del nivel 2 (sus hojas) o el modelo de respuestas del rival, y mídelo con el arena contra el nivel 2. Más muestras por opción ya no ayudan; la evaluación sí (tabla del CHANGELOG de la fase 9).
 
 ## Particularidades del servidor y la web
 
+- **El bot piensa mientras el jugador elige**: la sala (`advance`) envía primero el turno y después hace decidir al bot cuando los dos eligen a la vez; las decisiones sin el jugador (relevos del bot) van antes. Lo comprueba `apps/server/test/battle-room.test.ts`.
 - **El servidor solo envía la perspectiva p1** y las peticiones de p1 (`apps/server/src/battles/battle-room.ts`). El replay (log omnisciente) solo se entrega con el combate terminado. Hay un test que lo comprueba: si tocas la sala, que siga en verde.
 - Los mensajes van por `@colleja/protocol` (zod): un mensaje nuevo se añade allí primero, con su test de ida y vuelta. El servidor responde a cada acción con un `battle:update` y, tras deshacer, rebobinar o reconectar, con un `battle:snapshot`.
 - El estado del combate en la web sale de `BattleView` (core) y el log de `@colleja/narration` (port de `BattleTextParser` de Showdown). **No uses `@pkmn/client`/`@pkmn/dex`**: sus datos no son los de Champions ([ADR-0005](docs/adr/0005-servidor-web-y-narracion.md)). Las cifras que se muestran salen de la petición o de `@colleja/data`.

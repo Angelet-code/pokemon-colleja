@@ -1,53 +1,62 @@
-# Fase 9 — Siguiente ampliación (propuesta para elegir)
+# Fase 9 — Bot nivel 3 "Experto" (lookahead con el simulador real)
 
-> **Brief de traspaso.** Escrito al cerrar la fase 8 (2026-10-08). Con las fases 1–8 el plan original está completo: lo que queda en PLAN §8 es "Futuro". Este brief **no fija la fase**: propone las ampliaciones posibles, con su diseño de partida, para que el usuario elija una (o varias, por orden).
-> Lee antes [AGENTS.md](../../AGENTS.md) y [PLAN.md](../PLAN.md) §2.2, §6, §8 y §11. Cuando el usuario elija, convierte la opción en un brief completo (`fase-9.md` reescrito con objetivo, hechos verificados, diseño, tests y criterios de "hecho") **antes** de implementar, y pregúntale las decisiones de producto que salgan.
+> **Brief.** El usuario eligió la opción A de la propuesta de ampliaciones (2026-10-08). Este brief sustituye a la propuesta; las demás opciones (modo clásico, PWA, rivales por uso, pulido) siguen en la propuesta de la fase 10.
+> Lee antes [AGENTS.md](../../AGENTS.md), la [guía del bot](../guias/bot.md), el [ADR-0004](../adr/0004-bot-por-simulacion.md) (nivel 2 por simulación) y el [ADR-0003](../adr/0003-sesion-de-combate.md) (sesión de combate).
+
+## Objetivo
+
+Un rival más fuerte que el nivel 2: el **nivel 3 "Experto"**, que juega cada turno por adelantado con el simulador real (Showdown) antes de decidir.
+
+## Decisiones del usuario (2026-10-08)
+
+- Si el nivel 3 cumple, **pasa a ser el rival por defecto** (coherente con "el rival por defecto es el nivel más alto").
+- Puede pensar **hasta ~3 s por decisión**; además debe pensar **mientras el jugador elige** (hoy el servidor hace pensar al bot antes de enseñar el turno).
+- Si no llega al 60 % contra el nivel 2: **averiguar qué falla y mejorarlo**, no publicarlo a medias.
 
 ## Punto de partida (ya hecho)
 
-| Área | Estado |
+| Pieza | Qué ofrece |
 |---|---|
-| Combate | Individuales y dobles de Champions (Reg M-C) en el navegador y en la terminal, con deshacer, rebobinar, replays y explicación del bot |
-| Bot | Niveles 0 (aleatorio), 1 (agresivo, daño esperado) y 2 (táctico, simulación con daño esperado; [ADR-0004](../adr/0004-bot-por-simulacion.md)). Arena para medirlos (`npm run arena`) |
-| Equipos | Teambuilder con Stat Points, equipos y rivales guardados, calculadora en el servidor |
-| Datos | `@colleja/data` regenerable desde Showdown + PokeAPI; sets estándar de Showdown (≈950) |
-| Calidad | 270 tests, smoke, CI en cada push |
+| `@colleja/bot` | Nivel 2 (`TacticalAgent`): `planSingles`/`planDoubles` valoran cada opción con daño esperado; `OpponentModel` filtra los sets estándar por lo revelado; `explain()` |
+| `@colleja/engine` | `BattleSession` sobre el `Battle` síncrono de Showdown; `getAgentContext(side)` da a cada bot solo su perspectiva |
+| `tools/arena` | Torneos bot contra bot con equipos aleatorios, reproducibles por semilla |
 
-## Opciones
+## Hechos verificados (no los redescubras)
 
-### A. Bot nivel 3 "Experto" (recomendada)
+- `Battle.toJSON()` ≈ 0,2 ms y `Battle.fromJSON()` ≈ 0,5 ms (posición de 3 contra 3); clonar y jugar un turno ≈ 1,5 ms.
+- Tras la vista previa, `side.pokemon` de Showdown solo tiene los Pokémon traídos (3 o 4). Los sets ya validados llevan `level: 50`.
+- `deserializeBattle` crea el `Battle` a partir de `pokemon[i].set` y luego sobrescribe con los campos serializados: si se borran del JSON los campos derivados del set (stats, movimientos, objeto, PS…), se quedan los del set nuevo.
+- El JSON del combate contiene `inputLog` (con los dos equipos completos empaquetados) y la elección ya hecha por el rival en el turno: hay que quitarlos.
+- El sueño de Champions dura `sample([2, 3, 3])` turnos (`statusState.startTime`/`time`): es información oculta.
+- Un solo resultado aleatorio por hoja da un ruido de ±30–50 puntos por opción, mayor que las diferencias entre opciones: con eso el nivel 3 no supera al 2 en individuales (48,6 %).
 
-- **Para qué**: un rival más fuerte cuando el nivel 2 se quede corto. Es lo que más mejora la práctica.
-- **Diseño de partida**: lookahead de 1 ply clonando el combate real (`Battle.toJSON`/`fromJSON` dentro de `engine`, nunca fuera) y muestreando los sets del rival compatibles con lo revelado (`OpponentModel`), o MCTS ligero sobre `DoublesSim`. Debe implementar `explain()` como los demás.
-- **Hecho cuando**: gana al nivel 2 al menos un 60 % en ≥ 300 combates por modo (arena) en un tiempo por decisión aceptable (p. ej. < 1 s), sin elecciones inválidas.
-- **Riesgos**: coste por decisión (clonar `Battle` es caro) e información oculta (el clon no puede usar los sets reales del jugador con equipo cerrado).
+## Diseño
 
-### B. Modo clásico IV/EV/Tera
+1. **Sandbox en `engine`** (`sandbox.ts`), con su interfaz en `core` (`BattleSandbox`, `SandboxBattle`, `RivalAssumption`): `AgentContext.sandbox` solo existe al elegir movimientos. `fork(suposición, semilla)` parte de la posición real y quita todo lo oculto: sets del rival (los vistos, por nombre; los no vistos, enteros), PS del rival al % que ve el jugador, generador aleatorio nuevo, duración del sueño, elecciones ya hechas e `inputLog`. `clone(semilla)` copia una posición.
+2. **Suerte común por acción**: en un fork cada acción del turno saca sus números de un flujo propio (semilla + turno + quién actúa), así todas las opciones propias se comparan con la misma suerte del rival.
+3. **Nivel 3 en `bot`** (`ExpertAgent` + `search/`): apto para navegador, solo usa la interfaz. Para unas pocas suposiciones de los sets rivales (`rivalAssumptions`), forka la posición, calcula las respuestas probables del rival (el nivel 2 jugando su lado, con pesos softmax) y juega el turno contra ellas. Cada posición resultante vale el balance de PS más la estimación del nivel 2 de cómo sigue. Sin sandbox juega como el nivel 2. Vista previa y relevos: los del nivel 2.
+   La posición resultante vale el balance de PS más 0,5 × el **cambio** que espera el nivel 2 desde ahí (su puntuación menos la que tendría sin cambios); ver el ADR.
+4. **Servidor**: cuando el jugador y el bot eligen a la vez, la sala manda primero el turno al jugador y después piensa el bot.
+5. Caché por contenido de `estimateDamage` (función pura): las hojas repiten los mismos cálculos.
 
-- **Para qué**: practicar también formatos de Escarlata/Púrpura.
-- **Diseño de partida**: `RulesetId` nuevo con su `StatCalculator` (la estrategia por formato ya existe en `core/team/stats.ts`), formatos de Showdown nuevos en `engine/formats.ts`, datos de learnsets y sets del juego principal en el pipeline, y el teambuilder con EVs/IVs/Tera según el ruleset.
-- **Riesgos**: es casi duplicar los datos y la validación; el bot y la calculadora tendrían que entender la Teracristalización.
+## Tests
 
-### C. App instalable (PWA) y uso desde el móvil
+| Workspace | Tests |
+|---|---|
+| engine | El sandbox solo existe al elegir movimientos; sustituye sets vistos y no vistos; PS al % visible; reproducible y sin tocar el combate real; olvida la elección del rival; rechaza posiciones viejas |
+| bot | Nivel 3 registrado y KO evidente; sin sandbox = nivel 2; **misma decisión y explicación aunque cambie lo que el rival oculta**; determinista; sin elecciones inválidas contra el nivel 2; explicación sin cambiar decisiones |
+| server | El jugador recibe el turno antes de que el bot piense; `/api/meta` con el nivel 3 |
 
-- **Para qué**: abrirla desde el móvil en la red de casa.
-- **Diseño de partida**: manifiesto y service worker para la web; opción del servidor para escuchar en la red local (hoy solo `127.0.0.1`, decisión de seguridad); revisar las pantallas en 375 px.
-- **Riesgos**: exponer el servidor en la red local exige pensar en quién puede conectarse.
+## Criterios de "hecho"
 
-### D. Rivales a partir de estadísticas de uso
+- [x] Nivel 3 ≥ 60 % contra el nivel 2 en ≥ 300 combates por modo (arena), sin elecciones inválidas: **61,8 %** en individuales (602) y **78,6 %** en dobles (308).
+- [x] ≤ ~3 s por decisión: media 0,3–0,4 s, máximo ≈ 1 s.
+- [x] Sin información oculta en los forks (test de invariancia).
+- [x] Nivel 3 por defecto en servidor, CLI y web; selectores con el nivel 3.
+- [x] ADR-0010, guía del bot, CHANGELOG, PLAN, AGENTS y README al día; brief de la fase 10.
 
-- **Para qué**: rivales que se parezcan a lo que se juega de verdad.
-- **Diseño de partida**: descargar en el pipeline las estadísticas de uso de Champions (si existen para Reg M-C) y generar sets y equipos por uso en `teamgen`.
-- **Riesgos**: fuente externa que puede no existir aún o cambiar de formato; la VPN del usuario bloquea esas webs a veces (AGENTS.md).
+## Fuera de alcance
 
-### E. Pulido de las herramientas
-
-- "Abrir en la calculadora" desde un combate con los dos Pokémon activos, golpes críticos y más efectos de campo en la calculadora, renombrar replays, E2E con Playwright de los flujos principales.
-
-## Pregunta para el usuario
-
-- **¿Qué ampliación quieres primero?** Recomendación: **A (bot nivel 3)**, porque es lo que más mejora la práctica; después E (pulido) si se quiere algo corto.
-
-## Al cerrar la fase
-
-Sigue el **protocolo de cierre de fase** de [AGENTS.md](../../AGENTS.md): docs, CHANGELOG, el brief de la siguiente fase en `docs/fases/fase-10.md` (o una nueva propuesta como esta), commit y push.
+- Búsqueda a más de un turno o MCTS completo.
+- Modelar la vista previa o los relevos con el simulador (siguen siendo los del nivel 2).
+- Pensar en un hilo aparte (el bot sigue siendo síncrono; ver riesgos en el ADR).

@@ -4,6 +4,37 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ## [Sin publicar]
 
+### Fase 9 — Bot nivel 3 "Experto" (2026-10-08)
+
+#### Añadido
+
+- **Nivel 3 "Experto"** (`ExpertAgent`, ahora **el rival por defecto** en la web, el servidor y el CLI): el nivel 2 más un turno por adelantado con el **simulador real**. Bajo varias suposiciones de los sets rivales, juega cada opción contra las respuestas probables del rival (el nivel 2 jugando su lado) y valora cada posición resultante con el balance de PS y el cambio que espera el nivel 2 desde ahí ([ADR-0010](docs/adr/0010-bot-experto-con-sandbox.md)). Explica sus decisiones como los demás.
+- Resultados (arena, equipos aleatorios con vista previa, sin elecciones inválidas): **nivel 3 contra nivel 2: 61,8 % en individuales** (602 combates, IC 95 % ≈ 58–66 %) y **78,6 % en dobles** (308 combates, IC ≈ 74–83 %). Tiempo por decisión: 0,3 s de media en individuales y 0,4 s en dobles; máximo ≈ 1 s.
+- **Sandbox de combate** (`@colleja/core`: `BattleSandbox`, `SandboxBattle`, `RivalAssumption`; `@colleja/engine`: `sandbox.ts`): `AgentContext.sandbox` permite, al elegir movimientos, forkar la posición real **sin información oculta** (sets del rival supuestos, PS del rival en el % visible, generador aleatorio nuevo con suerte común por acción, duración del sueño sorteada otra vez, sin elecciones ya hechas ni `inputLog`) y clonar forks.
+- `@colleja/bot`: `search/assumptions.ts` (`rivalAssumptions`), `search/lookahead.ts` (`searchMoves`, `rankedOptions`, `SEARCH_SETTINGS`), `singlesBaseline`/`doublesBaseline`, `EXPLANATION_METHODS.lookahead`. Nivel 3 en `BOT_LEVELS`, `createBot(3)` y `BotLevelSchema`.
+- Tests (285 en total): sandbox (cuándo existe, sustitución de sets vistos y no vistos, PS visibles, reproducible, combate real intacto, posiciones viejas); nivel 3 (**misma decisión y explicación aunque cambie lo que oculta el rival**, sin sandbox = nivel 2, determinismo, combates sin elecciones inválidas, explicación sin cambiar decisiones); la sala envía el turno antes de que piense el bot.
+- Documentación: [ADR-0010](docs/adr/0010-bot-experto-con-sandbox.md), guías del [bot](docs/guias/bot.md), de [combates](docs/guias/combate.md) y de la [web](docs/guias/web.md), y la propuesta de la fase 10.
+
+#### Cambiado
+
+- **El bot piensa mientras eliges**: cuando los dos lados eligen a la vez, la sala envía primero el turno al jugador y después decide el bot.
+- `estimateDamage` cachea por contenido (atacante, defensor, movimiento y campo): mismas decisiones, la mitad de tiempo en el nivel 3.
+- `planSingles` saca a una función (`nextInLine`) quién entraría gratis si cae el activo; el nivel 2 decide igual.
+- `npm run play` y `npm run arena` aceptan `--bot 3` / `--a 3` / `--b 3`. Los tests del CLI fijan `--bot 2` para no alargar el check.
+
+#### Aprendido al ajustar el nivel 3 (individuales contra el nivel 2, 280 combates por variante)
+
+| Variante | Victorias |
+|---|---|
+| Un solo resultado aleatorio por hoja | 48,6 % |
+| 8 turnos por opción y suposición; ×2 turnos no cambia nada | 50–51 % |
+| Estimación del nivel 2 sumada tal cual, peso 0,5 | 57,1 % |
+| **Cambio esperado** por el nivel 2 (estimación − lo que valdría sin cambios), peso 1 / 0,5 / 0,25 | 61,3 / 61,8 / 59,3 % |
+| Temperatura de las respuestas del rival 5 / 15 / 30 | 62,1 / 61,8 / 58,2 % |
+| Estimación simétrica (también la del rival) | 61,1 % |
+
+En dobles, peso 1 → 75,7 % y peso 0,5 → 81,4 %.
+
 ### Rediseño de la web (2026-10-08)
 
 #### Cambiado

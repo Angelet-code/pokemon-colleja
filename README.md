@@ -6,7 +6,7 @@ Simulador de combates de **Pokémon Champions** para practicar en individuales y
 
 ## Estado
 
-✅ Fase 0 (investigación y plan) · ✅ Fase 1 (cimientos) · ✅ Fase 2 (datos) · ✅ Fase 3 (dominio + motor + combate en terminal) · ✅ Fase 4 (bot de 3 niveles, equipos aleatorios, arena) · ✅ Fase 5 (servidor + UI de combate: **MVP**) · ✅ Fase 6 (teambuilder y equipos guardados) · ✅ Fase 7 (rivales guardados) · ✅ Fase 8 (calculadora, replays y explicación del bot) · ✅ Rediseño de la web · ⏭️ Fase 9 (eliges la siguiente ampliación). Ver [CHANGELOG](CHANGELOG.md).
+✅ Fase 0 (investigación y plan) · ✅ Fase 1 (cimientos) · ✅ Fase 2 (datos) · ✅ Fase 3 (dominio + motor + combate en terminal) · ✅ Fase 4 (bot de 3 niveles, equipos aleatorios, arena) · ✅ Fase 5 (servidor + UI de combate: **MVP**) · ✅ Fase 6 (teambuilder y equipos guardados) · ✅ Fase 7 (rivales guardados) · ✅ Fase 8 (calculadora, replays y explicación del bot) · ✅ Rediseño de la web · ✅ Fase 9 (bot nivel 3 "Experto", ahora el rival por defecto) · ⏭️ Fase 10 (eliges la siguiente ampliación). Ver [CHANGELOG](CHANGELOG.md).
 
 ## Puesta en marcha
 
@@ -36,10 +36,10 @@ Para aprender de cada combate: **Calculadora** (http://127.0.0.1:5173/calculador
 npm run play
 ```
 
-Juega un combate en la terminal contra el bot táctico (nivel 2) con un equipo rival aleatorio. Con `-- --mode doubles` juegas en dobles, con `-- --bot 1` (agresivo) o `-- --bot 0` (aleatorio) el rival es más fácil y con `-- --team mi-equipo.txt` usas tu equipo en formato export de Showdown. Durante el combate puedes `deshacer`, `rebobinar N` y `exportar` el replay. Todas las opciones: `npm run play -- --help` y la [guía de combates](docs/guias/combate.md).
+Juega un combate en la terminal contra el bot experto (nivel 3, mira cada turno por adelantado con el simulador) con un equipo rival aleatorio. Con `-- --mode doubles` juegas en dobles, con `-- --bot 2` (táctico), `-- --bot 1` (agresivo) o `-- --bot 0` (aleatorio) el rival es más fácil y con `-- --team mi-equipo.txt` usas tu equipo en formato export de Showdown. Durante el combate puedes `deshacer`, `rebobinar N` y `exportar` el replay. Todas las opciones: `npm run play -- --help` y la [guía de combates](docs/guias/combate.md).
 
 ```bash
-npm run arena -- --a 2 --b 0
+npm run arena -- --a 3 --b 2
 ```
 
 Enfrenta a dos niveles del bot con equipos aleatorios y mide el porcentaje de victorias ([guía de bots](docs/guias/bot.md)).

@@ -78,8 +78,8 @@ pokemon-colleja-simulator/
 │  ├─ showdown/            # ✅ Puente único y tipado hacia vendor/pokemon-showdown (Node-only)
 │  ├─ core/                # ✅ Dominio puro: tipos, stats (SP), import/export, elecciones, vista del combate, agentes
 │  ├─ data/                # ✅ JSON generados + i18n (es/en) + sets estándar + overrides (apto para navegador)
-│  ├─ engine/              # ✅ BattleSession sobre Battle de Showdown: validación, perspectivas, rebobinado, replays
-│  ├─ bot/                 # ✅ Bots: aleatorio, agresivo (daño esperado) y táctico (simulación), con @smogon/calc
+│  ├─ engine/              # ✅ BattleSession sobre Battle de Showdown: validación, perspectivas, rebobinado, replays y sandbox (forks sin información oculta)
+│  ├─ bot/                 # ✅ Bots: aleatorio, agresivo (daño esperado), táctico (simulación) y experto (búsqueda con el sandbox), con @smogon/calc
 │  ├─ teamgen/             # ✅ Generador de equipos aleatorios legales a partir de sets estándar
 │  ├─ narration/           # ✅ Log del combate en español/inglés con las plantillas de Showdown (web y CLI)
 │  └─ protocol/            # ✅ Esquemas zod de los mensajes cliente↔servidor (compartidos)
@@ -290,7 +290,7 @@ Cada nivel implementa `BattleAgent` (de `@colleja/core`): recibe un `AgentContex
 | 0 | Aleatorio ✅ | Elección legal al azar (`RandomAgent`, port tipado de `RandomPlayerAI`). Sirve de base y para tests |
 | 1 | Agresivo ✅ | Maximiza el daño esperado con `@smogon/calc`. Prioriza los KOs y usa prioridad cuando le asegura el KO. Supone el set rival a partir de los sets estándar y lo que ya se ha revelado |
 | 2 | Táctico ✅ | Valora cada opción **simulando sus consecuencias** con daño esperado ([ADR-0004](adr/0004-bot-por-simulacion.md)): duelos en individuales y turnos 2 contra 2 en dobles. Así cubre cambios cuando el matchup es malo, Protección, Sorpresa, momento de la Mega, Viento Afín y Espacio Raro, concentrar ataques, no golpear al aliado con ataques en área y movimientos de estado con valor. Gana al nivel 1 un 61 % (individuales) y un 67 % (dobles) |
-| 3 | Experto (futuro) | Mira una jugada por delante (lookahead de 1 ply) clonando el combate (`Battle.fromJSON`), o MCTS con sets muestreados |
+| 3 | Experto ✅ (por defecto) | El nivel 2 más **un turno por adelantado con el simulador real**: el motor le da forks de la posición sin información oculta (`AgentContext.sandbox`) y juega cada opción contra las respuestas probables del rival bajo varias suposiciones de sus sets ([ADR-0010](adr/0010-bot-experto-con-sandbox.md)). Gana al nivel 2 un 61,8 % (individuales) y un 78,6 % (dobles), en 0,3–0,4 s por decisión |
 
 - **Vista previa**: el nivel 1 puntúa cada enfrentamiento (daño hecho y recibido, velocidad); el 2 elige el grupo que mejor cubre a cada especie rival según duelos simulados.
 - **Información oculta**: los bots no conocen los sets rivales con equipo cerrado (decisión de producto). Suponen los sets estándar compatibles con lo revelado, del más ofensivo al menos.
@@ -333,10 +333,11 @@ Tamaños orientativos: S (pocas sesiones) · M · L.
 | **6. Teambuilder** ✅ | L | Editor completo con SP, validación en vivo, import/export y persistencia (`storage/teams/`), equipo guardado en el inicio | ✅ Equipo de 6 creado desde cero en el navegador, guardado, intacto tras reiniciar y usado en combate en ambos modos. 231 tests |
 | **7. Rivales editables** ✅ | S–M | Generar, editar y guardar rivales (`storage/opponents/`) con su dificultad; elegirlos en el inicio | ✅ Rival aleatorio generado, editado, guardado, intacto tras reiniciar y jugado en ambos modos con exactamente su equipo y su nivel. 247 tests |
 | **8. Herramientas de práctica** ✅ | M | Calculadora de daño (servidor), replays guardados con visor y explicación del bot en cada turno | ✅ Daño igual al del bot, replay visto turno a turno tras reiniciar y explicación solo de turnos resueltos y sin información oculta (tests). 270 tests |
-| **9. Siguiente ampliación** ⏭️ | — | A elegir entre las de "Futuro": propuesta en [fases/fase-9.md](fases/fase-9.md) | — |
-| **Futuro** | — | Bot nivel 3, modo clásico IV/EV/Tera, PWA/móvil, PvP, rivales basados en uso real | — |
+| **9. Bot nivel 3** ✅ | M | Sandbox en el motor (forks sin información oculta), nivel 3 "Experto" por defecto y el bot pensando mientras el jugador elige ([brief](fases/fase-9.md)) | ✅ Gana al nivel 2 el 61,8 % (602 combates, individuales) y el 78,6 % (308, dobles), sin elecciones inválidas y en ≈ 1 s como mucho por decisión. 285 tests |
+| **10. Siguiente ampliación** ⏭️ | — | A elegir: propuesta en [fases/fase-10.md](fases/fase-10.md) | — |
+| **Futuro** | — | Modo clásico IV/EV/Tera, PWA/móvil, PvP, rivales basados en uso real | — |
 
-**MVP = fases 1–5** ✅. Con la fase 6 ✅ los equipos se crean y guardan en el navegador, y con la 7 ✅ también los rivales: la experiencia que pediste está completa. Con la 8 ✅ llegan las herramientas para aprender de cada combate. Lo siguiente lo eliges tú ([fase 9](fases/fase-9.md)).
+**MVP = fases 1–5** ✅. Con la fase 6 ✅ los equipos se crean y guardan en el navegador, y con la 7 ✅ también los rivales: la experiencia que pediste está completa. Con la 8 ✅ llegan las herramientas para aprender de cada combate y con la 9 ✅, un rival más fuerte. Lo siguiente lo eliges tú ([fase 10](fases/fase-10.md)).
 
 ---
 
@@ -374,7 +375,9 @@ Las mecánicas en sí **no se re-testean**: son responsabilidad del motor (Showd
 | El bundle de la web lleva todos los datos (≈1,57 MB con el teambuilder, los rivales y las herramientas, ≈344 KB con gzip; la calculadora corre en el servidor) | Aceptable en local. Si crece más, cargar learnsets y sets estándar bajo demanda (`import()` dinámico) |
 | Los combates viven en memoria: se pierden si se reinicia el servidor | Aceptado para uso local. La reconexión funciona mientras el servidor siga vivo; persistir sesiones si hiciera falta (el replay ya permite reconstruirlas) |
 | La sesión usa la API interna de `Battle` (`choose`, `setPlayer`, `sendUpdates`, `inputLog`) | Aislada en `engine/src/session.ts` y cubierta por tests de determinismo, rebobinado y perspectivas ([ADR-0003](adr/0003-sesion-de-combate.md)) |
-| El bot adivina los sets rivales con los sets estándar: contra equipos humanos poco comunes puede equivocarse | Filtra por lo revelado y supone el set más ofensivo. Con equipo abierto juega con los sets reales. El nivel 3 (futuro) podrá muestrear sets |
+| El bot adivina los sets rivales con los sets estándar: contra equipos humanos poco comunes puede equivocarse | Filtra por lo revelado y supone el set más ofensivo. Con equipo abierto juega con los sets reales. El nivel 3 promedia varias suposiciones |
+| El nivel 3 piensa de forma síncrona (≈ 0,3–1 s): mientras, el servidor no atiende otros mensajes | Piensa después de enviar el turno al jugador, así que coincide con su tiempo de decisión. Si molestara, moverlo a un hilo de trabajo |
+| El sandbox usa la serialización interna de Showdown (`toJSON`/`fromJSON`) y borra campos del estado por nombre | Aislado en `engine/src/sandbox.ts` y cubierto por tests (incluido uno de invariancia frente a lo oculto). Revisarlo al actualizar Showdown |
 | `@smogon/calc` puede ir por detrás de nuestro commit de Showdown | Test de contraste con el motor (stats de todos los sets estándar y daño real). Si falla tras actualizar Showdown, revisar antes de actualizar la calculadora |
 | VPN ocasional del usuario (Sophos) que bloquea webs de Pokémon | Los scripts usan solo npm y GitHub. Si una web falla, comprobar si la VPN está activa |
 | Licencias: el arte es © Nintendo/TPC, y los sets de Smogon tienen copyright | Uso personal, assets fuera de git, sets base desde el repo MIT de Showdown |
