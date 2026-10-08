@@ -9,7 +9,8 @@ import type { GameMode } from '@colleja/data';
 import { BattleSession, playOut } from '@colleja/engine';
 import { generateTeam } from '@colleja/teamgen';
 import { describe, expect, it } from 'vitest';
-import { type BotLevel, createBot, EXPLANATION_METHODS } from '../src/index';
+import { type BotLevel, createBot, EXPLANATION_METHODS, ExpertAgent } from '../src/index';
+import { LIGHT_SEARCH } from './helpers';
 
 function newSession(mode: GameMode, seed: string): BattleSession {
   return BattleSession.create({
@@ -31,7 +32,10 @@ interface Decision {
 /** Plays a battle; when `explain`, asks the p2 bot for an explanation after every choice. */
 async function play(level: BotLevel, mode: GameMode, seed: string, explain: boolean) {
   const session = newSession(mode, seed);
-  const bot = createBot(level, { seed: `${seed}:bot` });
+  const bot =
+    level === 3
+      ? new ExpertAgent({ seed: `${seed}:bot`, settings: LIGHT_SEARCH })
+      : createBot(level, { seed: `${seed}:bot` });
   const agents: Record<SideId, BattleAgent> = {
     p1: createBot(1, { seed: `${seed}:p1` }),
     p2: bot,
@@ -51,9 +55,11 @@ describe('bot explanations', () => {
     [0, 'singles'],
     [1, 'singles'],
     [2, 'singles'],
+    [3, 'singles'],
     [0, 'doubles'],
     [1, 'doubles'],
     [2, 'doubles'],
+    [3, 'doubles'],
   ] as const)(
     'level %i (%s) explains every turn without changing its decisions',
     async (level, mode) => {

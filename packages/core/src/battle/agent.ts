@@ -3,6 +3,7 @@ import type { PokemonSet } from '../team/types';
 import type { Choice } from './choice';
 import type { DecisionExplanation } from './explanation';
 import type { ActionableRequest } from './request';
+import type { BattleSandbox } from './sandbox';
 import type { SideId } from './types';
 
 /**
@@ -19,6 +20,11 @@ export interface AgentContext {
   team: readonly PokemonSet[];
   /** Rival's sets, only when Open Team Sheets is on. */
   opponentTeam: readonly PokemonSet[] | null;
+  /**
+   * Hypothetical forks of the current position (level 3 bot). The engine offers it only when
+   * choosing moves; it never reveals the rival's hidden information (ADR-0010).
+   */
+  sandbox?: BattleSandbox;
 }
 
 /** Anything that can play a side: the random bot, smarter bots (phase 4) or a human UI. */

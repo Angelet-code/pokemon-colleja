@@ -38,9 +38,9 @@ function choose(bot: BattleAgent, session: BattleSession): string {
 
 describe('bot levels', () => {
   it('registers the levels with Spanish names and the strongest as default', () => {
-    expect(BOT_LEVELS.map((info) => info.level)).toEqual([0, 1, 2]);
-    expect(DEFAULT_BOT_LEVEL).toBe(2);
-    expect(isBotLevel(3)).toBe(false);
+    expect(BOT_LEVELS.map((info) => info.level)).toEqual([0, 1, 2, 3]);
+    expect(DEFAULT_BOT_LEVEL).toBe(3);
+    expect(isBotLevel(4)).toBe(false);
     expect(createBot(0)).toBeInstanceOf(RandomAgent);
     expect(createBot(1)).toBeInstanceOf(AggressiveAgent);
     expect(createBot(2)).toBeInstanceOf(TacticalAgent);

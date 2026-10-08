@@ -1,5 +1,5 @@
 /**
- * Terminal battle against the bot (levels 0–2, random or fixture teams). Also runs bot vs
+ * Terminal battle against the bot (levels 0–3, random or fixture teams). Also runs bot vs
  * bot with `--auto`.
  */
 
@@ -36,7 +36,7 @@ const LEVELS_HELP = BOT_LEVELS.map((info) => `${info.level} = ${info.name}`).joi
 export const USAGE = `Uso: npm run play -- [opciones]
 
   --mode singles|doubles     Individuales (6→3) o dobles (6→4). Por defecto: singles
-  --bot <0|1|2>              Nivel del bot (${LEVELS_HELP}). Por defecto: ${DEFAULT_BOT_LEVEL}
+  --bot <0|1|2|3>            Nivel del bot (${LEVELS_HELP}). Por defecto: ${DEFAULT_BOT_LEVEL}
   --team <fichero>           Tu equipo en formato export de Showdown (por defecto: equipo-a)
   --opponent-team <fichero>  Equipo del bot, o "random" para uno aleatorio. Por defecto: random
   --seed <texto>             Semilla: misma semilla + mismas elecciones = mismo combate
@@ -80,7 +80,7 @@ function parseOptions(argv: string[]): CliOptions | string {
   }
   const bot = Number(values.bot);
   if (!isBotLevel(bot)) {
-    return `--bot debe ser 0, 1 o 2 (recibido: "${values.bot}").\n\n${USAGE}`;
+    return `--bot debe ser 0, 1, 2 o 3 (recibido: "${values.bot}").\n\n${USAGE}`;
   }
   return {
     mode: values.mode,

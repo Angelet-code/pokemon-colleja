@@ -165,6 +165,50 @@ export function estimateDamage(
 ): DamageEstimate {
   const move = getMove(moveId);
   if (!move || move.category === 'Status' || defender.hp <= 0) return NO_DAMAGE;
+  const key = `${calcKey(attacker)}>${calcKey(defender)}|${moveId}|${fieldKey(field, attacker.side, defender.side)}`;
+  const cached = estimateCache.get(key);
+  if (cached) return cached;
+  if (estimateCache.size >= MAX_CACHED_ESTIMATES) estimateCache.clear();
+  const estimate = calculateEstimate(attacker, defender, move, field);
+  estimateCache.set(key, estimate);
+  return estimate;
+}
+
+/**
+ * Estimates by content: the level 3 search values many positions where the same Pokémon
+ * meet again (`calculate` dominates its cost). Pure function, so caching is safe.
+ */
+const estimateCache = new Map<string, DamageEstimate>();
+const MAX_CACHED_ESTIMATES = 20_000;
+const keyCache = new WeakMap<Combatant, string>();
+
+/** Everything about a combatant that the calc reads. */
+function calcKey(combatant: Combatant): string {
+  let key = keyCache.get(combatant);
+  if (key === undefined) {
+    const { set, boosts } = combatant;
+    const points = Object.values(set.statPoints).join(',');
+    const stages = Object.entries(boosts)
+      .map(([stat, stage]) => `${stat}${stage}`)
+      .join(',');
+    key = `${combatant.species}/${set.nature}/${points}/${stages}/${combatant.hp}/${combatant.ability}/${combatant.item ?? ''}/${combatant.status ?? ''}`;
+    keyCache.set(combatant, key);
+  }
+  return key;
+}
+
+function fieldKey(field: FieldState, attacker: SideId, defender: SideId): string {
+  const conditions = (side: SideId) => Object.keys(field.conditions[side]).join(',');
+  const spikes = field.conditions[defender].spikes ?? 0;
+  return `${field.doubles ? 'd' : 's'}/${field.weather ?? ''}/${field.terrain ?? ''}/${field.pseudoWeather.join(',')}/${conditions(attacker)}/${conditions(defender)}${spikes}`;
+}
+
+function calculateEstimate(
+  attacker: Combatant,
+  defender: Combatant,
+  move: NonNullable<ReturnType<typeof getMove>>,
+  field: FieldState,
+): DamageEstimate {
   const accuracy = move.accuracy === true ? 1 : move.accuracy / 100;
   try {
     const result = calculate(

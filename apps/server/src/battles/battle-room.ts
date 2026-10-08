@@ -101,8 +101,7 @@ export class BattleRoom {
   start(): Promise<void> {
     return this.run(async () => {
       this.send(this.startedMessage());
-      await this.playBot();
-      this.sendUpdate();
+      await this.advance(() => this.sendUpdate());
     });
   }
 
@@ -113,8 +112,7 @@ export class BattleRoom {
         this.sendError('choice', 'Esa elección no es válida.', result.errors);
         return;
       }
-      await this.playBot();
-      this.sendUpdate();
+      await this.advance(() => this.sendUpdate());
     });
   }
 
@@ -125,8 +123,7 @@ export class BattleRoom {
         return;
       }
       this.forgetUndoneTurns();
-      await this.playBot();
-      this.sendSnapshot();
+      await this.advance(() => this.sendSnapshot());
     });
   }
 
@@ -138,8 +135,7 @@ export class BattleRoom {
       }
       this.session.rewindTo(turn);
       this.forgetUndoneTurns();
-      await this.playBot();
-      this.sendSnapshot();
+      await this.advance(() => this.sendSnapshot());
     });
   }
 
@@ -202,15 +198,28 @@ export class BattleRoom {
     return next;
   }
 
-  /** The bot answers every pending decision of its side (team preview, moves, switches). */
-  private async playBot(): Promise<void> {
-    while (!this.session.ended && this.session.isAwaiting('p2')) {
-      const turn = this.session.turn;
-      const choice = await decideFor(this.session, 'p2', this.bot);
-      if (!choice) break;
-      const explanation = this.bot.explain?.();
-      if (explanation) this.explanations.push({ ...explanation, turn });
+  /**
+   * Lets the bot answer and tells the player (`notify`). Decisions the player is not part of
+   * (e.g. the bot's forced switch) come first; when both sides have to choose, the player
+   * sees the position first and the bot thinks meanwhile (its choice waits for the player's).
+   */
+  private async advance(notify: () => void): Promise<void> {
+    const { session } = this;
+    while (!session.ended && session.isAwaiting('p2') && !session.isAwaiting('p1')) {
+      if (!(await this.playBot())) break;
     }
+    notify();
+    if (!session.ended && session.isAwaiting('p2')) await this.playBot();
+  }
+
+  /** The bot makes its pending decision. `false` if it had none. */
+  private async playBot(): Promise<boolean> {
+    const turn = this.session.turn;
+    const choice = await decideFor(this.session, 'p2', this.bot);
+    if (!choice) return false;
+    const explanation = this.bot.explain?.();
+    if (explanation) this.explanations.push({ ...explanation, turn });
+    return true;
   }
 
   /** After an undo or a rewind: the decisions of the turns being replayed no longer exist. */

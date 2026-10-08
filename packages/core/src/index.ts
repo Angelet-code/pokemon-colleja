@@ -7,6 +7,7 @@ export * from './battle/choice';
 export * from './battle/explanation';
 export * from './battle/options';
 export * from './battle/request';
+export * from './battle/sandbox';
 export * from './battle/types';
 export * from './battle/view';
 export * from './team/showdown-format';

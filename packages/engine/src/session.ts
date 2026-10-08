@@ -36,6 +36,7 @@ import {
 import { type ResolvedFormat, resolveFormat } from './formats';
 import { PERSPECTIVES, type Perspective, splitByPerspective } from './protocol';
 import { REPLAY_VERSION, type ReplayData } from './replay';
+import { PerspectiveSandbox } from './sandbox';
 import { toBattleSeed } from './seed';
 import { TeamValidationError, validateForBattle } from './validate';
 
@@ -191,7 +192,7 @@ export class BattleSession {
     const request = this.state.requests[side];
     if (!this.state.awaiting[side] || !isActionable(request)) return null;
     const opponent = side === 'p1' ? 'p2' : 'p1';
-    return {
+    const context: AgentContext = {
       side,
       mode: this.mode,
       request,
@@ -199,6 +200,11 @@ export class BattleSession {
       team: this.players[side].team,
       opponentTeam: this.options.openTeamSheets ? this.players[opponent].team : null,
     };
+    const { battle } = this.state;
+    if (requestKind(request) === 'move' && battle.requestState === 'move') {
+      context.sandbox = new PerspectiveSandbox(battle, side, this.state.logs[side]);
+    }
+    return context;
   }
 
   /** Turns whose start can be returned to with `rewindTo`. */

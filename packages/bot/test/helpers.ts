@@ -2,6 +2,15 @@ import { emptyStatTable, type PokemonSet } from '@colleja/core';
 import { type GameMode, getSpecies, type StatTable } from '@colleja/data';
 import { BattleSession } from '@colleja/engine';
 import { generateTeam } from '@colleja/teamgen';
+import type { SearchSettings } from '../src/index';
+
+/** Little level 3 search effort: tests check behaviour, not strength. */
+export const LIGHT_SEARCH: Partial<SearchSettings> = {
+  assumptions: 1,
+  ownOptions: 6,
+  rivalReplies: 2,
+  turns: 2,
+};
 
 /** Hand-written set with sensible defaults (Stat Points: 32 + 32 + 2). */
 export function set(

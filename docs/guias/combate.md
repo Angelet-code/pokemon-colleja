@@ -45,7 +45,7 @@ El log se narra en español con las plantillas de mensajes de Showdown (`@collej
 | `@colleja/core` | Navegador y Node | `PokemonSet`/`Team`, stats (`championsStats`), Stat Points, import/export de Showdown, comprobación rápida de equipos, peticiones y elecciones tipadas, `getSlotOptions`/`validateChoice`, `BattleView`, `BattleAgent`, `SeededRandom` |
 | `@colleja/engine` | Solo Node | `validateTeam`, `resolveFormat`, `BattleSession`, `playOut`, `decideFor`, replays, conversión de sets a Showdown |
 | `@colleja/narration` | Navegador y Node | `Narrator` (log en español o inglés con las plantillas de Showdown) y nombres para mostrar ([guía de la web](web.md)) |
-| `@colleja/bot` | Navegador y Node | Niveles 0–2 (`createBot`, `BOT_LEVELS`) y su análisis con `@smogon/calc` ([guía](bot.md)) |
+| `@colleja/bot` | Navegador y Node | Niveles 0–3 (`createBot`, `BOT_LEVELS`) y su análisis con `@smogon/calc` ([guía](bot.md)) |
 | `@colleja/teamgen` | Navegador y Node | `generateTeam`: equipos aleatorios legales desde los sets estándar |
 | `tools/cli` | Node | `npm run play` |
 | `tools/arena` | Node | `npm run arena`: torneos bot contra bot |
@@ -102,6 +102,21 @@ En dobles, `+N` es la posición N del rival y `-N` la posición N propia (aliado
 
 `getLog(perspectiva)` admite `p1`, `p2`, `omniscient` y `spectator`. Cada jugador ve sus PS exactos y los del rival como `x/100`. Los bots **solo** reciben su perspectiva (`AgentContext.log`); para reconstruir el campo, `BattleView.from(log)`. Además del campo, `BattleView` sigue lo revelado de cada Pokémon (objeto y habilidad, también por etiquetas `[from] item:`/`[from] ability:`, movimientos, Mega), el turno en que entró y su último movimiento.
 
+### Sandbox (combates hipotéticos)
+
+Al elegir movimientos, `getAgentContext(lado).sandbox` ofrece un `BattleSandbox` (interfaz de `core`, implementado en `engine/src/sandbox.ts`) para mirar jugadas por delante, como hace el bot nivel 3 ([ADR-0010](../adr/0010-bot-experto-con-sandbox.md)):
+
+```ts
+const { sandbox } = session.getAgentContext('p2')!;
+const fork = sandbox!.fork({ seen: { Garchomp: setSupuesto }, unseen: [otroSet, …] }, 'semilla');
+fork.choose('p1', actionsChoice(moveAction(1)));
+fork.choose('p2', actionsChoice(moveAction(2)));
+fork.log('p2');           // lo que vería p2 de ese turno
+fork.clone('otra');       // misma posición, otra suerte
+```
+
+Un fork **no tiene información oculta**: los sets del rival son los supuestos (los vistos, por nombre; los no vistos, enteros), sus PS son el % visible, el generador aleatorio es nuevo (con suerte común por acción), la duración del sueño se sortea otra vez y se olvidan las elecciones ya hechas. El combate real no cambia. Si la posición real avanza, el sandbox deja de valer (lanza un error).
+
 ### Rebobinar
 
 La sesión guarda en qué punto del `inputLog` empezó cada turno y, para volver, reconstruye el combate desde la semilla reaplicando las elecciones hasta ese punto. `rewindableTurns()` dice a qué turnos se puede volver; `undoTarget()`, adónde iría `undo()`.
@@ -120,6 +135,7 @@ La sesión guarda en qué punto del `inputLog` empezó cada turno y, para volver
 | `packages/core/test/team.test.ts` | Stats con Stat Points, límites, import/export, comprobación de equipos |
 | `packages/core/test/battle.test.ts` | Elecciones, objetivos en dobles, validación, `BattleView` |
 | `packages/engine/test/engine.test.ts` | Stats de core = motor en todos los sets estándar, validación, formatos, determinismo, replays, rebobinado, perspectivas |
+| `packages/engine/test/sandbox.test.ts` | Sandbox: cuándo existe, sustitución de sets, PS visibles, reproducibilidad, combate real intacto |
 | `packages/bot/test/*.test.ts` | Bots: ver la [guía de bots](bot.md#tests) |
 | `packages/narration/test/narration.test.ts` | Narración en español e inglés, gramática y combates completos sin marcadores sin resolver |
 | `tools/cli/test/cli.test.ts` | `--auto` en ambos modos (nivel 2 y equipo aleatorio), `--bot 0/1` con fixtures y una partida "humana" guionizada con deshacer y rebobinar |

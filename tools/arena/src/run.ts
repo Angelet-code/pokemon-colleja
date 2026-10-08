@@ -21,8 +21,8 @@ const OUTPUT = fileURLToPath(new URL('../../../storage/arena/', import.meta.url)
 
 const USAGE = `Uso: npm run arena -- [opciones]
 
-  --a <0|1|2>                    Nivel del bot A (el que se mide). Por defecto: 2
-  --b <0|1|2>                    Nivel del bot B. Por defecto: 0
+  --a <0|1|2|3>                  Nivel del bot A (el que se mide). Por defecto: 2
+  --b <0|1|2|3>                  Nivel del bot B. Por defecto: 0
   --mode singles|doubles|both    Modo. Por defecto: both
   --battles <N>                  Combates por modo. Por defecto: 100
   --seed <texto>                 Semilla base (mismos parámetros = mismos combates). Por defecto: arena
@@ -37,7 +37,7 @@ function fail(message: string): never {
 
 function level(text: string, flag: string): BotLevel {
   const value = Number(text);
-  if (!isBotLevel(value)) fail(`${flag} debe ser 0, 1 o 2 (recibido: "${text}").`);
+  if (!isBotLevel(value)) fail(`${flag} debe ser 0, 1, 2 o 3 (recibido: "${text}").`);
   return value;
 }
 

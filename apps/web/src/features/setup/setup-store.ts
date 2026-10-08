@@ -33,7 +33,7 @@ export const DEFAULT_FORM: SetupForm = {
   opponentKind: 'random',
   opponentId: '',
   opponentTeam: '',
-  botLevel: 2,
+  botLevel: 3,
   teamPreview: true,
   openTeamSheets: false,
   seed: '',

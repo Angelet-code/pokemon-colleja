@@ -68,6 +68,22 @@ export function planDoubles(
   return chosen ? { chosen, pairs } : null;
 }
 
+/**
+ * What `planDoubles` would score if nothing happened: own HP shares minus those of the rivals
+ * on the field, × 100 (`DoublesSim`'s balance). A planned score minus this is the change
+ * level 2 expects from here.
+ */
+export function doublesBaseline(situation: Situation): number {
+  const share = (hp: number, maxhp: number) => Math.max(0, hp) / Math.max(1, maxhp);
+  const own = situation.own
+    .filter((member) => !member.fainted)
+    .reduce((sum, member) => sum + share(member.combatant.hp, member.combatant.maxhp), 0);
+  const foes = situation
+    .activeFoes()
+    .reduce((sum, foe) => sum + share(foe.combatant.hp, foe.combatant.maxhp), 0);
+  return (own - foes) * 100;
+}
+
 /** Value of a pair of plans, mixing hit/miss for inaccurate status moves. */
 function evaluate(situation: Situation, plans: SlotPlan[], options: readonly SlotOption[]): number {
   let score = DoublesSim.evaluate(situation, plans);

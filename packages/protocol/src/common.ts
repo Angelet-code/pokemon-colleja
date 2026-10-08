@@ -10,7 +10,7 @@ export const SideIdSchema = z.enum(['p1', 'p2']);
 export const LocaleSchema = z.enum(['es', 'en']);
 
 /** Bot levels (same values as `BotLevel` in `@colleja/bot`; the server checks they match). */
-export const BotLevelSchema = z.union([z.literal(0), z.literal(1), z.literal(2)]);
+export const BotLevelSchema = z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]);
 
 export const BattleOptionsSchema = z.object({
   teamPreview: z.boolean(),

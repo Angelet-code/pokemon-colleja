@@ -1,6 +1,6 @@
 # Guía: bots, generador de equipos y arena
 
-Cómo deciden los bots, cómo se miden y cómo se mejoran. Decisión de arquitectura: [ADR-0004](../adr/0004-bot-por-simulacion.md). La API de combate (`BattleSession`, `BattleAgent`…) está en la [guía de combates](combate.md).
+Cómo deciden los bots, cómo se miden y cómo se mejoran. Decisiones de arquitectura: [ADR-0004](../adr/0004-bot-por-simulacion.md) (nivel 2) y [ADR-0010](../adr/0010-bot-experto-con-sandbox.md) (nivel 3). La API de combate (`BattleSession`, `BattleAgent`…) está en la [guía de combates](combate.md).
 
 ## Niveles
 
@@ -9,11 +9,12 @@ Cómo deciden los bots, cómo se miden y cómo se mejoran. Decisión de arquitec
 | 0 · Aleatorio | `RandomAgent` | Al azar entre las acciones legales (objetivos útiles en dobles, Mega a veces) |
 | 1 · Agresivo | `AggressiveAgent` | En cada posición, el movimiento y objetivo con más daño esperado (+ bonus de KO). Prioridad si asegura el KO. Nunca golpea al aliado salvo que sea inmune. Mega en cuanto puede. Solo cambia si ningún movimiento hace nada |
 | 2 · Táctico | `TacticalAgent` | Simula las consecuencias de cada opción con daño esperado (duelos en individuales, turnos 2 contra 2 en dobles) y elige la de mejor balance de PS. Vista previa por cobertura |
+| 3 · Experto | `ExpertAgent` | El nivel 2 más un turno por adelantado con el **simulador real**: juega cada opción contra las respuestas probables del rival bajo varias suposiciones de sus sets y valora las posiciones resultantes. Vista previa y relevos, los del nivel 2 |
 
 ```ts
 import { BOT_LEVELS, createBot, DEFAULT_BOT_LEVEL } from '@colleja/bot';
 
-const bot = createBot(2, { seed: 'partida-1' }); // misma semilla → mismas decisiones
+const bot = createBot(3, { seed: 'partida-1' }); // misma semilla → mismas decisiones
 BOT_LEVELS; // [{ level, name, description }] en español, para la UI
 ```
 
@@ -33,6 +34,20 @@ Todos los bots solo ven su `AgentContext` (su perspectiva). **No conocen los set
 | `analysis/doubles-sim.ts` / `doubles-plan.ts` | Simulación 2 contra 2 y búsqueda de la mejor pareja de acciones |
 | `analysis/team-selection.ts` | Vista previa por cobertura (el grupo que mejor responde a cada especie rival) |
 | `analysis/move-knowledge.ts` | Para qué sirve cada movimiento de estado (Protección, mejoras, estados, recuperación, pantallas, trampas…) |
+| `search/assumptions.ts` | Nivel 3: suposiciones completas de los sets rivales (vistos y no vistos) a partir del modelo del rival |
+| `search/lookahead.ts` | Nivel 3: `searchMoves` (búsqueda a un turno con el sandbox) y `SEARCH_SETTINGS` (esfuerzo por modo) |
+
+### Nivel 3: búsqueda con el simulador real
+
+El motor pone en `AgentContext.sandbox` (solo al elegir movimientos) un `BattleSandbox`: `fork(suposición, semilla)` copia la posición real **sin información oculta** (sets del rival sustituidos por los supuestos, PS del rival en el % visible, generador aleatorio nuevo, duración del sueño sorteada otra vez) y `clone(semilla)` copia un fork. El bot nunca toca `engine`: solo usa esa interfaz de `core`.
+
+Para cada suposición (`assumptions`), `searchMoves`:
+
+1. obtiene las respuestas probables del rival: el nivel 2 jugando su lado en el fork, sus `rivalReplies` mejores opciones con pesos softmax (`replyTemperature`);
+2. juega `turns` turnos por cada opción propia (las `ownOptions` mejores del nivel 2), cada uno contra una respuesta muestreada de forma estratificada por esos pesos. Con la misma semilla para todas las opciones y **suerte común por acción** (cada acción saca sus números de su propio flujo), las opciones se comparan con la misma suerte del rival;
+3. valora cada posición resultante, tras los relevos forzosos (del nivel 2): balance de PS × 100 más `positionWeight` × el cambio que el nivel 2 espera desde ahí (su mejor puntuación menos la que tendría si no pasara nada: `singlesBaseline`/`doublesBaseline`); ±200 si el combate acaba.
+
+Elige la media más alta. Sin sandbox (otra perspectiva, vista previa, relevos) juega como el nivel 2. El esfuerzo es fijo, nunca por reloj, para que sea reproducible.
 
 ### Qué modela la simulación (nivel 2)
 
@@ -68,7 +83,7 @@ npm run arena -- --a 2 --b 1 --mode doubles --battles 300 --seed otra
 
 | Opción | Qué hace |
 |---|---|
-| `--a <0\|1\|2>` / `--b <0\|1\|2>` | Niveles de los bots. Se informa del % de victorias de A (por defecto 2 contra 0) |
+| `--a <0\|1\|2\|3>` / `--b <0\|1\|2\|3>` | Niveles de los bots. Se informa del % de victorias de A (por defecto 2 contra 0) |
 | `--mode singles\|doubles\|both` | Por defecto, ambos |
 | `--battles N` | Combates por modo (por defecto 100). Cada par de equipos se juega dos veces cambiando qué bot lleva cuál |
 | `--seed X` | Semilla base: mismos parámetros, mismos combates |
@@ -76,13 +91,13 @@ npm run arena -- --a 2 --b 1 --mode doubles --battles 300 --seed otra
 
 Muestra el % de victorias con su intervalo de confianza del 95 % (Wilson), los turnos medios, los ms por combate y por decisión, y las elecciones inválidas (deben ser 0). Los combates que fallen se guardan en `storage/arena/` como replays (`BattleSession.fromReplay`). La lógica está en `runArena()` (`tools/arena/src/arena.ts`).
 
-Resultados de referencia al cerrar la fase 4: en el [CHANGELOG](../../CHANGELOG.md).
+Resultados de referencia (fases 4 y 9): en el [CHANGELOG](../../CHANGELOG.md). El nivel 3 tarda del orden de 1 s por decisión: para medirlo con cientos de combates conviene lanzar varios arenas en paralelo con semillas distintas.
 
 ## Cómo mejorar un bot
 
 1. Reproduce el problema: un combate concreto del arena (semilla) o un escenario guionizado (`packages/bot/test/helpers.ts`: `scenario(modo, líderes p1, líderes p2)` crea un combate sin vista previa con esos Pokémon en cabeza).
 2. Mira las opciones y sus valores: `planSingles(situation, slot)` devuelve cada acción con su puntuación; `DoublesSim.evaluate(situation, planes)` valora una pareja. `new Situation(session.getAgentContext('p1'))` da la situación de un turno.
-3. Corrige el **modelo** (un efecto que falta en la simulación, un dato mal leído), no añadas pesos sueltos.
+3. Corrige el **modelo** (un efecto que falta en la simulación, un dato mal leído), no añadas pesos sueltos. En el nivel 3, su `explain()` da el valor medio de cada opción tras la búsqueda; compáralo con el del nivel 2 en la misma posición.
 4. Mide con el arena contra el nivel anterior: al menos 300 combates por modo (±5 %) y, para cifras finales, 1000.
 
 ## Explicación de las decisiones
@@ -96,6 +111,8 @@ Cada nivel implementa `explain()` (de `BattleAgent`): devuelve la explicación d
 | `packages/bot/test/calc.test.ts` | Stats de la calculadora = `championsStats` en todos los sets estándar (y sus Megas). Daño estimado dentro del real en primeros golpes de combates del motor (≥ 90 %) |
 | `packages/bot/test/opponent-model.test.ts` | Filtrado de sets por lo revelado, orden pesimista, equipo abierto, especies sin sets |
 | `packages/bot/test/levels.test.ts` | Registro de niveles. Escenarios: elige el KO, no golpea al aliado con Terremoto, el nivel 2 cambia a un Pokémon que gana el duelo. Fuzz: 100 combates por modo nivel 1 contra 2 sin elecciones inválidas |
+| `packages/bot/test/expert.test.ts` | Nivel 3: KO evidente, sin sandbox = nivel 2, **misma decisión y explicación aunque cambie lo que oculta el rival**, determinismo, combates contra el nivel 2 sin elecciones inválidas |
+| `packages/engine/test/sandbox.test.ts` | El sandbox: solo al elegir movimientos, sustituye los sets vistos y no vistos, PS al % visible, reproducible, no toca el combate real, rechaza posiciones viejas |
 | `packages/bot/test/random-agent.test.ts` | Fuzz del nivel 0 |
 | `packages/teamgen/test/teamgen.test.ts` | Equipos legales (300 semillas por modo), cláusulas, megapiedras, determinismo |
 | `tools/arena/test/arena.test.ts` | `runArena` cuenta bien y es reproducible. Prueba corta de fuerza: el nivel 2 gana ≥ 75 % al 0 en 40 combates por modo |

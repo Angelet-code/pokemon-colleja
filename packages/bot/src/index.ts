@@ -4,9 +4,12 @@
  * - Level 1 `AggressiveAgent`: maximum expected damage this turn.
  * - Level 2 `TacticalAgent`: simulates the consequences of each option (duels in singles,
  *   2 vs 2 turns in doubles).
+ * - Level 3 `ExpertAgent`: level 2 plus one turn of lookahead with the real simulator, through
+ *   the engine's sandbox (`AgentContext.sandbox`).
  * See docs/guias/bot.md.
  */
 export * from './agents/aggressive-agent';
+export * from './agents/expert-agent';
 export * from './agents/tactical-agent';
 export * from './analysis/combatant';
 export * from './analysis/damage';
@@ -21,3 +24,5 @@ export * from './analysis/team-selection';
 export * from './explain';
 export * from './levels';
 export * from './random-agent';
+export * from './search/assumptions';
+export * from './search/lookahead';

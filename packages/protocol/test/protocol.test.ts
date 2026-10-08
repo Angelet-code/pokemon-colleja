@@ -228,7 +228,7 @@ describe('saved teams', () => {
     const fromText = { text: 'Garchomp', name: 'Rival', mode: 'singles', botLevel: 2 };
     expect(ImportOpponentRequestSchema.parse(fromText)).toEqual(fromText);
 
-    expect(SavedOpponentSchema.safeParse({ ...opponent, botLevel: 3 }).success).toBe(false);
+    expect(SavedOpponentSchema.safeParse({ ...opponent, botLevel: 4 }).success).toBe(false);
     expect(SavedOpponentSchema.safeParse({ ...team }).success).toBe(false);
     expect(SavedOpponentSchema.safeParse({ ...opponent, id: '../x' }).success).toBe(false);
   });

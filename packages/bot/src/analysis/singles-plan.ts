@@ -76,14 +76,8 @@ export function planSingles(situation: Situation, slot: SlotOptions): PlannedOpt
   }));
 }
 
-/** Options against one assumption of the rival's set. */
-function planAgainst(
-  situation: Situation,
-  slot: SlotOptions,
-  member: OwnMember,
-  foe: Combatant,
-): PlannedOption[] {
-  // Who would come in for free if the active Pokémon falls.
+/** Who would come in for free if the active Pokémon falls: the bench's best duelist. */
+function nextInLine(situation: Situation, foe: Combatant): Combatant | null {
   let next: Combatant | null = null;
   let nextScore = -Infinity;
   for (const bench of situation.bench()) {
@@ -94,6 +88,35 @@ function planAgainst(
       nextScore = score;
     }
   }
+  return next;
+}
+
+/**
+ * What `planSingles` would score if nothing happened: the current HP shares of the Pokémon
+ * its duels involve (active and next in line, against the rival on the field), × 100. A
+ * planned score minus this is the change level 2 expects from here.
+ */
+export function singlesBaseline(situation: Situation, slot: SlotOptions): number {
+  const member = situation.own[slot.index];
+  const foe = situation.foeAt(0);
+  if (!member || !foe) return 0;
+  const total = foe.variants.reduce((sum, variant) => {
+    const next = nextInLine(situation, variant);
+    const own =
+      hpShare(member.combatant, member.combatant.hp) + (next ? hpShare(next, next.hp) : 0);
+    return sum + (own - hpShare(variant, variant.hp)) * 100;
+  }, 0);
+  return total / foe.variants.length;
+}
+
+/** Options against one assumption of the rival's set. */
+function planAgainst(
+  situation: Situation,
+  slot: SlotOptions,
+  member: OwnMember,
+  foe: Combatant,
+): PlannedOption[] {
+  const next = nextInLine(situation, foe);
 
   const options: PlannedOption[] = [];
   const forms: { attacker: Combatant; mega: boolean }[] = [

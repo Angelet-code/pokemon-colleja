@@ -27,8 +27,13 @@ describe('REST API', () => {
     const meta = response.json<MetaResponse>();
     expect(meta.regulation).toBe('M-C');
     expect(meta.showdown.commit).toMatch(/^[0-9a-f]{40}$/);
-    expect(meta.botLevels.map((level) => level.name)).toEqual(['Aleatorio', 'Agresivo', 'Táctico']);
-    expect(meta.defaultBotLevel).toBe(2);
+    expect(meta.botLevels.map((level) => level.name)).toEqual([
+      'Aleatorio',
+      'Agresivo',
+      'Táctico',
+      'Experto',
+    ]);
+    expect(meta.defaultBotLevel).toBe(3);
   });
 
   it('POST /api/teams/validate accepts legal teams and explains illegal ones in Spanish', async () => {

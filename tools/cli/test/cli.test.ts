@@ -4,10 +4,11 @@ import { runCli, USAGE } from '../src/app';
 import { createBufferIO } from '../src/io';
 
 describe('npm run play', () => {
-  // Defaults: level 2 bot and a random rival team.
+  // Level 2 (the default, 3, thinks for a while on every turn) and a random rival team.
   it.each(['singles', 'doubles'])('--auto finishes a %s battle without errors', async (mode) => {
     const io = createBufferIO();
-    const code = await runCli(['--auto', '--mode', mode, '--seed', `cli-${mode}`], io);
+    const args = ['--auto', '--bot', '2', '--mode', mode, '--seed', `cli-${mode}`];
+    const code = await runCli(args, io);
     const output = io.output.join('\n');
     expect(code, output).toBe(0);
     expect(output).toMatch(/Resultado: (gana Bot [12]|empate)/);
@@ -30,7 +31,8 @@ describe('npm run play', () => {
   it('is reproducible with the same seed', async () => {
     const play = async () => {
       const io = createBufferIO();
-      await runCli(['--auto', '--mode', 'doubles', '--seed', 'repro', '--no-preview'], io);
+      const args = ['--auto', '--bot', '2', '--mode', 'doubles', '--seed', 'repro', '--no-preview'];
+      await runCli(args, io);
       return io.output;
     };
     expect(await play()).toEqual(await play());

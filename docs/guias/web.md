@@ -64,6 +64,7 @@ apps/web (React)  ──REST /api/*──▶  apps/server (Fastify)
 ### Reglas
 
 - **La web solo importa paquetes aptos para navegador** (`core`, `data`, `protocol`, `narration`). Nunca `engine`, `showdown` ni módulos `node:`; lo comprueba `apps/web/test/dependencies.test.ts`.
+- **El bot piensa mientras eliges**: cuando los dos lados eligen a la vez, la sala envía primero el turno al jugador y después decide el bot (su elección espera a la tuya). Sus decisiones sin ti (un relevo) van antes. Lo comprueba `apps/server/test/battle-room.test.ts`.
 - **El servidor solo envía la perspectiva p1** y las peticiones de p1 (`BattleRoom`). Un test compara lo recibido con `getLog('p1')` y comprueba que los PS del rival llegan en porcentaje.
 - El store de la web **solo cambia con mensajes del servidor**: la UI no adivina el resultado de una elección. `busy` bloquea los controles hasta la respuesta.
 - Las cifras que se muestran (tipo, potencia, precisión, PP) salen de la petición y de `@colleja/data`, nunca de memoria.
