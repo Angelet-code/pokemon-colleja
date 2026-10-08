@@ -92,6 +92,8 @@ export const api = {
   calc: (body: CalcRequest) => request<CalcResponse>('/calc', json('POST', body)),
   listReplays: () => request<ListReplaysResponse>('/replays'),
   getReplay: (id: string) => request<ReplayResponse>(`/replays/${encodeURIComponent(id)}`),
+  renameReplay: (id: string, name: string) =>
+    request<ReplayResponse>(`/replays/${encodeURIComponent(id)}`, json('PATCH', { name })),
   deleteReplay: (id: string) =>
     request<void>(`/replays/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 };

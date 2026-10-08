@@ -5,7 +5,7 @@
  */
 import type { PokemonSet } from '@colleja/core';
 import { getMove, type Locale } from '@colleja/data';
-import { boostShort, moveName, statusName, weatherName } from '@colleja/narration';
+import { abilityName, boostShort, moveName, statusName, weatherName } from '@colleja/narration';
 import type { CalcResponse } from '@colleja/protocol';
 import { CALC_SCREENS, CALC_STATUSES, CALC_TERRAINS, CALC_WEATHERS } from '@colleja/protocol';
 import { useEffect, useMemo, useState } from 'react';
@@ -70,7 +70,16 @@ export function CalculatorPage() {
         </Button>
       </PageHeader>
 
-      <Panel title="Daño">
+      <Panel
+        title="Daño"
+        actions={
+          <Checkbox
+            label="Crítico"
+            checked={calc.field.crit}
+            onChange={(crit) => calc.updateField({ crit })}
+          />
+        }
+      >
         <ResultsTable results={results} defender={calc.defender} locale={locale} />
       </Panel>
 
@@ -258,9 +267,38 @@ export function koText(result: CalcResponse, defender: Pick<CalcSide, 'hpPercent
   return `${best === worst ? best : `${best}–${worst}`} golpes para KO${from}`;
 }
 
+/** Field effects with a switch: the room moves, and in doubles the allies' support. */
+type EffectKey = 'gravity' | 'magicRoom' | 'wonderRoom' | 'helpingHand' | 'friendGuard';
+
+function effectLabel(effect: EffectKey, locale: Locale): string {
+  switch (effect) {
+    case 'gravity':
+      return moveName('gravity', locale);
+    case 'magicRoom':
+      return moveName('magicroom', locale);
+    case 'wonderRoom':
+      return moveName('wonderroom', locale);
+    case 'helpingHand':
+      return moveName('helpinghand', locale);
+    case 'friendGuard':
+      return abilityName('friendguard', locale);
+  }
+}
+
+const EFFECT_TITLE: Partial<Record<EffectKey, string>> = {
+  helpingHand: 'El aliado del atacante usó este movimiento',
+  friendGuard: 'El aliado del defensor tiene esta habilidad',
+};
+
 function FieldControls() {
   const { field, updateField } = useCalc();
   const locale = useSettings((state) => state.namesLocale);
+  const effects: EffectKey[] = [
+    'gravity',
+    'magicRoom',
+    'wonderRoom',
+    ...(field.mode === 'doubles' ? (['helpingHand', 'friendGuard'] as const) : []),
+  ];
   return (
     <div className="flex flex-wrap items-end gap-x-6 gap-y-4 rounded-md border border-line bg-surface px-4 py-3.5">
       <Segmented
@@ -317,6 +355,18 @@ function FieldControls() {
               })
             }
           />
+        ))}
+      </fieldset>
+      <fieldset className="flex flex-wrap items-center gap-x-5 gap-y-2 pb-2">
+        <legend className="eyebrow mb-2.5 text-faint">Efectos</legend>
+        {effects.map((effect) => (
+          <span key={effect} title={EFFECT_TITLE[effect]}>
+            <Checkbox
+              label={effectLabel(effect, locale)}
+              checked={field[effect]}
+              onChange={(checked) => updateField({ [effect]: checked })}
+            />
+          </span>
         ))}
       </fieldset>
     </div>

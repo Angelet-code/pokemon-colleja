@@ -252,6 +252,50 @@ const CHIP_TONES: Record<Tone, string> = {
   rival: 'bg-rival/14 text-rival',
 };
 
+/**
+ * A button-sized menu of actions (`<select>` whose options run something): "Rebobinar",
+ * "Calcular". It always shows `label`; choosing an option calls `onPick` with its value.
+ */
+export function ActionSelect({
+  label,
+  icon,
+  title,
+  disabled,
+  options,
+  onPick,
+}: {
+  label: string;
+  icon: ReactNode;
+  title?: string;
+  disabled?: boolean;
+  options: { value: string; label: string }[];
+  onPick: (value: string) => void;
+}) {
+  return (
+    <label className="relative" title={title}>
+      <span className="sr-only">{label}</span>
+      <span className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-muted">
+        {icon}
+      </span>
+      <select
+        value=""
+        disabled={disabled}
+        onChange={(event) => {
+          if (event.target.value !== '') onPick(event.target.value);
+        }}
+        className="h-7 cursor-pointer appearance-none rounded-sm border border-line-strong bg-surface-2 pr-2.5 pl-7 font-display text-[13px] font-semibold tracking-[0.06em] text-text uppercase hover:border-text/60 disabled:pointer-events-none disabled:opacity-35"
+      >
+        <option value="">{label}</option>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 /** Small condensed label (state, mode, MEGA…). */
 export function Chip({
   tone = 'neutral',

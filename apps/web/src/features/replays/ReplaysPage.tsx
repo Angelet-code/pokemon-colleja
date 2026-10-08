@@ -1,8 +1,8 @@
-/** Saved replays (`/replays`): watch, download or delete the battles you chose to keep. */
+/** Saved replays (`/replays`): watch, rename, download or delete the battles you chose to keep. */
 import type { ReplaySummary } from '@colleja/protocol';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import { IconDownload, IconPlay, IconTrash } from '../../components/icons';
+import { IconDownload, IconEdit, IconPlay, IconTrash } from '../../components/icons';
 import { PokemonIcon } from '../../components/PokemonIcon';
 import {
   Button,
@@ -16,6 +16,7 @@ import {
 import { api } from '../../lib/api';
 import { downloadJson } from '../../lib/download';
 import { botLevelName, useMeta } from '../../lib/use-meta';
+import { RenameForm } from './RenameForm';
 
 const OPPONENT_LABEL: Record<ReplaySummary['opponentKind'], string> = {
   random: 'rival aleatorio',
@@ -83,6 +84,7 @@ export function ReplaysPage() {
                   downloadJson(`replay-${summary.mode}-${replay.replay.seed}.json`, replay.replay);
                 })
               }
+              onRename={(name) => run(() => api.renameReplay(summary.id, name))}
               onDelete={() => run(() => api.deleteReplay(summary.id))}
             />
           ))}
@@ -96,14 +98,17 @@ function ReplayCard({
   summary,
   levelName,
   onDownload,
+  onRename,
   onDelete,
 }: {
   summary: ReplaySummary;
   levelName: string;
   onDownload: () => void;
+  onRename: (name: string) => Promise<void>;
   onDelete: () => void;
 }) {
   const [confirming, setConfirming] = useState(false);
+  const [renaming, setRenaming] = useState(false);
   const result =
     summary.winner === 'p1'
       ? { label: 'Victoria', short: 'V', tone: 'bg-accent text-on-accent' }
@@ -120,12 +125,23 @@ function ReplayCard({
         <span className="sr-only">{result.label}</span>
       </span>
       <div className="min-w-0">
-        <Link
-          to={`/replays/${summary.id}`}
-          className="display block truncate text-2xl hover:text-accent-fg"
-        >
-          {summary.name}
-        </Link>
+        {renaming ? (
+          <RenameForm
+            name={summary.name}
+            onSave={async (name) => {
+              await onRename(name);
+              setRenaming(false);
+            }}
+            onCancel={() => setRenaming(false)}
+          />
+        ) : (
+          <Link
+            to={`/replays/${summary.id}`}
+            className="display block truncate text-2xl hover:text-accent-fg"
+          >
+            {summary.name}
+          </Link>
+        )}
         <p className="eyebrow mt-1.5 text-faint">
           {summary.mode === 'singles' ? 'Individuales' : 'Dobles'} · {levelName} ·{' '}
           {OPPONENT_LABEL[summary.opponentKind]} · {summary.turns} turnos ·{' '}
@@ -163,6 +179,9 @@ function ReplayCard({
           </>
         ) : (
           <>
+            <IconButton label="Renombrar" onClick={() => setRenaming(true)}>
+              <IconEdit />
+            </IconButton>
             <IconButton label="Descargar" onClick={onDownload}>
               <IconDownload />
             </IconButton>

@@ -86,6 +86,44 @@ describe('POST /api/calc', () => {
     expect(unscreened.max).toBeGreaterThan(body.max);
   });
 
+  it('applies critical hits and the field effects like the bot', async () => {
+    const base: CalcRequest = {
+      attacker: { set: GARCHOMP },
+      defender: { set: INCINEROAR },
+      move: 'dragonclaw',
+      field: { doubles: true },
+    };
+    const attacker = makeCombatant({ side: 'p1', set: GARCHOMP });
+    const defender = makeCombatant({ side: 'p2', set: INCINEROAR });
+    const max = async (request: CalcRequest) => (await calc(request)).json<CalcResponse>().max;
+
+    const crit = await max({ ...base, crit: true });
+    expect(crit).toBe(
+      estimateDamage(attacker, defender, 'dragonclaw', emptyField(true), { crit: true }).max,
+    );
+    expect(crit).toBeGreaterThan(await max(base));
+
+    const supported = await max({
+      ...base,
+      field: { doubles: true, helpingHand: true, friendGuard: true },
+    });
+    const field = {
+      ...emptyField(true),
+      boosts: { p1: ['helpinghand' as const], p2: ['friendguard' as const] },
+    };
+    expect(supported).toBe(estimateDamage(attacker, defender, 'dragonclaw', field).max);
+    // Helping Hand and Friend Guard only exist in doubles.
+    const singles = { ...base, field: { doubles: false } };
+    expect(await max({ ...singles, field: { doubles: false, helpingHand: true } })).toBe(
+      await max(singles),
+    );
+
+    // Wonder Room swaps Defense and Special Defense.
+    expect(await max({ ...base, field: { doubles: true, wonderRoom: true } })).not.toBe(
+      await max(base),
+    );
+  });
+
   it('answers status moves with no damage and rejects unknown moves', async () => {
     const status = (
       await calc({
@@ -188,7 +226,7 @@ describe('bot explanations', () => {
 });
 
 describe('saved replays', () => {
-  it('saves a finished battle on request, lists, reads and deletes it', async () => {
+  it('saves a finished battle on request, lists, reads, renames and deletes it', async () => {
     const client = await TestClient.connect(app);
     client.send(startMessage('singles', { botLevel: 1, seed: 'replay-guardado' }));
     const started = await client.until('battle:started');
@@ -229,6 +267,22 @@ describe('saved replays', () => {
     const session = app.battles.get(started.battleId)?.session;
     expect(read.replay.replay.log).toEqual(session?.getLog('omniscient'));
     expect(read.replay.playerLog).toEqual(session?.getLog('p1'));
+
+    const rename = (name: unknown, id = replayId) =>
+      app.inject({ method: 'PATCH', url: `/api/replays/${id}`, payload: { name } });
+    const renamed = await rename('  Final de la liga  ');
+    expect(renamed.statusCode).toBe(200);
+    expect(renamed.json<ReplayResponse>().replay).toEqual({
+      ...read.replay,
+      name: 'Final de la liga',
+    });
+    const relisted = (
+      await app.inject({ method: 'GET', url: '/api/replays' })
+    ).json<ListReplaysResponse>();
+    expect(relisted.replays[0]?.name).toBe('Final de la liga');
+    expect((await rename('')).statusCode).toBe(400);
+    expect((await rename('x'.repeat(101))).statusCode).toBe(400);
+    expect((await rename('Otro', 'no-existe')).statusCode).toBe(404);
 
     const removed = await app.inject({ method: 'DELETE', url: `/api/replays/${replayId}` });
     expect(removed.statusCode).toBe(204);

@@ -6,9 +6,13 @@ import { championsStats, type PokemonSet } from '@colleja/core';
 import { getMove, getSpecies, listStandardSets, toId } from '@colleja/data';
 import { BattleSession } from '@colleja/engine';
 import { generateTeam, standardToSet } from '@colleja/teamgen';
+import { calculate, Field, Generations, Move, Side } from '@smogon/calc';
 import { describe, expect, it } from 'vitest';
 import {
   AggressiveAgent,
+  emptyField,
+  estimateDamage,
+  type FieldState,
   makeCombatant,
   megaSpeciesOf,
   Situation,
@@ -114,6 +118,61 @@ describe('@smogon/calc for Champions', () => {
     // A few mechanics are outside the estimate (resist berries, abilities triggered
     // mid-turn…): allow some, but no systematic error.
     expect(misses.length, misses.join('\n')).toBeLessThanOrEqual(Math.floor(checked * 0.1));
+  });
+});
+
+describe('estimateDamage calculator options', () => {
+  const GARCHOMP: PokemonSet = {
+    species: 'garchomp',
+    ability: 'roughskin',
+    nature: 'jolly',
+    statPoints: { hp: 2, atk: 32, def: 0, spa: 0, spd: 0, spe: 32 },
+    moves: ['earthquake', 'dragonclaw'],
+  };
+  const INCINEROAR: PokemonSet = {
+    species: 'incineroar',
+    ability: 'blaze',
+    nature: 'careful',
+    statPoints: { hp: 32, atk: 2, def: 16, spa: 0, spd: 16, spe: 0 },
+    moves: ['flareblitz'],
+  };
+  const attacker = makeCombatant({ side: 'p1', set: GARCHOMP });
+  const defender = makeCombatant({ side: 'p2', set: INCINEROAR });
+  const GEN = Generations.get(0);
+  const direct = (move: string, options: { crit?: boolean; field?: Field }) =>
+    calculate(
+      GEN,
+      toCalcPokemon(attacker),
+      toCalcPokemon(defender),
+      new Move(GEN, move, options.crit ? { isCrit: true } : undefined),
+      options.field ?? new Field({ gameType: 'Doubles' }),
+    ).range();
+
+  it('critical hits match the calculator and are cached apart', () => {
+    const field = emptyField(true);
+    const normal = estimateDamage(attacker, defender, 'dragonclaw', field);
+    const crit = estimateDamage(attacker, defender, 'dragonclaw', field, { crit: true });
+    expect([crit.min, crit.max]).toEqual(direct('Dragon Claw', { crit: true }));
+    expect(crit.min).toBeGreaterThan(normal.max);
+    expect(estimateDamage(attacker, defender, 'dragonclaw', field).max).toBe(normal.max);
+  });
+
+  it('applies Helping Hand on the attacker and Friend Guard on the defender', () => {
+    const field: FieldState = {
+      ...emptyField(true),
+      boosts: { p1: ['helpinghand'], p2: ['friendguard'] },
+    };
+    const estimate = estimateDamage(attacker, defender, 'dragonclaw', field);
+    const expected = direct('Dragon Claw', {
+      field: new Field({
+        gameType: 'Doubles',
+        attackerSide: new Side({ isHelpingHand: true }),
+        defenderSide: new Side({ isFriendGuard: true }),
+      }),
+    });
+    expect([estimate.min, estimate.max]).toEqual(expected);
+    const plain = estimateDamage(attacker, defender, 'dragonclaw', emptyField(true));
+    expect(estimate.max).not.toBe(plain.max);
   });
 });
 

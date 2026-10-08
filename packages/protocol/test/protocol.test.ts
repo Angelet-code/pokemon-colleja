@@ -17,6 +17,7 @@ import {
   PokemonSetSchema,
   parseClientMessage,
   RandomTeamRequestSchema,
+  RenameReplayRequestSchema,
   ReplayContentSchema,
   SavedOpponentSchema,
   type ServerMessage,
@@ -285,6 +286,30 @@ describe('phase 8: calculator, replays and explanations', () => {
       { ...request, field: { doubles: true, weather: 'fog' } },
     ]) {
       expect(CalcRequestSchema.safeParse(bad).success, JSON.stringify(bad)).toBe(false);
+    }
+  });
+
+  it('round-trips the phase 10 calculator options and the replay rename', () => {
+    const request = {
+      attacker: { set: garchomp },
+      defender: { set: garchomp },
+      move: 'earthquake',
+      crit: true,
+      field: {
+        doubles: true,
+        helpingHand: true,
+        friendGuard: true,
+        gravity: true,
+        magicRoom: false,
+        wonderRoom: true,
+      },
+    };
+    expect(CalcRequestSchema.parse(request)).toEqual(request);
+    expect(CalcRequestSchema.safeParse({ ...request, crit: 'sí' }).success).toBe(false);
+
+    expect(RenameReplayRequestSchema.parse({ name: '  Final  ' })).toEqual({ name: 'Final' });
+    for (const bad of [{ name: '' }, { name: '   ' }, { name: 'x'.repeat(101) }, {}]) {
+      expect(RenameReplayRequestSchema.safeParse(bad).success, JSON.stringify(bad)).toBe(false);
     }
   });
 

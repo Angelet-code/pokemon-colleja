@@ -25,6 +25,20 @@ export interface FieldState {
   pseudoWeather: readonly string[];
   /** Side conditions (`reflect`, `tailwind`…) of each side. */
   conditions: Record<SideId, Readonly<Record<string, number>>>;
+  /**
+   * One-turn effects on each side the calculator can set (`helpinghand` on the attacker's
+   * side, `friendguard` on the defender's). Battles do not fill them.
+   */
+  boosts?: Partial<Record<SideId, readonly SideBoost[]>>;
+}
+
+/** One-turn effects of a side that change damage (calculator only). */
+export type SideBoost = 'helpinghand' | 'friendguard';
+
+/** Options of one damage estimate. */
+export interface DamageOptions {
+  /** The hit is a critical hit. */
+  crit?: boolean;
 }
 
 export function fieldFromView(view: BattleView): FieldState {
@@ -89,8 +103,13 @@ function speciesName(id: string): string {
   return CALC_SPECIES[id] ?? getSpecies(id)?.name ?? id;
 }
 
-function toCalcSide(conditions: Readonly<Record<string, number>>): Side {
+function toCalcSide(
+  conditions: Readonly<Record<string, number>>,
+  boosts: readonly SideBoost[] = [],
+): Side {
   const options: CalcSideOptions = {
+    isHelpingHand: boosts.includes('helpinghand'),
+    isFriendGuard: boosts.includes('friendguard'),
     isReflect: 'reflect' in conditions,
     isLightScreen: 'lightscreen' in conditions,
     isAuroraVeil: 'auroraveil' in conditions,
@@ -133,8 +152,8 @@ function toCalcField(field: FieldState, attacker: SideId, defender: SideId): Fie
     isGravity: field.pseudoWeather.includes('gravity'),
     isMagicRoom: field.pseudoWeather.includes('magicroom'),
     isWonderRoom: field.pseudoWeather.includes('wonderroom'),
-    attackerSide: toCalcSide(field.conditions[attacker]),
-    defenderSide: toCalcSide(field.conditions[defender]),
+    attackerSide: toCalcSide(field.conditions[attacker], field.boosts?.[attacker]),
+    defenderSide: toCalcSide(field.conditions[defender], field.boosts?.[defender]),
   };
   const weather = field.weather ? WEATHERS[field.weather] : undefined;
   if (weather) options.weather = weather;
@@ -162,14 +181,15 @@ export function estimateDamage(
   defender: Combatant,
   moveId: MoveId,
   field: FieldState,
+  options: DamageOptions = {},
 ): DamageEstimate {
   const move = getMove(moveId);
   if (!move || move.category === 'Status' || defender.hp <= 0) return NO_DAMAGE;
-  const key = `${calcKey(attacker)}>${calcKey(defender)}|${moveId}|${fieldKey(field, attacker.side, defender.side)}`;
+  const key = `${calcKey(attacker)}>${calcKey(defender)}|${moveId}${options.crit ? '!' : ''}|${fieldKey(field, attacker.side, defender.side)}`;
   const cached = estimateCache.get(key);
   if (cached) return cached;
   if (estimateCache.size >= MAX_CACHED_ESTIMATES) estimateCache.clear();
-  const estimate = calculateEstimate(attacker, defender, move, field);
+  const estimate = calculateEstimate(attacker, defender, move, field, options);
   estimateCache.set(key, estimate);
   return estimate;
 }
@@ -198,7 +218,8 @@ function calcKey(combatant: Combatant): string {
 }
 
 function fieldKey(field: FieldState, attacker: SideId, defender: SideId): string {
-  const conditions = (side: SideId) => Object.keys(field.conditions[side]).join(',');
+  const conditions = (side: SideId) =>
+    [...Object.keys(field.conditions[side]), ...(field.boosts?.[side] ?? [])].join(',');
   const spikes = field.conditions[defender].spikes ?? 0;
   return `${field.doubles ? 'd' : 's'}/${field.weather ?? ''}/${field.terrain ?? ''}/${field.pseudoWeather.join(',')}/${conditions(attacker)}/${conditions(defender)}${spikes}`;
 }
@@ -208,6 +229,7 @@ function calculateEstimate(
   defender: Combatant,
   move: NonNullable<ReturnType<typeof getMove>>,
   field: FieldState,
+  options: DamageOptions,
 ): DamageEstimate {
   const accuracy = move.accuracy === true ? 1 : move.accuracy / 100;
   try {
@@ -215,7 +237,7 @@ function calculateEstimate(
       GEN,
       toCalcPokemon(attacker),
       toCalcPokemon(defender),
-      new Move(GEN, move.name),
+      new Move(GEN, move.name, options.crit ? { isCrit: true } : undefined),
       toCalcField(field, attacker.side, defender.side),
     );
     const rolls = damageRolls(result.damage);

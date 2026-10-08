@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import type { TurnExplanation } from '@colleja/core';
-import type { CalcResponse, SavedReplay, ServerMessage } from '@colleja/protocol';
+import type { CalcResponse, ReplaySummary, SavedReplay, ServerMessage } from '@colleja/protocol';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -8,7 +8,8 @@ import { useBattle } from '../src/features/battle/battle-store';
 import { actionText, BotExplanation } from '../src/features/battle/components/BotExplanation';
 import { EndPanel } from '../src/features/battle/components/EndPanel';
 import { CalculatorPage, koText } from '../src/features/calc/CalculatorPage';
-import { standardSide, useCalc } from '../src/features/calc/calc-store';
+import { emptyCalcField, standardSide, useCalc } from '../src/features/calc/calc-store';
+import { ReplaysPage } from '../src/features/replays/ReplaysPage';
 import { replayFrame, replaySteps } from '../src/features/replays/replay-steps';
 
 afterEach(() => {
@@ -207,7 +208,7 @@ describe('calculator', () => {
     useCalc.setState({
       attacker: standardSide('garchomp'),
       defender: standardSide('incineroar'),
-      field: { mode: 'singles', weather: null, terrain: null, screens: [] },
+      field: emptyCalcField(),
     });
   });
 
@@ -247,5 +248,66 @@ describe('calculator', () => {
         ).defender.hpPercent,
       ).toBe(50),
     );
+
+    // Critical hits, and the doubles-only effects only in doubles.
+    fireEvent.click(screen.getByLabelText('Crítico'));
+    await waitFor(() =>
+      expect(
+        JSON.parse(
+          String((fetchMock.mock.calls.at(-1) as unknown as [string, RequestInit])[1].body),
+        ).crit,
+      ).toBe(true),
+    );
+    expect(screen.queryByLabelText('Refuerzo')).toBeNull();
+    useCalc.getState().updateField({ mode: 'doubles', helpingHand: true });
+    await waitFor(() =>
+      expect(
+        JSON.parse(
+          String((fetchMock.mock.calls.at(-1) as unknown as [string, RequestInit])[1].body),
+        ).field,
+      ).toMatchObject({ doubles: true, helpingHand: true }),
+    );
+    expect(screen.getByLabelText('Refuerzo')).toBeTruthy();
+  });
+});
+
+describe('replay list', () => {
+  const SUMMARY: ReplaySummary = {
+    id: 'r1',
+    name: 'Jugador contra Bot Experto',
+    mode: 'singles',
+    players: { p1: 'Jugador', p2: 'Bot Experto' },
+    species: { p1: ['garchomp'], p2: ['incineroar'] },
+    winner: 'p1',
+    turns: 12,
+    botLevel: 3,
+    opponentKind: 'random',
+    updatedAt: '2026-10-08T10:00:00.000Z',
+  };
+
+  it('renames a replay in place', async () => {
+    let name = SUMMARY.name;
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method === 'PATCH') {
+        name = JSON.parse(String(init.body)).name;
+        return Response.json({ replay: { id: 'r1', name }, updatedAt: SUMMARY.updatedAt });
+      }
+      if (url.endsWith('/meta')) return Response.json({ botLevels: [] });
+      return Response.json({ replays: [{ ...SUMMARY, name }] });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(
+      <RouterProvider router={createMemoryRouter([{ path: '/', element: <ReplaysPage /> }])} />,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Renombrar' }));
+    const input = screen.getByLabelText('Nombre del replay');
+    fireEvent.change(input, { target: { value: '  Remontada  ' } });
+    fireEvent.submit(input);
+
+    expect(await screen.findByRole('link', { name: 'Remontada' })).toBeTruthy();
+    const patch = fetchMock.mock.calls.find(([, init]) => init?.method === 'PATCH');
+    expect(patch?.[0]).toBe('/api/replays/r1');
+    expect(JSON.parse(String(patch?.[1]?.body))).toEqual({ name: 'Remontada' });
   });
 });

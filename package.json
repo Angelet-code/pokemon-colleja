@@ -31,7 +31,9 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
-    "check": "npm run lint && npm run typecheck && npm test && npm run smoke"
+    "check": "npm run lint && npm run typecheck && npm test && npm run smoke",
+    "e2e": "npm run build && playwright test -c tools/e2e/playwright.config.ts",
+    "e2e:install": "playwright install chromium"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",

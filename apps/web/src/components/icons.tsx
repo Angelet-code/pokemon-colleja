@@ -77,4 +77,10 @@ export const IconSparkle = icon(
 export const IconBrain = icon(
   <path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 6 1V5a3 3 0 0 0-3-1zM15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-6 1" />,
 );
+export const IconCalc = icon(
+  <>
+    <path d="M5 3h14v18H5z" />
+    <path d="M8 7h8M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01" />
+  </>,
+);
 export const IconMore = icon(<path d="M5 12h.01M12 12h.01M19 12h.01" strokeWidth={3} />);

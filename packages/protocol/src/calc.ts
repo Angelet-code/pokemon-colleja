@@ -39,12 +39,21 @@ export const CalcFieldSchema = z.object({
   terrain: z.enum(CALC_TERRAINS).optional(),
   /** Screens on the defender's side. */
   screens: z.array(z.enum(CALC_SCREENS)).max(3).optional(),
+  /** Doubles: the attacker's ally used Helping Hand. */
+  helpingHand: z.boolean().optional(),
+  /** Doubles: the defender's ally has Friend Guard. */
+  friendGuard: z.boolean().optional(),
+  gravity: z.boolean().optional(),
+  magicRoom: z.boolean().optional(),
+  wonderRoom: z.boolean().optional(),
 });
 
 export const CalcRequestSchema = z.object({
   attacker: CalcPokemonSchema,
   defender: CalcPokemonSchema,
   move: z.string().regex(/^[a-z0-9]{1,40}$/, 'Movimiento no válido.'),
+  /** The hit is a critical hit. */
+  crit: z.boolean().optional(),
   field: CalcFieldSchema,
 });
 

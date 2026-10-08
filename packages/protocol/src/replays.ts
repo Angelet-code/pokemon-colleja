@@ -103,7 +103,11 @@ export interface ListReplaysResponse {
   replays: ReplaySummary[];
 }
 
-/** `GET /api/replays/:id`. */
+/** `PATCH /api/replays/:id`: renames a replay (the only thing about it that can change). */
+export const RenameReplayRequestSchema = z.object({ name: ReplayContentSchema.shape.name });
+export type RenameReplayRequest = z.infer<typeof RenameReplayRequestSchema>;
+
+/** `GET /api/replays/:id` and `PATCH /api/replays/:id`. */
 export interface ReplayResponse {
   replay: SavedReplay;
   updatedAt: string;

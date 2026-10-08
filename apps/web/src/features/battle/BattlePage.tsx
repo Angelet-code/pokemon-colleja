@@ -13,6 +13,7 @@ import { ActionPanel } from './components/ActionPanel';
 import { BattleLog } from './components/BattleLog';
 import { BattleToolbar } from './components/BattleToolbar';
 import { BotExplanation } from './components/BotExplanation';
+import { CalcButton } from './components/CalcButton';
 import { EndPanel } from './components/EndPanel';
 import { Field } from './components/Field';
 import { TeamPreview } from './components/TeamPreview';
@@ -120,6 +121,15 @@ export function BattlePage() {
         onForfeit={battle.forfeit}
         onExport={battle.exportReplay}
         onLeave={leave}
+        calc={
+          <CalcButton
+            view={screen.view}
+            mode={info.mode}
+            team={info.team}
+            opponentTeam={info.opponentTeam}
+            disabled={previewing}
+          />
+        }
       />
 
       {socketState === 'reconnecting' && (

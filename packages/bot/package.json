@@ -2,10 +2,11 @@
   "name": "@colleja/bot",
   "version": "0.0.0",
   "private": true,
-  "description": "Bots rivales: niveles 0 (aleatorio), 1 (agresivo) y 2 (táctico). Aptos para navegador (core, data y @smogon/calc).",
+  "description": "Bots rivales: niveles 0 (aleatorio), 1 (agresivo), 2 (táctico) y 3 (experto). Aptos para navegador (core, data y @smogon/calc).",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./opponent-model": "./src/analysis/opponent-model.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p ."

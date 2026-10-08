@@ -13,6 +13,7 @@ import {
   IconChevronLeft,
   IconChevronRight,
   IconDownload,
+  IconEdit,
   IconFirst,
   IconLast,
 } from '../../components/icons';
@@ -31,6 +32,7 @@ import { useSettings } from '../../stores/settings';
 import { BattleLog } from '../battle/components/BattleLog';
 import { ExplanationList } from '../battle/components/BotExplanation';
 import { Field } from '../battle/components/Field';
+import { RenameForm } from './RenameForm';
 import { type ReplayPerspective, replayFrame, replaySteps, stepLabel } from './replay-steps';
 
 export function ReplayViewerPage() {
@@ -40,6 +42,7 @@ export function ReplayViewerPage() {
   const [error, setError] = useState<string | null>(null);
   const [perspective, setPerspective] = useState<ReplayPerspective>('all');
   const [step, setStep] = useState(0);
+  const [renaming, setRenaming] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -95,7 +98,22 @@ export function ReplayViewerPage() {
         </Link>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="display truncate text-4xl">{replay.name}</h1>
+            {renaming ? (
+              <RenameForm
+                name={replay.name}
+                onSave={async (name) => {
+                  try {
+                    setReplay((await api.renameReplay(id, name)).replay);
+                    setRenaming(false);
+                  } catch (cause) {
+                    setError(cause instanceof Error ? cause.message : String(cause));
+                  }
+                }}
+                onCancel={() => setRenaming(false)}
+              />
+            ) : (
+              <h1 className="display truncate text-4xl">{replay.name}</h1>
+            )}
             <p className="eyebrow mt-2 text-faint">
               {data.mode === 'singles' ? 'Individuales' : 'Dobles'} · {result} · {data.turns} turnos
             </p>
@@ -111,6 +129,9 @@ export function ReplayViewerPage() {
                 { value: 'player', label: 'Como jugador', title: 'Lo que viste en el combate' },
               ]}
             />
+            <IconButton label="Renombrar" onClick={() => setRenaming(true)}>
+              <IconEdit />
+            </IconButton>
             <IconButton
               label="Descargar"
               onClick={() => downloadJson(`replay-${data.mode}-${data.seed}.json`, data)}

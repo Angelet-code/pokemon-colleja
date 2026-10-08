@@ -1,8 +1,11 @@
-/** Scoreboard of the battle: who plays, the turn, and undo, rewind, forfeit, replay and exit. */
+/**
+ * Scoreboard of the battle: who plays, the turn, and undo, rewind, calculator, forfeit, replay
+ * and exit.
+ */
 import type { BattleStatus } from '@colleja/protocol';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { IconDownload, IconExit, IconFlag, IconRewind, IconUndo } from '../../../components/icons';
-import { Button, Chip, IconButton } from '../../../components/ui';
+import { ActionSelect, Button, Chip, IconButton } from '../../../components/ui';
 
 export function BattleToolbar({
   players,
@@ -15,6 +18,7 @@ export function BattleToolbar({
   onForfeit,
   onExport,
   onLeave,
+  calc,
 }: {
   players: { p1: string; p2: string };
   mode: 'singles' | 'doubles';
@@ -27,6 +31,8 @@ export function BattleToolbar({
   onForfeit: () => void;
   onExport: () => void;
   onLeave: () => void;
+  /** The "Calcular" control. */
+  calc?: ReactNode;
 }) {
   const [confirming, setConfirming] = useState(false);
   const turns = status?.rewindableTurns ?? [];
@@ -65,27 +71,17 @@ export function BattleToolbar({
           <IconUndo size={14} />
           Deshacer
         </Button>
-        <label className="relative">
-          <span className="sr-only">Rebobinar al turno</span>
-          <span className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-muted">
-            <IconRewind size={14} />
-          </span>
-          <select
-            value=""
-            disabled={busy || turns.length === 0}
-            onChange={(event) => {
-              if (event.target.value !== '') onRewind(Number(event.target.value));
-            }}
-            className="h-7 cursor-pointer appearance-none rounded-sm border border-line-strong bg-surface-2 pr-2.5 pl-7 font-display text-[13px] font-semibold tracking-[0.06em] text-text uppercase hover:border-text/60 disabled:pointer-events-none disabled:opacity-35"
-          >
-            <option value="">Rebobinar</option>
-            {turns.map((turn) => (
-              <option key={turn} value={turn}>
-                {turn === 0 ? 'Vista previa' : `Turno ${turn}`}
-              </option>
-            ))}
-          </select>
-        </label>
+        <ActionSelect
+          label="Rebobinar"
+          icon={<IconRewind size={14} />}
+          disabled={busy || turns.length === 0}
+          options={turns.map((turn) => ({
+            value: String(turn),
+            label: turn === 0 ? 'Vista previa' : `Turno ${turn}`,
+          }))}
+          onPick={(turn) => onRewind(Number(turn))}
+        />
+        {calc}
         {status?.ended ? (
           <Button size="sm" onClick={onExport} disabled={busy}>
             <IconDownload size={14} />

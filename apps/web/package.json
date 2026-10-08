@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {
+    "@colleja/bot": "*",
     "@colleja/core": "*",
     "@colleja/data": "*",
     "@colleja/narration": "*",

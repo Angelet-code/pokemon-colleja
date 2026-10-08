@@ -4,9 +4,15 @@
  *
  *   GET    /api/replays          summaries, most recent first
  *   GET    /api/replays/:id      the full replay (omniscient: the battle is over)
+ *   PATCH  /api/replays/:id      renames it ({ name })
  *   DELETE /api/replays/:id      204
  */
-import { API_PREFIX, type ListReplaysResponse, type ReplaySummary } from '@colleja/protocol';
+import {
+  API_PREFIX,
+  type ListReplaysResponse,
+  RenameReplayRequestSchema,
+  type ReplaySummary,
+} from '@colleja/protocol';
 import type { FastifyInstance } from 'fastify';
 import type { ReplayRepository, StoredReplay } from '../replays/replay-repository';
 import { IdParamsSchema, notFound, parseBody } from './parse-body';
@@ -25,6 +31,18 @@ export function registerReplayRoutes(app: FastifyInstance, replays: ReplayReposi
     if (!params) return reply;
     const stored = await replays.get(params.id);
     return stored ? stored : notFound(reply, NOT_FOUND);
+  });
+
+  app.patch(`${REPLAYS}/:id`, async (request, reply) => {
+    const params = parseBody(IdParamsSchema, request.params, reply);
+    if (!params) return reply;
+    const body = parseBody(RenameReplayRequestSchema, request.body, reply);
+    if (!body) return reply;
+    const stored = await replays.get(params.id);
+    if (!stored) return notFound(reply, NOT_FOUND);
+    const { id: _, ...content } = stored.replay;
+    const renamed = await replays.update(params.id, { ...content, name: body.name });
+    return renamed ?? notFound(reply, NOT_FOUND);
   });
 
   app.delete(`${REPLAYS}/:id`, async (request, reply) => {

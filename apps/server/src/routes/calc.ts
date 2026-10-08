@@ -14,6 +14,13 @@ import {
 import type { FastifyInstance } from 'fastify';
 import { parseBody } from './parse-body';
 
+/** Calculator flags and the field effects (`pseudoWeather`) they stand for. */
+const PSEUDO_WEATHERS = [
+  ['gravity', 'gravity'],
+  ['magicRoom', 'magicroom'],
+  ['wonderRoom', 'wonderroom'],
+] as const;
+
 export function registerCalcRoutes(app: FastifyInstance): void {
   app.post(`${API_PREFIX}/calc`, async (request, reply) => {
     const body = parseBody(CalcRequestSchema, request.body, reply);
@@ -30,7 +37,17 @@ export function registerCalcRoutes(app: FastifyInstance): void {
       p1: {},
       p2: Object.fromEntries((body.field.screens ?? []).map((screen) => [screen, 1])),
     };
-    const estimate = estimateDamage(attacker, defender, body.move as MoveId, field);
+    field.pseudoWeather = PSEUDO_WEATHERS.filter(([flag]) => body.field[flag]).map(([, id]) => id);
+    // Helping Hand and Friend Guard only exist in doubles.
+    if (body.field.doubles) {
+      field.boosts = {
+        p1: body.field.helpingHand ? ['helpinghand'] : [],
+        p2: body.field.friendGuard ? ['friendguard'] : [],
+      };
+    }
+    const estimate = estimateDamage(attacker, defender, body.move as MoveId, field, {
+      crit: body.crit ?? false,
+    });
     const percent = (damage: number) => Math.round((damage / defender.maxhp) * 1000) / 10;
     const response: CalcResponse = {
       attacker: { species: attacker.species },

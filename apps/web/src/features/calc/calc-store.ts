@@ -30,6 +30,31 @@ export interface CalcFieldState {
   terrain: CalcTerrain | null;
   /** Screens on the defender's side. */
   screens: CalcScreen[];
+  /** Every hit is a critical hit. */
+  crit: boolean;
+  /** Doubles: the attacker's ally used Helping Hand. */
+  helpingHand: boolean;
+  /** Doubles: the defender's ally has Friend Guard. */
+  friendGuard: boolean;
+  gravity: boolean;
+  magicRoom: boolean;
+  wonderRoom: boolean;
+}
+
+/** Field without weather, terrain or effects. */
+export function emptyCalcField(mode: GameMode = 'singles'): CalcFieldState {
+  return {
+    mode,
+    weather: null,
+    terrain: null,
+    screens: [],
+    crit: false,
+    helpingHand: false,
+    friendGuard: false,
+    gravity: false,
+    magicRoom: false,
+    wonderRoom: false,
+  };
 }
 
 interface CalcState {
@@ -40,6 +65,15 @@ interface CalcState {
   updateField(change: Partial<CalcFieldState>): void;
   /** Swaps attacker and defender. */
   swap(): void;
+  /** Replaces everything (a calculation opened from a battle). */
+  load(state: CalcSetup): void;
+}
+
+/** Everything the calculator shows. */
+export interface CalcSetup {
+  attacker: CalcSide;
+  defender: CalcSide;
+  field: CalcFieldState;
 }
 
 /** A side with the most offensive standard set of a species (most attacking moves). */
@@ -63,13 +97,22 @@ export const useCalc = create<CalcState>()(
     (set) => ({
       attacker: standardSide('garchomp'),
       defender: standardSide('incineroar'),
-      field: { mode: 'singles', weather: null, terrain: null, screens: [] },
+      field: emptyCalcField(),
       updateSide: (side, change) =>
         set((state) => ({ [side]: { ...state[side], ...change } }) as Partial<CalcState>),
       updateField: (change) => set((state) => ({ field: { ...state.field, ...change } })),
       swap: () => set((state) => ({ attacker: state.defender, defender: state.attacker })),
+      load: (setup) => set(setup),
     }),
-    { name: 'colleja:calc', storage: createJSONStorage(() => safeStorage()) },
+    {
+      name: 'colleja:calc',
+      storage: createJSONStorage(() => safeStorage()),
+      // Older saves lack the newer field effects: keep the defaults for them.
+      merge: (persisted, current) => {
+        const saved = (persisted ?? {}) as Partial<CalcSetup>;
+        return { ...current, ...saved, field: { ...current.field, ...saved.field } };
+      },
+    },
   ),
 );
 
@@ -80,15 +123,22 @@ export function calcRequest(
   field: CalcFieldState,
   move: string,
 ): CalcRequest {
+  const doubles = field.mode === 'doubles';
   return {
     attacker: toCalcPokemon(attacker),
     defender: toCalcPokemon(defender),
     move,
+    ...(field.crit ? { crit: true } : {}),
     field: {
-      doubles: field.mode === 'doubles',
+      doubles,
       ...(field.weather ? { weather: field.weather } : {}),
       ...(field.terrain ? { terrain: field.terrain } : {}),
       ...(field.screens.length > 0 ? { screens: field.screens } : {}),
+      ...(doubles && field.helpingHand ? { helpingHand: true } : {}),
+      ...(doubles && field.friendGuard ? { friendGuard: true } : {}),
+      ...(field.gravity ? { gravity: true } : {}),
+      ...(field.magicRoom ? { magicRoom: true } : {}),
+      ...(field.wonderRoom ? { wonderRoom: true } : {}),
     },
   };
 }
