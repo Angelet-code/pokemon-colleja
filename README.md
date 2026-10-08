@@ -6,7 +6,7 @@ Simulador de combates de **Pokémon Champions** para practicar en individuales y
 
 ## Estado
 
-✅ Fase 0 (investigación y plan) · ✅ Fase 1 (cimientos) · ✅ Fase 2 (datos) · ✅ Fase 3 (dominio + motor + combate en terminal) · ✅ Fase 4 (bot de 3 niveles, equipos aleatorios, arena) · ✅ Fase 5 (servidor + UI de combate: **MVP**) · ✅ Fase 6 (teambuilder y equipos guardados) · ✅ Fase 7 (rivales guardados) · ✅ Fase 8 (calculadora, replays y explicación del bot) · ✅ Rediseño de la web · ✅ Fase 9 (bot nivel 3 "Experto", ahora el rival por defecto) · ⏭️ Fase 10 (eliges la siguiente ampliación). Ver [CHANGELOG](CHANGELOG.md).
+✅ Fase 0 (investigación y plan) · ✅ Fase 1 (cimientos) · ✅ Fase 2 (datos) · ✅ Fase 3 (dominio + motor + combate en terminal) · ✅ Fase 4 (bot de 3 niveles, equipos aleatorios, arena) · ✅ Fase 5 (servidor + UI de combate: **MVP**) · ✅ Fase 6 (teambuilder y equipos guardados) · ✅ Fase 7 (rivales guardados) · ✅ Fase 8 (calculadora, replays y explicación del bot) · ✅ Rediseño de la web · ✅ Fase 9 (bot nivel 3 "Experto", ahora el rival por defecto) · ✅ Fase 10 («Calcular» desde el combate, críticos y efectos en la calculadora, replays renombrables, E2E y un nivel 3 más fuerte en individuales) · ⏭️ Fase 11 (eliges la siguiente ampliación). Ver [CHANGELOG](CHANGELOG.md).
 
 ## Puesta en marcha
 
@@ -30,7 +30,7 @@ En **Equipos** (http://127.0.0.1:5173/equipos) creas equipos desde cero o import
 
 En **Rivales** (http://127.0.0.1:5173/rivales) preparas equipos para el bot con su dificultad: genera uno aleatorio, cópialo de tus equipos, impórtalo o créalo, edítalo con el mismo editor y guárdalo. En el inicio eliges ese rival guardado y practicas contra él ([guía de rivales](docs/guias/rivales.md)).
 
-Para aprender de cada combate: **Calculadora** (http://127.0.0.1:5173/calculadora) con las reglas de Champions y el mismo cálculo que usa el bot; **Replays** guardados al terminar, para revivirlos turno a turno; y el panel **"Por qué jugó así el bot"** en el combate, que enseña lo que valoró el bot en cada turno ya jugado sin revelar lo que aún no has visto ([guía de herramientas](docs/guias/herramientas.md)).
+Para aprender de cada combate: **Calculadora** (http://127.0.0.1:5173/calculadora) con las reglas de Champions y el mismo cálculo que usa el bot (críticos, climas, campos, pantallas, Refuerzo, Compiescolta, Gravedad y las zonas), que se abre con **«Calcular»** desde el propio combate con los Pokémon en el campo; **Replays** guardados al terminar, para revivirlos turno a turno y renombrarlos; y el panel **"Por qué jugó así el bot"** en el combate, que enseña lo que valoró el bot en cada turno ya jugado sin revelar lo que aún no has visto ([guía de herramientas](docs/guias/herramientas.md)).
 
 ```bash
 npm run play
@@ -57,6 +57,16 @@ npm run check
 Ejecuta lint, typecheck, tests y smoke.
 
 ```bash
+npm run e2e:install
+```
+
+```bash
+npm run e2e
+```
+
+Tests E2E en el navegador con Playwright (el primero descarga Chromium una vez): compila la web y juega los flujos principales contra el servidor real ([guía de herramientas](docs/guias/herramientas.md#tests-e2e-playwright)). La CI los ejecuta en un job aparte.
+
+```bash
 npm run data:sprites
 ```
 
@@ -66,7 +76,7 @@ Los datos del juego ya vienen generados en `packages/data/generated/`. Para rege
 
 ## Cómo contribuir / continuar
 
-El proyecto avanza por fases. Cada fase pendiente tiene un **brief de traspaso** en [docs/fases/](docs/fases/), con objetivo, diseño, hechos verificados y criterios de "hecho". Las reglas del repositorio y el protocolo para cerrar una fase están en [AGENTS.md](AGENTS.md), que también leen los asistentes de IA (Claude Code lo carga a través de `CLAUDE.md`). La CI de GitHub ejecuta `npm run check` en cada push.
+El proyecto avanza por fases. Cada fase pendiente tiene un **brief de traspaso** en [docs/fases/](docs/fases/), con objetivo, diseño, hechos verificados y criterios de "hecho". Las reglas del repositorio y el protocolo para cerrar una fase están en [AGENTS.md](AGENTS.md), que también leen los asistentes de IA (Claude Code lo carga a través de `CLAUDE.md`). La CI de GitHub ejecuta `npm run check` y los E2E en cada push.
 
 ## Documentación
 
@@ -77,7 +87,7 @@ El proyecto avanza por fases. Cada fase pendiente tiene un **brief de traspaso**
   - [Stack técnico](docs/research/03-stack-tecnico.md)
   - Anexos: [roster](docs/research/anexos/champions-roster-regmc.md) · [objetos](docs/research/anexos/champions-objetos-regmc.md)
 - Guías: [datos del juego](docs/guias/datos.md) · [combates](docs/guias/combate.md) · [bots](docs/guias/bot.md) · [servidor y web](docs/guias/web.md) · [teambuilder](docs/guias/teambuilder.md) · [rivales](docs/guias/rivales.md) · [herramientas](docs/guias/herramientas.md)
-- Decisiones de arquitectura: [ADR-0001: motor de combate](docs/adr/0001-motor-de-combate.md) · [ADR-0002: pipeline de datos](docs/adr/0002-pipeline-de-datos.md) · [ADR-0003: sesión de combate](docs/adr/0003-sesion-de-combate.md) · [ADR-0004: bot por simulación](docs/adr/0004-bot-por-simulacion.md) · [ADR-0005: servidor, web y narración](docs/adr/0005-servidor-web-y-narracion.md) · [ADR-0006: equipos guardados y teambuilder](docs/adr/0006-equipos-guardados-y-teambuilder.md) · [ADR-0007: rivales guardados](docs/adr/0007-rivales-guardados.md) · [ADR-0008: herramientas de práctica](docs/adr/0008-herramientas-de-practica.md)
+- Decisiones de arquitectura: [ADR-0001: motor de combate](docs/adr/0001-motor-de-combate.md) · [ADR-0002: pipeline de datos](docs/adr/0002-pipeline-de-datos.md) · [ADR-0003: sesión de combate](docs/adr/0003-sesion-de-combate.md) · [ADR-0004: bot por simulación](docs/adr/0004-bot-por-simulacion.md) · [ADR-0005: servidor, web y narración](docs/adr/0005-servidor-web-y-narracion.md) · [ADR-0006: equipos guardados y teambuilder](docs/adr/0006-equipos-guardados-y-teambuilder.md) · [ADR-0007: rivales guardados](docs/adr/0007-rivales-guardados.md) · [ADR-0008: herramientas de práctica](docs/adr/0008-herramientas-de-practica.md) · [ADR-0009: sistema de diseño](docs/adr/0009-sistema-de-diseno.md) · [ADR-0010: bot experto con sandbox](docs/adr/0010-bot-experto-con-sandbox.md) · [ADR-0011: nivel 3 con equipo completo](docs/adr/0011-nivel-3-con-equipo-completo.md)
 
 ## Créditos
 

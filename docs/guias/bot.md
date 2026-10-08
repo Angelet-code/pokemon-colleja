@@ -1,6 +1,6 @@
 # Guía: bots, generador de equipos y arena
 
-Cómo deciden los bots, cómo se miden y cómo se mejoran. Decisiones de arquitectura: [ADR-0004](../adr/0004-bot-por-simulacion.md) (nivel 2) y [ADR-0010](../adr/0010-bot-experto-con-sandbox.md) (nivel 3). La API de combate (`BattleSession`, `BattleAgent`…) está en la [guía de combates](combate.md).
+Cómo deciden los bots, cómo se miden y cómo se mejoran. Decisiones de arquitectura: [ADR-0004](../adr/0004-bot-por-simulacion.md) (nivel 2) y [ADR-0010](../adr/0010-bot-experto-con-sandbox.md) y [ADR-0011](../adr/0011-nivel-3-con-equipo-completo.md) (nivel 3). La API de combate (`BattleSession`, `BattleAgent`…) está en la [guía de combates](combate.md).
 
 ## Niveles
 
@@ -9,7 +9,7 @@ Cómo deciden los bots, cómo se miden y cómo se mejoran. Decisiones de arquite
 | 0 · Aleatorio | `RandomAgent` | Al azar entre las acciones legales (objetivos útiles en dobles, Mega a veces) |
 | 1 · Agresivo | `AggressiveAgent` | En cada posición, el movimiento y objetivo con más daño esperado (+ bonus de KO). Prioridad si asegura el KO. Nunca golpea al aliado salvo que sea inmune. Mega en cuanto puede. Solo cambia si ningún movimiento hace nada |
 | 2 · Táctico | `TacticalAgent` | Simula las consecuencias de cada opción con daño esperado (duelos en individuales, turnos 2 contra 2 en dobles) y elige la de mejor balance de PS. Vista previa por cobertura |
-| 3 · Experto | `ExpertAgent` | El nivel 2 más un turno por adelantado con el **simulador real**: juega cada opción contra las respuestas probables del rival bajo varias suposiciones de sus sets y valora las posiciones resultantes. Vista previa y relevos, los del nivel 2 |
+| 3 · Experto | `ExpertAgent` | El nivel 2 más un turno por adelantado con el **simulador real**: juega cada opción contra las respuestas probables del rival bajo varias suposiciones de sus sets y valora las posiciones resultantes (en individuales, también con los dos equipos enteros). En individuales elige los relevos por la cadena de equipo completo. Vista previa, la del nivel 2 |
 
 ```ts
 import { BOT_LEVELS, createBot, DEFAULT_BOT_LEVEL } from '@colleja/bot';
@@ -30,12 +30,14 @@ Todos los bots solo ven su `AgentContext` (su perspectiva). **No conocen los set
 | `analysis/opponent-model.ts` | Sets posibles de cada rival: sets estándar filtrados por lo revelado, del más ofensivo al menos. Con equipo abierto, el real |
 | `analysis/evaluation.ts` | Valor de un golpe, víctimas de un movimiento, enfrentamientos simples (nivel 1) |
 | `analysis/duel.ts` | Simulación de duelo 1 contra 1 y `chainValue` (si el nuestro cae, entra el siguiente) |
+| `analysis/team-chain.ts` | `teamChainValue`: duelos encadenados de los dos equipos enteros (al caer uno, su lado saca su mejor respuesta al superviviente) hasta que un lado se queda sin nadie |
 | `analysis/singles-plan.ts` | Opciones del nivel 2 en individuales, promediadas sobre los sets plausibles del rival. Valor fijo de trampas, pantallas y control de velocidad |
 | `analysis/doubles-sim.ts` / `doubles-plan.ts` | Simulación 2 contra 2 y búsqueda de la mejor pareja de acciones |
 | `analysis/team-selection.ts` | Vista previa por cobertura (el grupo que mejor responde a cada especie rival) |
 | `analysis/move-knowledge.ts` | Para qué sirve cada movimiento de estado (Protección, mejoras, estados, recuperación, pantallas, trampas…) |
 | `search/assumptions.ts` | Nivel 3: suposiciones completas de los sets rivales (vistos y no vistos) a partir del modelo del rival |
-| `search/lookahead.ts` | Nivel 3: `searchMoves` (búsqueda a un turno con el sandbox) y `SEARCH_SETTINGS` (esfuerzo por modo) |
+| `search/lineups.ts` | Nivel 3: alineaciones para la cadena (los tuyos vivos y los del rival según la suposición, en el combate real o en un fork) |
+| `search/lookahead.ts` | Nivel 3: `searchMoves` (búsqueda a un turno con el sandbox), `SEARCH_SETTINGS` (esfuerzo y pesos por modo) y `recentSwitches` |
 
 ### Nivel 3: búsqueda con el simulador real
 
@@ -45,9 +47,11 @@ Para cada suposición (`assumptions`), `searchMoves`:
 
 1. obtiene las respuestas probables del rival: el nivel 2 jugando su lado en el fork, sus `rivalReplies` mejores opciones con pesos softmax (`replyTemperature`);
 2. juega `turns` turnos por cada opción propia (las `ownOptions` mejores del nivel 2), cada uno contra una respuesta muestreada de forma estratificada por esos pesos. Con la misma semilla para todas las opciones y **suerte común por acción** (cada acción saca sus números de su propio flujo), las opciones se comparan con la misma suerte del rival;
-3. valora cada posición resultante, tras los relevos forzosos (del nivel 2): balance de PS × 100 más `positionWeight` × el cambio que el nivel 2 espera desde ahí (su mejor puntuación menos la que tendría si no pasara nada: `singlesBaseline`/`doublesBaseline`); ±200 si el combate acaba.
+3. valora cada posición resultante, tras los relevos forzosos (del nivel 2): balance de PS × 100 más `positionWeight` × el cambio que el nivel 2 espera desde ahí (su mejor puntuación menos la que tendría si no pasara nada: `singlesBaseline`/`doublesBaseline`) y, en individuales, `chainWeight` × lo que la **cadena de equipo completo** (`teamChainValue`, con los banquillos de los dos lados en el fork) cambia ese balance; ±200 si el combate acaba.
 
-Elige la media más alta. Sin sandbox (otra perspectiva, vista previa, relevos) juega como el nivel 2. El esfuerzo es fijo, nunca por reloj, para que sea reproducible.
+Elige la media más alta, restando `loopPenalty` a las opciones con un cambio por cada cambio voluntario propio de los últimos 4 turnos (sin esto, dos bots pueden cambiar de Pokémon en bucle para siempre). En individuales, los **relevos forzosos** son para el Pokémon cuya cadena de equipo completo acaba mejor contra las suposiciones del rival. Sin sandbox (otra perspectiva o la vista previa) juega como el nivel 2. El esfuerzo es fijo, nunca por reloj, para que sea reproducible.
+
+Lo que limita al nivel 3 es, sobre todo, la **información oculta**: con equipo abierto la misma configuración gana al nivel 2 un 70,7 % en individuales, frente a un 63–64 % con equipo cerrado (CHANGELOG de la fase 10). Más muestras (`turns`, `assumptions`) ya no ayudan.
 
 ### Qué modela la simulación (nivel 2)
 
@@ -91,7 +95,7 @@ npm run arena -- --a 2 --b 1 --mode doubles --battles 300 --seed otra
 
 Muestra el % de victorias con su intervalo de confianza del 95 % (Wilson), los turnos medios, los ms por combate y por decisión, y las elecciones inválidas (deben ser 0). Los combates que fallen se guardan en `storage/arena/` como replays (`BattleSession.fromReplay`). La lógica está en `runArena()` (`tools/arena/src/arena.ts`).
 
-Resultados de referencia (fases 4 y 9): en el [CHANGELOG](../../CHANGELOG.md). El nivel 3 tarda del orden de 1 s por decisión: para medirlo con cientos de combates conviene lanzar varios arenas en paralelo con semillas distintas.
+Resultados de referencia (fases 4, 9 y 10): en el [CHANGELOG](../../CHANGELOG.md). El nivel 3 tarda unas décimas de segundo por decisión: para medirlo con cientos de combates conviene lanzar varios arenas en paralelo con semillas distintas. Con 600 combates el ruido es de ±2 puntos (IC 95 % ≈ ±4): compara variantes con la misma semilla y confirma lo prometedor con otra semilla antes de quedártelo.
 
 ## Cómo mejorar un bot
 
@@ -112,6 +116,7 @@ Cada nivel implementa `explain()` (de `BattleAgent`): devuelve la explicación d
 | `packages/bot/test/opponent-model.test.ts` | Filtrado de sets por lo revelado, orden pesimista, equipo abierto, especies sin sets |
 | `packages/bot/test/levels.test.ts` | Registro de niveles. Escenarios: elige el KO, no golpea al aliado con Terremoto, el nivel 2 cambia a un Pokémon que gana el duelo. Fuzz: 100 combates por modo nivel 1 contra 2 sin elecciones inválidas |
 | `packages/bot/test/expert.test.ts` | Nivel 3: KO evidente, sin sandbox = nivel 2, **misma decisión y explicación aunque cambie lo que oculta el rival**, determinismo, combates contra el nivel 2 sin elecciones inválidas |
+| `packages/bot/test/team-chain.test.ts` | `teamChainValue` cuenta los banquillos de los dos lados; `recentSwitches` cuenta solo los cambios voluntarios |
 | `packages/engine/test/sandbox.test.ts` | El sandbox: solo al elegir movimientos, sustituye los sets vistos y no vistos, PS al % visible, reproducible, no toca el combate real, rechaza posiciones viejas |
 | `packages/bot/test/random-agent.test.ts` | Fuzz del nivel 0 |
 | `packages/teamgen/test/teamgen.test.ts` | Equipos legales (300 semillas por modo), cláusulas, megapiedras, determinismo |

@@ -79,7 +79,7 @@ pokemon-colleja-simulator/
 │  ├─ core/                # ✅ Dominio puro: tipos, stats (SP), import/export, elecciones, vista del combate, agentes
 │  ├─ data/                # ✅ JSON generados + i18n (es/en) + sets estándar + overrides (apto para navegador)
 │  ├─ engine/              # ✅ BattleSession sobre Battle de Showdown: validación, perspectivas, rebobinado, replays y sandbox (forks sin información oculta)
-│  ├─ bot/                 # ✅ Bots: aleatorio, agresivo (daño esperado), táctico (simulación) y experto (búsqueda con el sandbox), con @smogon/calc
+│  ├─ bot/                 # ✅ Bots: aleatorio, agresivo (daño esperado), táctico (simulación) y experto (búsqueda con el sandbox y cadena de equipo completo), con @smogon/calc
 │  ├─ teamgen/             # ✅ Generador de equipos aleatorios legales a partir de sets estándar
 │  ├─ narration/           # ✅ Log del combate en español/inglés con las plantillas de Showdown (web y CLI)
 │  └─ protocol/            # ✅ Esquemas zod de los mensajes cliente↔servidor (compartidos)
@@ -89,7 +89,8 @@ pokemon-colleja-simulator/
 │  ├─ data-pipeline/       # ✅ Genera packages/data desde Showdown + PokeAPI y descarga sprites
 │  ├─ arena/               # ✅ Torneos bot contra bot (`npm run arena`: % de victorias, tiempos, fallos)
 │  ├─ cli/                 # ✅ Combate en terminal contra el bot (`npm run play`)
-│  └─ dev/                 # ✅ `npm run dev`: servidor + Vite a la vez
+│  ├─ dev/                 # ✅ `npm run dev`: servidor + Vite a la vez
+│  └─ e2e/                 # ✅ Tests E2E con Playwright (`npm run e2e`, fuera del check; job propio en la CI)
 ├─ vendor/
 │  └─ pokemon-showdown/    # Submódulo git fijado a un commit concreto
 ├─ storage/                # Datos del usuario: equipos ✅ (teams/), rivales ✅ (opponents/), replays ✅ (replays/), JSON legibles
@@ -105,6 +106,7 @@ graph LR
   web --> core
   web --> data
   web --> narration
+  web -.->|opponent-model| bot
   narration --> core
   narration --> data
   protocol --> core
@@ -136,7 +138,7 @@ graph LR
   arena --> teamgen
 ```
 
-**Regla dura:** solo `packages/showdown` accede a `vendor/`. Showdown se compila como CommonJS y el puente lo carga con `createRequire`, junto con sus `.d.ts`. Es Node-only: nunca se importa desde `apps/web`, que solo usa paquetes aptos para navegador (`core`, `data`, `protocol`, `narration`; lo comprueba un test).
+**Regla dura:** solo `packages/showdown` accede a `vendor/`. Showdown se compila como CommonJS y el puente lo carga con `createRequire`, junto con sus `.d.ts`. Es Node-only: nunca se importa desde `apps/web`, que solo usa paquetes aptos para navegador (`core`, `data`, `protocol`, `narration` y, de `bot`, solo la entrada `@colleja/bot/opponent-model`, sin la calculadora; lo comprueban unos tests).
 
 ### 3.4 Flujo de un combate
 
@@ -334,10 +336,11 @@ Tamaños orientativos: S (pocas sesiones) · M · L.
 | **7. Rivales editables** ✅ | S–M | Generar, editar y guardar rivales (`storage/opponents/`) con su dificultad; elegirlos en el inicio | ✅ Rival aleatorio generado, editado, guardado, intacto tras reiniciar y jugado en ambos modos con exactamente su equipo y su nivel. 247 tests |
 | **8. Herramientas de práctica** ✅ | M | Calculadora de daño (servidor), replays guardados con visor y explicación del bot en cada turno | ✅ Daño igual al del bot, replay visto turno a turno tras reiniciar y explicación solo de turnos resueltos y sin información oculta (tests). 270 tests |
 | **9. Bot nivel 3** ✅ | M | Sandbox en el motor (forks sin información oculta), nivel 3 "Experto" por defecto y el bot pensando mientras el jugador elige ([brief](fases/fase-9.md)) | ✅ Gana al nivel 2 el 61,8 % (602 combates, individuales) y el 78,6 % (308, dobles), sin elecciones inválidas y en ≈ 1 s como mucho por decisión. 285 tests |
-| **10. Siguiente ampliación** ⏭️ | — | A elegir: propuesta en [fases/fase-10.md](fases/fase-10.md) | — |
+| **10. Pulido de herramientas y nivel 3** ✅ | M | «Calcular» desde el combate, críticos y efectos en la calculadora, replays renombrables, E2E con Playwright y el nivel 3 con la cadena de equipo completo ([brief](fases/fase-10.md), [ADR-0011](adr/0011-nivel-3-con-equipo-completo.md)) | ✅ Herramientas con tests y E2E en la CI. Nivel 3 contra el 2: 65,8 % en individuales en la semilla de validación (≈ 64,4 % en 1800 combates; objetivo 65 % rozado, cerrado así por decisión del usuario) y 81,3 % en dobles, ≈ 0,5 s por decisión. 296 tests + 5 E2E |
+| **11. Siguiente ampliación** ⏭️ | — | A elegir: propuesta en [fases/fase-11.md](fases/fase-11.md) | — |
 | **Futuro** | — | Modo clásico IV/EV/Tera, PWA/móvil, PvP, rivales basados en uso real | — |
 
-**MVP = fases 1–5** ✅. Con la fase 6 ✅ los equipos se crean y guardan en el navegador, y con la 7 ✅ también los rivales: la experiencia que pediste está completa. Con la 8 ✅ llegan las herramientas para aprender de cada combate y con la 9 ✅, un rival más fuerte. Lo siguiente lo eliges tú ([fase 10](fases/fase-10.md)).
+**MVP = fases 1–5** ✅. Con la fase 6 ✅ los equipos se crean y guardan en el navegador, y con la 7 ✅ también los rivales: la experiencia que pediste está completa. Con la 8 ✅ llegan las herramientas para aprender de cada combate, con la 9 ✅ un rival más fuerte y con la 10 ✅ se pulen las herramientas y el rival mira los dos equipos enteros. Lo siguiente lo eliges tú ([fase 11](fases/fase-11.md)).
 
 ---
 
@@ -349,7 +352,7 @@ Tamaños orientativos: S (pocas sesiones) · M · L.
 | `data` | Recuentos y legalidad del snapshot. Muestras puntuales (stats base, cambios de movimientos de Champions) |
 | `engine` | Determinismo por semilla. Logs de referencia de combates guionizados. Rebobinado correcto. Traducción de elecciones (objetivos en dobles, Mega) |
 | `bot` | Fuzzing: cientos de combates bot contra bot en el check (miles a mano) sin elecciones inválidas ni cuelgues. Calculadora contrastada con el motor. Escenarios guionizados. Porcentaje de victorias por nivel con el arena |
-| `server` / `web` | Esquemas del protocolo. Repositorios de equipos, rivales y replays en carpetas temporales y CRUD por HTTP. Calculadora contra `estimateDamage`. Explicaciones del bot sin información oculta. Componentes críticos (selector de objetivo, editor de SP, buscador de movimientos). E2E con Playwright más adelante |
+| `server` / `web` | Esquemas del protocolo. Repositorios de equipos, rivales y replays en carpetas temporales y CRUD por HTTP. Calculadora contra `estimateDamage`. Explicaciones del bot sin información oculta. Componentes críticos (selector de objetivo, editor de SP, buscador de movimientos). **E2E con Playwright** (`npm run e2e`): importar un equipo, combatir, «Calcular», guardar, renombrar y borrar el replay, calculadora |
 
 Las mecánicas en sí **no se re-testean**: son responsabilidad del motor (Showdown tiene 359 ficheros de test propios). Solo se comprueba nuestra integración con él.
 
@@ -372,10 +375,11 @@ Las mecánicas en sí **no se re-testean**: son responsabilidad del motor (Showd
 |---|---|
 | Cambios de API o protocolo de Showdown al actualizar el commit | Adaptador único, tests de integración y actualizaciones deliberadas |
 | ~~`@pkmn/client` sin datos de Champions~~ | **Resuelto en la fase 5**: la web usa `BattleView` de `core` y la narración propia con las plantillas de Showdown ([ADR-0005](adr/0005-servidor-web-y-narracion.md)) |
-| El bundle de la web lleva todos los datos (≈1,57 MB con el teambuilder, los rivales y las herramientas, ≈344 KB con gzip; la calculadora corre en el servidor) | Aceptable en local. Si crece más, cargar learnsets y sets estándar bajo demanda (`import()` dinámico) |
+| El bundle de la web lleva todos los datos (≈1,59 MB con el teambuilder, los rivales y las herramientas, ≈350 KB con gzip; la calculadora corre en el servidor) | Aceptable en local. Si crece más, cargar learnsets y sets estándar bajo demanda (`import()` dinámico) |
 | Los combates viven en memoria: se pierden si se reinicia el servidor | Aceptado para uso local. La reconexión funciona mientras el servidor siga vivo; persistir sesiones si hiciera falta (el replay ya permite reconstruirlas) |
 | La sesión usa la API interna de `Battle` (`choose`, `setPlayer`, `sendUpdates`, `inputLog`) | Aislada en `engine/src/session.ts` y cubierta por tests de determinismo, rebobinado y perspectivas ([ADR-0003](adr/0003-sesion-de-combate.md)) |
 | El bot adivina los sets rivales con los sets estándar: contra equipos humanos poco comunes puede equivocarse | Filtra por lo revelado y supone el set más ofensivo. Con equipo abierto juega con los sets reales. El nivel 3 promedia varias suposiciones |
+| Dos bots pueden cambiar de Pokémon en bucle (combates sin fin en el arena) | El nivel 3 penaliza los cambios repetidos ([ADR-0011](adr/0011-nivel-3-con-equipo-completo.md)). Un humano siempre puede romper el bucle |
 | El nivel 3 piensa de forma síncrona (≈ 0,3–1 s): mientras, el servidor no atiende otros mensajes | Piensa después de enviar el turno al jugador, así que coincide con su tiempo de decisión. Si molestara, moverlo a un hilo de trabajo |
 | El sandbox usa la serialización interna de Showdown (`toJSON`/`fromJSON`) y borra campos del estado por nombre | Aislado en `engine/src/sandbox.ts` y cubierto por tests (incluido uno de invariancia frente a lo oculto). Revisarlo al actualizar Showdown |
 | `@smogon/calc` puede ir por detrás de nuestro commit de Showdown | Test de contraste con el motor (stats de todos los sets estándar y daño real). Si falla tras actualizar Showdown, revisar antes de actualizar la calculadora |
@@ -397,3 +401,4 @@ Las mecánicas en sí **no se re-testean**: son responsabilidad del motor (Showd
 | 5 | Teambuilder (2026-10-08) | Un equipo con problemas **se guarda como borrador** (solo se exige legalidad para combatir). El modo del equipo es el **preferido**: vale para los dos si es legal. Editor con lista a la izquierda y ficha a la derecha, con set sugerido ([ADR-0006](adr/0006-equipos-guardados-y-teambuilder.md)) |
 | 6 | Rivales (2026-10-08) | Los rivales son una **colección aparte** (`storage/opponents/`) con su dificultad; **solo se guarda la dificultad** (no las opciones de práctica); al elegirlos en el inicio **se aplica su dificultad y se puede cambiar**; un rival generado **hay que guardarlo** para combatir contra él ([ADR-0007](adr/0007-rivales-guardados.md)) |
 | 7 | Herramientas (2026-10-08) | Calculadora **en el servidor**; replays guardados **solo si se piden**; explicación del bot **tras cada turno** y **sin lo no revelado** con equipo cerrado; visor omnisciente con interruptor "Como jugador" ([ADR-0008](adr/0008-herramientas-de-practica.md)) |
+| 8 | Fase 10 (2026-10-08) | «Calcular» abre la calculadora **en otra pestaña** desde el combate; E2E con Playwright **en un comando aparte y su propio job de CI**; el nivel 3 con **≤ ~1 s de media** por decisión |

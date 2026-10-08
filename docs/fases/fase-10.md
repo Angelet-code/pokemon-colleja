@@ -1,59 +1,65 @@
-# Fase 10 — Siguiente ampliación (propuesta para elegir)
+# Fase 10 — Pulido de herramientas y nivel 3 más fuerte en individuales
 
-> **Brief de traspaso.** Escrito al cerrar la fase 9 (2026-10-08). El plan original está completo y el bot tiene ya cuatro niveles. Este brief **no fija la fase**: propone ampliaciones con su diseño de partida para que el usuario elija una (o varias, por orden).
-> Lee antes [AGENTS.md](../../AGENTS.md) y [PLAN.md](../PLAN.md) §2.2, §6, §8 y §11. Cuando el usuario elija, convierte la opción en un brief completo (`fase-10.md` reescrito con objetivo, hechos verificados, diseño, tests y criterios de "hecho") **antes** de implementar, y pregúntale las decisiones de producto que salgan.
+> **Brief de traspaso.** Escrito al empezar la fase 10 (2026-10-08), a partir de la propuesta de ampliaciones que cerró la fase 9 (el usuario eligió las opciones **A** y **B**). Lee antes [AGENTS.md](../../AGENTS.md), [ADR-0008](../adr/0008-herramientas-de-practica.md) y [ADR-0010](../adr/0010-bot-experto-con-sandbox.md).
 
-## Punto de partida (ya hecho)
+## Objetivo
 
-| Área | Estado |
-|---|---|
-| Combate | Individuales y dobles de Champions (Reg M-C) en el navegador y en la terminal, con deshacer, rebobinar, replays y explicación del bot |
-| Bot | Niveles 0–3. El 3 "Experto" (por defecto) mira un turno por adelantado con el simulador real mediante el sandbox del motor ([ADR-0010](../adr/0010-bot-experto-con-sandbox.md)): gana al 2 un 61,8 % en individuales y un 78,6 % en dobles, en 0,3–0,4 s por decisión |
-| Equipos | Teambuilder con Stat Points, equipos y rivales guardados, calculadora en el servidor |
-| Web | Sistema de diseño propio ([ADR-0009](../adr/0009-sistema-de-diseno.md)) |
-| Calidad | 285 tests, smoke, CI en cada push |
+1. **A. Pulido de las herramientas de práctica**: abrir la calculadora desde un combate, críticos y más efectos en la calculadora, renombrar replays y tests E2E de los flujos principales.
+2. **B. Nivel 3 más fuerte en individuales**: ≥ 65 % contra el nivel 2 en individuales (≥ 600 combates) sin pasar de ~1 s de media por decisión, y sin empeorar en dobles.
 
-## Opciones
+## Decisiones de producto (2026-10-08)
 
-### A. Pulido de las herramientas (recomendada si se quiere algo corto)
+- **«Abrir en la calculadora»** abre `/calculadora` en una **pestaña nueva**, precargada con tu Pokémon activo atacando al del rival (PS, estado, cambios de características, Mega) y el campo (clima, campo, pantallas del rival). El combate no se toca. Con equipo cerrado, el rival lleva lo visto más su set estándar (lo mismo que supone el bot); con equipo abierto, su set real.
+- **E2E con Playwright**: comando aparte (`npm run e2e`, descarga Chromium la primera vez) y un job propio en la CI. `npm run check` no cambia.
+- **Nivel 3**: media de **≤ ~1 s por decisión** (máximo acordado: ~3 s).
 
-- "Abrir en la calculadora" desde un combate con los dos Pokémon activos, golpes críticos y más efectos de campo en la calculadora, renombrar replays, E2E con Playwright de los flujos principales.
+## Punto de partida (verificado)
 
-### B. Nivel 3 más fuerte en individuales
+- Calculadora: `POST /api/calc` con `estimateDamage` de `@colleja/bot` (`apps/server/src/routes/calc.ts`); estado en `apps/web/src/features/calc/calc-store.ts`, persistido en `localStorage` (`colleja:calc`). Esquemas en `packages/protocol/src/calc.ts`.
+- `estimateDamage(attacker, defender, move, field)` traduce a `@smogon/calc` (`toCalcSide`, `toCalcField`), con caché por contenido (`calcKey`, `fieldKey`). `@smogon/calc` admite `Move({ isCrit })` y, por lado, `isHelpingHand`, `isFriendGuard`; en el campo, `isGravity`, `isMagicRoom`, `isWonderRoom` (ya leídos de `pseudoWeather`).
+- Combate en la web: `battle:started` trae `team` (tus sets) y `opponentTeam` (solo con equipo abierto); `BattleView` (core) da del rival especie, PS en %, estado, cambios, objeto/habilidad/movimientos revelados y Mega; el campo y las condiciones de cada lado.
+- El modelo del rival del bot es `OpponentModel` (`packages/bot/src/analysis/opponent-model.ts`): solo depende de `core` y `data`. Importarlo desde la web por el índice de `@colleja/bot` arrastraría `@smogon/calc` al bundle.
+- Replays: `ReplayContentSchema.name` ya existe; no hay ruta para cambiarlo. `FileJsonRepository` tiene `update`.
+- Nivel 3: `searchMoves` (`packages/bot/src/search/lookahead.ts`), hoja = balance de PS × 100 + 0,5 × cambio esperado por el nivel 2 (`outlook`), que solo mira el activo y el siguiente de la cadena contra el rival en el campo: **ignora el banquillo rival**. Relevos y vista previa son del nivel 2. Referencia: 61,8 % en individuales (602 combates), 78,6 % en dobles.
 
-- **Para qué**: en individuales el nivel 3 gana al 2 por poco (61,8 %); en dobles va sobrado.
-- **Diseño de partida**: la mejora está en las hojas, no en más muestras (ver la tabla del CHANGELOG de la fase 9): que la estimación del nivel 2 tenga en cuenta el banquillo rival y los cambios del rival; buscar también los **relevos forzosos** y la **vista previa** con el sandbox (hoy son los del nivel 2); reparto adaptativo de muestras entre opciones.
-- **Hecho cuando**: ≥ 65 % contra el nivel 2 en individuales (≥ 600 combates) sin pasar de ~1 s de media.
-- **Riesgos**: cada idea hay que medirla con cientos de combates (≈ 15 min en paralelo).
+## Diseño
 
-### C. Modo clásico IV/EV/Tera
+### A. Herramientas
 
-- **Para qué**: practicar también formatos de Escarlata/Púrpura.
-- **Diseño de partida**: `RulesetId` nuevo con su `StatCalculator` (la estrategia por formato ya existe en `core/team/stats.ts`), formatos de Showdown nuevos en `engine/formats.ts`, learnsets y sets del juego principal en el pipeline, y el teambuilder con EVs/IVs/Tera según el ruleset. El sandbox y el nivel 3 funcionarían sin cambios (usan el motor real); el nivel 2 y la calculadora tendrían que entender la Teracristalización.
-- **Riesgos**: es casi duplicar los datos y la validación.
+1. **Calculadora**:
+   - `CalcRequest` gana `crit` (golpe crítico) y en el campo `helpingHand` y `friendGuard` (solo dobles), `gravity`, `magicRoom` y `wonderRoom`. `estimateDamage` acepta `{ crit }` (y entra en la clave de la caché); `FieldState` gana `sideEffects` para Mano Amiga y Compiescudo. El bot no los usa.
+   - La web muestra los nuevos controles en «Campo» y el interruptor «Crítico».
+2. **Abrir en la calculadora** (`features/calc/from-battle.ts`, puro y testeado): construye el estado de la calculadora desde `BattleView`, tu equipo y el del rival si es abierto. El set supuesto del rival sale de `OpponentModel`, exportado aparte (`@colleja/bot/opponent-model`) para no arrastrar la calculadora al bundle. Botón «Calcular» en el marcador del combate; en dobles, un menú con las parejas (tu activo → rival activo). Escribe el estado en el store (persistido) y abre `/calculadora` en una pestaña nueva.
+3. **Renombrar replays**: `PATCH /api/replays/:id` con `{ name }` (`RenameReplayRequestSchema` en protocol) y la acción «Renombrar» en la lista y en el visor.
+4. **E2E** (`tools/e2e`, `@colleja/e2e`, Playwright): el servidor de producción (`npm run build` + servidor) con carpetas de `storage` temporales (variable de entorno nueva `STORAGE_DIR` del servidor), bot de nivel 0. Flujos: combate completo (vista previa, movimientos, rendirse, guardar replay), teambuilder (importar, editar, guardar), replays (renombrar, ver, borrar), calculadora (crítico) y «Calcular» desde el combate.
 
-### D. App instalable (PWA) y uso desde el móvil
+### B. Nivel 3 en individuales
 
-- **Para qué**: abrirla desde el móvil en la red de casa.
-- **Diseño de partida**: manifiesto y service worker; opción del servidor para escuchar en la red local (hoy solo `127.0.0.1`, decisión de seguridad); revisar las pantallas a 375 px. Con el nivel 3 pensando en el servidor, el móvil solo muestra.
-- **Riesgos**: exponer el servidor en la red local exige pensar en quién puede conectarse.
+- Medir con un arena paralelo (varias semillas, ≥ 600 combates por variante) y apuntar cada variante en el CHANGELOG.
+- Primera idea: **hoja con el equipo entero**: una cadena de duelos de equipo completo (`analysis/team-chain.ts`: los activos se enfrentan con daño esperado y, al caer uno, su lado saca su mejor respuesta al superviviente) con los Pokémon que quedan de los dos lados en el fork (el rival como se supone). Se mezcla con el balance de PS.
+- Si no basta: relevos forzosos con búsqueda (sandbox también en peticiones de cambio), reparto adaptativo de muestras, o el modelo de respuestas del rival.
+- Si no se llega al 65 %, **averiguar qué falla** antes de rebajar el objetivo (decisión del 2026-10-08).
 
-### E. Rivales a partir de estadísticas de uso
+## Tests
 
-- **Para qué**: rivales que se parezcan a lo que se juega de verdad, y un modelo del rival mejor (el nivel 3 sacaría partido de saber qué sets son probables).
-- **Diseño de partida**: descargar en el pipeline las estadísticas de uso de Champions (si existen para Reg M-C) y generar sets y equipos por uso en `teamgen`; usar las frecuencias en `OpponentModel`.
-- **Riesgos**: fuente externa que puede no existir aún o cambiar de formato; la VPN del usuario bloquea esas webs a veces (AGENTS.md).
+- `estimateDamage` con crítico y los efectos nuevos (contra `@smogon/calc` directamente); la caché distingue crítico.
+- `POST /api/calc` con los campos nuevos; `PATCH /api/replays/:id` (200, 400, 404).
+- `from-battle.ts`: individuales y dobles, equipo cerrado (lo visto + set estándar, nada oculto) y abierto (set real), Mega, PS, estado y campo.
+- Web: renombrar en la lista; menú «Calcular».
+- Bot: `teamChainValue`; los tests del nivel 3 (invariancia, determinismo) siguen en verde.
+- E2E: los flujos de arriba.
 
-### F. El bot en un hilo de trabajo
+## Criterios de "hecho"
 
-- **Para qué**: que el servidor no quede bloqueado mientras piensa el nivel 3 (hoy ≈ 0,3–1 s, síncrono).
-- **Diseño de partida**: un `worker_thread` por sala o un pool que reciba el `AgentContext` (el sandbox tendría que crearse dentro del worker a partir del estado serializado).
-- **Riesgos**: el sandbox vive sobre el `Battle` real; pasarlo a otro hilo exige serializarlo con cuidado de no filtrar información oculta.
+- [x] `npm run check` en verde y `npm run e2e` en verde en local y en la CI.
+- [x] Calculadora con crítico, Refuerzo (Mano Amiga), Compiescolta, Gravedad, Zona Mágica y Zona Extraña.
+- [x] «Calcular» en el combate abre la calculadora precargada en otra pestaña sin filtrar información oculta.
+- [x] Replays renombrables.
+- [~] Nivel 3 ≥ 65 % contra el 2 en individuales: 65,8 % en la semilla de validación (600 combates), ≈ 64,4 % en 1800 combates con tres semillas; 0,54 s de media; dobles 81,3 % (antes 78,6 %). Cerrado así por decisión del usuario ([ADR-0011](../adr/0011-nivel-3-con-equipo-completo.md)).
+- [x] Documentación: CHANGELOG, PLAN, AGENTS, README, guías (herramientas, bot) y ADR-0011; brief de la fase 11.
 
-## Pregunta para el usuario
+> **Estado**: ✅ cerrada el 2026-10-08. Resultados y lo aprendido en el [CHANGELOG](../../CHANGELOG.md).
 
-- **¿Qué ampliación quieres ahora?** Recomendación: **A** si quieres algo corto y visible; **B** si lo que más te importa es el rival en individuales.
+## Fuera de alcance
 
-## Al cerrar la fase
-
-Sigue el **protocolo de cierre de fase** de [AGENTS.md](../../AGENTS.md): docs, CHANGELOG, el brief de la siguiente fase en `docs/fases/fase-11.md` (o una nueva propuesta como esta), commit y push.
+- Modo clásico IV/EV/Tera, PWA, estadísticas de uso, bot en un hilo de trabajo (opciones C–F de la propuesta).

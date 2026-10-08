@@ -4,6 +4,49 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ## [Sin publicar]
 
+### Fase 10 — Pulido de herramientas y nivel 3 más fuerte en individuales (2026-10-08)
+
+#### Añadido
+
+- **«Calcular» en el combate**: abre la calculadora en **otra pestaña** con tu Pokémon activo atacando al del rival (en dobles, un menú con las parejas), con PS, estado, cambios de características, Mega y el campo. **Sin información oculta**: con equipo cerrado el rival lleva su set estándar más probable (`OpponentModel`, el que supone el bot) con lo revelado encima; con equipo abierto, su set real (`features/calc/from-battle.ts`).
+- **Calculadora**: interruptor **Crítico** y **efectos** de campo: Gravedad, Zona Mágica, Zona Extraña y, en dobles, Refuerzo (aliado del atacante) y Compiescolta (aliado del defensor). `estimateDamage` acepta `{ crit }` (con su propia entrada de caché) y `FieldState.boosts`; `CalcRequest` gana `crit`, `helpingHand`, `friendGuard`, `gravity`, `magicRoom` y `wonderRoom`.
+- **Renombrar replays** en la lista y en el visor (`PATCH /api/replays/:id` con `{ name }`, `RenameReplayRequestSchema`).
+- **Tests E2E con Playwright** (`tools/e2e`, `npm run e2e`; `npm run e2e:install` descarga Chromium): importar un equipo y usarlo, combate contra el nivel 0 con vista previa, un movimiento por atajo, «Calcular», rendirse y guardar el replay; renombrar, ver y borrar el replay; calculadora con crítico y Refuerzo. Corren contra el servidor de producción con `STORAGE_DIR` temporal. **Job propio en la CI** (`e2e`), fuera de `npm run check`.
+- Servidor: `STORAGE_DIR` lleva equipos, rivales y replays a otra carpeta.
+- `@colleja/bot/opponent-model`: entrada aparte de `OpponentModel` para la web (el índice del paquete arrastraría `@smogon/calc`; un test lo impide).
+- Web: `ActionSelect` (menú de acciones del marcador: «Rebobinar», «Calcular»), `IconCalc`, `RenameForm`.
+- **Nivel 3** ([ADR-0011](docs/adr/0011-nivel-3-con-equipo-completo.md)):
+  - **Cadena de equipo completo** (`analysis/team-chain.ts`, `teamChainValue`): duelos encadenados de los dos equipos enteros. En individuales entra en la valoración de cada hoja (`chainWeight` 0,4) con los banquillos de los dos lados en el fork (`search/lineups.ts`), y decide los **relevos forzosos** del nivel 3.
+  - **Penalización de bucles de cambios** (`loopPenalty`, `recentSwitches`): sin ella, dos bots podían cambiar de Pokémon cada turno para siempre (combates de cientos de turnos en el arena).
+  - `simulateDuel` acepta los PS de partida aparte (`DuelStart`) y `withFreshness`, para que la cadena reutilice las cachés.
+- Decisiones de producto: «Calcular» en otra pestaña; E2E en un comando aparte con su job de CI; nivel 3 con ≤ ~1 s de media; cerrar la fase con lo conseguido en el nivel 3.
+- Tests (≈ 300 en `npm run check` + 5 E2E): crítico y efectos contra `@smogon/calc`; `/api/calc` con los campos nuevos; renombrar replays (200, 400, 404) y en la lista; «Calcular» sin información oculta (equipo cerrado y abierto, objeto perdido, campo, parejas en dobles); la web no importa el índice del bot; `teamChainValue` y `recentSwitches`; ida y vuelta del protocolo.
+- Documentación: [ADR-0011](docs/adr/0011-nivel-3-con-equipo-completo.md), guías de [herramientas](docs/guias/herramientas.md) y del [bot](docs/guias/bot.md), y la propuesta de la [fase 11](docs/fases/fase-11.md).
+
+#### Cambiado
+
+- **Nivel 3 contra nivel 2** (arena, equipos aleatorios con vista previa, equipo cerrado, sin elecciones inválidas): **individuales 65,8 %** en una semilla nueva (600 combates, IC 95 % ≈ 62–69 %) y **≈ 64,4 %** sumando las tres semillas medidas (1800 combates), frente al 58,5 % de partida en las mismas condiciones; **dobles 81,3 %** (300 combates; antes 78,6 %). Tiempo medio por decisión: 0,54 s en individuales y 0,41 s en dobles. El objetivo era ≥ 65 % sostenido: se cierra con lo conseguido (decisión del usuario) y la deducción de sets del rival queda para la [fase 11](docs/fases/fase-11.md).
+- La explicación del nivel 3 describe su valoración con los dos equipos y sus relevos en individuales (`EXPLANATION_METHODS.teamChain`).
+- El bundle de la web pasa a ≈ 1,59 MB (≈ 350 KB con gzip).
+
+#### Aprendido al ajustar el nivel 3 (individuales contra el nivel 2, 600 combates por variante, combates de más de 150 turnos como empate)
+
+| Variante | Semilla A | Semilla B |
+|---|---|---|
+| Fase 9 | 58,4 % | 58,7 % |
+| Cadena en la hoja, peso 0,3 / 0,5 / 0,7 / 1 | 64,2 / 62,8 / 59,0 / 52,7 % | — |
+| Cadena 0,5 + relevos por cadena | 64,6 % | 62,7 % |
+| Cadena 0,5 + penalización de bucles 4 | 64,0 % (la mitad de combates eternos) | — |
+| Cadena 0,3 / **0,4** + relevos + bucles | 62,4 / **63,5 %** | 64,2 / **63,9 %** |
+| … + el doble de muestras (12 turnos, 4 suposiciones) | — | 62,8 % (el doble de tiempo) |
+| … + estimación del nivel 2 con peso 0,3 | — | 63,6 % |
+| Cadena **por opción** (cada opción del nivel 2 jugada con los dos equipos), 0,5 sin nivel 2 / 0,3 | — | 60,5 / 63,0 % (más lenta) |
+| Vista previa por cadenas contra los grupos probables del rival | 58,5 % | — |
+| No vistos ordenados por lo que le conviene traer al rival | 60,3 % | 65,0 % |
+| **Con equipo abierto** (techo): fase 9 / configuración elegida | — | 65,9 / **70,7 %** |
+
+La configuración elegida es la de cadena 0,4 + relevos + bucles: 65,8 % en la semilla de validación. La información oculta cuesta ≈ 7 puntos; más muestras no ayudan.
+
 ### Fase 9 — Bot nivel 3 "Experto" (2026-10-08)
 
 #### Añadido

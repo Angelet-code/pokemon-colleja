@@ -2,6 +2,7 @@
 
 - **Estado**: Aceptado (2026-10-08)
 - **Guía operativa**: [docs/guias/bot.md](../guias/bot.md)
+- **Ampliado por**: [ADR-0011](0011-nivel-3-con-equipo-completo.md) (hojas y relevos con el equipo completo en individuales)
 
 ## Contexto
 

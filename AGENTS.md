@@ -26,7 +26,8 @@ El proyecto avanza **por fases** (PLAN §8). Cuando te pidan *"continúa con la 
 | 8. Herramientas de práctica | ✅ ([guía](docs/guias/herramientas.md), [ADR-0008](docs/adr/0008-herramientas-de-practica.md)) |
 | Rediseño de la web | ✅ ([guía](docs/guias/web.md#sistema-de-diseño), [ADR-0009](docs/adr/0009-sistema-de-diseno.md)) |
 | 9. Bot nivel 3 "Experto" | ✅ ([brief](docs/fases/fase-9.md), [ADR-0010](docs/adr/0010-bot-experto-con-sandbox.md), [guía](docs/guias/bot.md)) |
-| **10. Siguiente ampliación** | ⏭️ **Siguiente**: [docs/fases/fase-10.md](docs/fases/fase-10.md) (propuesta: el usuario elige) |
+| 10. Pulido de herramientas y nivel 3 más fuerte | ✅ ([brief](docs/fases/fase-10.md), [ADR-0011](docs/adr/0011-nivel-3-con-equipo-completo.md), guías de [herramientas](docs/guias/herramientas.md) y [bot](docs/guias/bot.md)) |
+| **11. Siguiente ampliación** | ⏭️ **Siguiente**: [docs/fases/fase-11.md](docs/fases/fase-11.md) (propuesta: el usuario elige) |
 
 ### Protocolo de cierre de fase
 
@@ -58,6 +59,7 @@ El proyecto avanza **por fases** (PLAN §8). Cuando te pidan *"continúa con la 
   - Rediseño (2026-10-08): dirección **«retransmisión de torneo»** (opción A de las tres del lienzo de Claude Design): tinta casi negra, voltio para el jugador, magenta para el rival, tipografía condensada; **sin textos explicativos redundantes**.
   - Herramientas (2026-10-08): calculadora **en el servidor**; replays guardados **solo si el usuario lo pide**; explicación del bot **tras cada turno**; visor de replays omnisciente con interruptor "Como jugador"; con equipo cerrado, la explicación **oculta lo no revelado**.
   - Bot nivel 3 (2026-10-08): es el **rival por defecto**; puede pensar **hasta ~3 s** por decisión y debe pensar **mientras el jugador elige**; si una mejora no llega al objetivo, **averiguar qué falla** antes de rebajarlo.
+  - Fase 10 (2026-10-08): «Calcular» abre la calculadora **en otra pestaña**; E2E con Playwright **aparte del check** (`npm run e2e`) y con su job en la CI; el nivel 3 con **≤ ~1 s de media**. El nivel 3 se quedó en ≈ 64 % contra el 2 en individuales (objetivo 65 %): el usuario decidió **cerrar con lo conseguido** y dejar la deducción de sets del rival para otra fase. Le importa que el bot **prediga al rival** (qué hará, a quién cambiará, qué Pokémon y sets tiene).
 
 ## Puesta en marcha
 
@@ -89,13 +91,14 @@ npm run dev          # servidor + web: http://127.0.0.1:5173
 | `npm run typecheck` | `tsc --noEmit` en cada workspace (TypeScript 7) |
 | `npm run lint` / `lint:fix` | Biome (formato + lint) |
 | `npm run check` | lint + typecheck + test + smoke. Ejecútalo antes de dar algo por terminado |
+| `npm run e2e` | Compila la web y ejecuta los tests E2E de Playwright (`tools/e2e/specs/`) contra el servidor real con `STORAGE_DIR` temporal. La primera vez: `npm run e2e:install` (descarga Chromium). No está en el check; la CI lo ejecuta en su propio job ([guía](docs/guias/herramientas.md#tests-e2e-playwright)) |
 
 ## Estructura y reglas de dependencias
 
 ```
 apps/       → aplicaciones (web, server). Pueden depender de packages/*
 packages/   → librerías: showdown (puente al motor), data (datos del juego), core (dominio), engine (sesiones), bot, teamgen, narration (log), protocol (mensajes web ↔ servidor)
-tools/      → scripts: setup, smoke, data-pipeline, cli, arena, dev
+tools/      → scripts: setup, smoke, data-pipeline, cli, arena, dev, e2e (Playwright)
 vendor/pokemon-showdown → submódulo git fijado a un commit (NO editar)
 docs/       → PLAN, research/, adr/, guias/, fases/ (briefs de cada fase)
 storage/    → datos del usuario (teams/, opponents/ y replays/: equipos, rivales y replays guardados): local, no versionado
@@ -147,7 +150,8 @@ assets/     → sprites descargados: local, no versionado
 - El modelo del rival solo usa lo que el bot puede ver (`BattleView` de su perspectiva) y los sets estándar. Nunca le pases el log omnisciente ni el equipo rival con equipo cerrado.
 - Los tests de fuerza son cortos en el check (40 combates por modo); las cifras de referencia (500 por modo) se apuntan en el CHANGELOG al cambiar el bot. El nivel 3 no tiene test de fuerza en el check (sería lento): sus tests usan `LIGHT_SEARCH` (`packages/bot/test/helpers.ts`) y sus cifras van al CHANGELOG.
 - **Nivel 3 y sandbox** ([ADR-0010](docs/adr/0010-bot-experto-con-sandbox.md)): el bot solo usa la interfaz `BattleSandbox` de `core` (`AgentContext.sandbox`); **la implementación vive en `engine/src/sandbox.ts`** y es la que garantiza que un fork no tiene información oculta (sets supuestos, PS del rival en %, generador nuevo con suerte común por acción, sueño sorteado otra vez, sin elecciones ya hechas ni `inputLog`). Si tocas el sandbox, que siga en verde el test de invariancia (`packages/bot/test/expert.test.ts`: misma decisión aunque cambie lo que oculta el rival). El sandbox solo existe al elegir movimientos.
-- Para mejorar el nivel 3, mejora la estimación del nivel 2 (sus hojas) o el modelo de respuestas del rival, y mídelo con el arena contra el nivel 2. Más muestras por opción ya no ayudan; la evaluación sí (tabla del CHANGELOG de la fase 9).
+- Para mejorar el nivel 3, mejora la valoración de sus hojas (la estimación del nivel 2 y la **cadena de equipo completo**, `analysis/team-chain.ts`, [ADR-0011](docs/adr/0011-nivel-3-con-equipo-completo.md)) o el modelo del rival, y mídelo con el arena contra el nivel 2. Más muestras por opción ya no ayudan. Lo que más le limita es la información oculta (con equipo abierto gana ~7 puntos más). Los pesos y el esfuerzo están en `SEARCH_SETTINGS` (`chainWeight`, `loopPenalty`…), nunca en constantes sueltas.
+- **Mide con cuidado**: 600 combates dan ±2 puntos de ruido. Compara variantes con la misma semilla y confirma con otra antes de quedarte una (en la fase 10, una mejora de +1 en una semilla fue −3 en otra). El arena puede tardar mucho si dos bots entran en un bucle de cambios: el nivel 3 los penaliza (`loopPenalty`).
 
 ## Particularidades del servidor y la web
 
@@ -157,7 +161,7 @@ assets/     → sprites descargados: local, no versionado
 - El estado del combate en la web sale de `BattleView` (core) y el log de `@colleja/narration` (port de `BattleTextParser` de Showdown). **No uses `@pkmn/client`/`@pkmn/dex`**: sus datos no son los de Champions ([ADR-0005](docs/adr/0005-servidor-web-y-narracion.md)). Las cifras que se muestran salen de la petición o de `@colleja/data`.
 - El store de la web solo cambia con mensajes del servidor; nunca adivines el resultado de una elección en el cliente.
 - Para los bots en el servidor (o en cualquier bucle humano contra bot), usa `decideFor` de `engine`: reintenta tras `[Unavailable choice]`.
-- El servidor escucha en `127.0.0.1` y usa `SERVER_PORT`/`SERVER_HOST` (no `PORT`, que las herramientas de desarrollo suelen fijar para la web). La web usa `WEB_PORT`.
+- El servidor escucha en `127.0.0.1` y usa `SERVER_PORT`/`SERVER_HOST` (no `PORT`, que las herramientas de desarrollo suelen fijar para la web). La web usa `WEB_PORT`. `STORAGE_DIR` lleva equipos, rivales y replays a otra carpeta (los E2E usan una temporal).
 - Champions añade el color de la barra de PS al 20 % y al 50 % justos (`50/100y`): usa siempre `parseCondition` de `core` para leer condiciones.
 
 ## Particularidades del diseño de la web
@@ -180,7 +184,9 @@ assets/     → sprites descargados: local, no versionado
 
 ## Particularidades de las herramientas de práctica
 
-- **La calculadora es `estimateDamage` de `@colleja/bot`** en el servidor (`POST /api/calc`). No añadas `@smogon/calc` a la web ni otra fórmula de daño.
+- **La calculadora es `estimateDamage` de `@colleja/bot`** en el servidor (`POST /api/calc`). No añadas `@smogon/calc` a la web ni otra fórmula de daño. **La web nunca importa el índice de `@colleja/bot`** (arrastraría la calculadora): solo entradas ligeras como `@colleja/bot/opponent-model` (lo comprueba `apps/web/test/dependencies.test.ts`).
+- **«Calcular» desde el combate solo usa lo que ve el jugador** (`features/calc/from-battle.ts`): `BattleView` de p1, su equipo y el del rival solo con equipo abierto; los sets supuestos salen de `OpponentModel`. Los efectos de un turno de la calculadora (Refuerzo, Compiescolta) van en `FieldState.boosts` y los combates no los rellenan.
+- Los E2E usan nombres accesibles (`getByRole`, `getByLabel`), el bot de nivel 0 y nunca esperas fijas. Si cambias un texto o una etiqueta de la UI, revisa `tools/e2e/specs/`.
 - **Una explicación nunca cambia una decisión**: los bots guardan lo que ya calcularon y construyen la explicación en `explain()`, bajo demanda y sin tocar el generador aleatorio. `packages/bot/test/explain.test.ts` juega con y sin explicaciones y exige el mismo `inputLog`.
 - **La explicación es información oculta**: la sala (`BattleRoom`) solo envía las de turnos ya resueltos y, con equipo cerrado, pasadas por `redactExplanation` (core). Si tocas la sala, que siga en verde el test de `apps/server/test/tools.test.ts`.
 - **Los replays solo los crea el servidor** a partir de una sala terminada (`battle:save-replay`); no hay `POST /api/replays`. `ReplayDataSchema` (protocol) replica `ReplayData` (engine): si cambias uno, cambia el otro y sube la versión.
