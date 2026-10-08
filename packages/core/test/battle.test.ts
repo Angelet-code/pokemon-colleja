@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   actionsChoice,
   BattleView,
+  currentTypes,
   formatChoice,
   getSlotOptions,
   type MoveRequest,
@@ -254,6 +255,39 @@ describe('BattleView', () => {
     expect(view.field.weather).toBeNull();
     expect(view.getPokemon('p2a: Gengar')?.fainted).toBe(true);
     expect(view.winner).toBe('p1');
+  });
+});
+
+describe('BattleView types', () => {
+  it('uses the species types and follows type changes until the Pokémon leaves', () => {
+    const view = BattleView.from([
+      '|switch|p1a: Charizard|Charizard, L50, F|155/155',
+      '|switch|p2a: Greninja|Greninja, L50, M|100/100',
+      '|switch|p2b: Gengar|Gengar, L50, M|100/100',
+    ]);
+    const charizard = view.getPokemon('p1: Charizard');
+    const greninja = view.getPokemon('p2: Greninja');
+    const gengar = view.getPokemon('p2: Gengar');
+    if (!charizard || !greninja || !gengar) throw new Error('missing Pokémon');
+    expect(currentTypes(charizard)).toEqual(['Fire', 'Flying']);
+
+    view.applyAll([
+      '|-start|p2a: Greninja|typechange|Ice|[from] ability: Protean',
+      "|-start|p1a: Charizard|typeadd|Grass|[from] move: Forest's Curse",
+      '|-start|p2b: Gengar|typechange|[from] move: Reflect Type|[of] p1a: Charizard',
+    ]);
+    expect(currentTypes(greninja)).toEqual(['Ice']);
+    expect(currentTypes(charizard)).toEqual(['Fire', 'Flying', 'Grass']);
+    expect(currentTypes(gengar)).toEqual(['Fire', 'Flying', 'Grass']);
+
+    view.applyAll([
+      '|-mega|p1a: Charizard|Charizard|Charizardite X',
+      '|detailschange|p1a: Charizard|Charizard-Mega-X, L50, F',
+      '|switch|p2a: Dragonite|Dragonite, L50, M|100/100',
+    ]);
+    expect(currentTypes(charizard)).toEqual(['Fire', 'Dragon']);
+    expect(greninja.typeChange).toBeNull();
+    expect(currentTypes(greninja)).toEqual(['Water', 'Dark']);
   });
 });
 

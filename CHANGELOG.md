@@ -4,6 +4,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ## [Sin publicar]
 
+### Añadido
+
+- En combate, cada tarjeta de PS muestra los **tipos** del Pokémon. Siguen los cambios de tipo (Protean, Libero, Empapar, Bosque Maldito, Clonatipo…) hasta que se retira, y los de la Mega Evolución. `BattleView` guarda `typeChange` y `currentTypes` (core) da los tipos actuales.
+
 ### Cambiado
 
 - Los equipos aleatorios (`teamgen`) pueden llevar **hasta dos megapiedras** (antes una). El formato no limita las megapiedras (solo prohíbe repetir objeto); solo se megaevoluciona una vez por combate. Decisión de producto del 2026-10-09.

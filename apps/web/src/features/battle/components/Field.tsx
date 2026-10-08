@@ -5,12 +5,13 @@
  * request (exact HP, item, ability).
  */
 import type { BattleView, RequestPokemon, SideId, ViewPokemon } from '@colleja/core';
-import { parseCondition } from '@colleja/core';
+import { currentTypes, parseCondition } from '@colleja/core';
 import { type Locale, toId } from '@colleja/data';
 import { abilityName, itemName, speciesName, statusName, statusShort } from '@colleja/narration';
 import type { CSSProperties } from 'react';
 import { ItemIcon } from '../../../components/ItemIcon';
 import { PokemonIcon, PokemonSprite } from '../../../components/PokemonIcon';
+import { TypeBadge } from '../../../components/TypeBadge';
 import { Chip } from '../../../components/ui';
 import { useSettings } from '../../../stores/settings';
 import { boostLabels, fieldEffects, hpPercent, hpTone, sideConditions } from '../format';
@@ -168,6 +169,13 @@ function HpCard({
           )}
         </span>
       </div>
+      <ul className="mt-1.5 flex gap-1" aria-label="Tipos">
+        {currentTypes(pokemon).map((type) => (
+          <li key={type}>
+            <TypeBadge type={type} locale={locale} />
+          </li>
+        ))}
+      </ul>
       <HpBar percent={percent} tone={hpTone(percent)} />
       <div className="mt-1.5 flex justify-between font-display text-sm font-semibold tabular-nums">
         <span>{rival ? `${Math.round(percent)} %` : `${pokemon.hp} / ${pokemon.maxhp} PS`}</span>

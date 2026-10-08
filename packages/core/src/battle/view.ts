@@ -4,7 +4,7 @@
  * battle screen (ADR-0005). It only tracks what they need; extend it here, with tests, if a
  * consumer needs more (volatiles, remaining turns of weather…).
  */
-import { type SpeciesId, toId } from '@colleja/data';
+import { getSpecies, type SpeciesId, TYPE_NAMES, type TypeName, toId } from '@colleja/data';
 import { detailsSpecies, identName, parseCondition } from './request';
 import type { SideId } from './types';
 
@@ -41,6 +41,16 @@ export interface ViewPokemon {
   /** Last move it used and the turn it was used in. */
   lastMove: string | null;
   lastMoveTurn: number | null;
+  /**
+   * Types after a type change (Protean, Soak, Forest's Curse…) until it leaves the field or
+   * changes form; `null` = the species' own types (see `currentTypes`).
+   */
+  typeChange: TypeName[] | null;
+}
+
+/** The types a Pokémon has right now: a type change, or those of its current species. */
+export function currentTypes(pokemon: Pick<ViewPokemon, 'species' | 'typeChange'>): TypeName[] {
+  return pokemon.typeChange ?? getSpecies(pokemon.species)?.types ?? [];
 }
 
 export interface ViewSide {
@@ -137,12 +147,24 @@ export class BattleView {
         if (pokemon) {
           pokemon.details = b;
           pokemon.species = toId(detailsSpecies(b));
+          pokemon.typeChange = null;
         }
         break;
       }
       case '-formechange': {
         const pokemon = this.getPokemon(a);
-        if (pokemon) pokemon.species = toId(b);
+        if (pokemon) {
+          pokemon.species = toId(b);
+          pokemon.typeChange = null;
+        }
+        break;
+      }
+      case '-start':
+        this.startTypeChange(a, b, c, args);
+        break;
+      case '-end': {
+        const pokemon = this.getPokemon(a);
+        if (pokemon && b === 'typechange') pokemon.typeChange = null;
         break;
       }
       case '-mega': {
@@ -325,6 +347,7 @@ export class BattleView {
         movedSinceSwitch: false,
         lastMove: null,
         lastMoveTurn: null,
+        typeChange: null,
       };
       viewSide.pokemon.push(pokemon);
     }
@@ -332,6 +355,7 @@ export class BattleView {
     if (previous && previous !== pokemon) {
       previous.position = null;
       previous.boosts = {};
+      previous.typeChange = null;
     }
     if (previous !== pokemon) {
       pokemon.switchedInTurn = this.turn;
@@ -342,6 +366,24 @@ export class BattleView {
     pokemon.details = details;
     pokemon.species = toId(detailsSpecies(details));
     this.updateCondition(identWithPosition, condition);
+  }
+
+  /** `-start|POKEMON|typechange|Fire/Water` (or `typeadd|Grass`; Reflect Type: `[of] TARGET`). */
+  private startTypeChange(ident: string, effect: string, value: string, args: string[]): void {
+    const pokemon = this.getPokemon(ident);
+    if (!pokemon || (effect !== 'typechange' && effect !== 'typeadd')) return;
+    let types: TypeName[];
+    if (value.startsWith('[')) {
+      const of = args.find((arg) => arg.startsWith('[of] '))?.slice('[of] '.length);
+      const source = of ? this.getPokemon(of) : undefined;
+      if (!source) return;
+      types = [...currentTypes(source)];
+    } else {
+      types = value.split('/').filter(isTypeName);
+    }
+    if (types.length === 0) return;
+    pokemon.typeChange =
+      effect === 'typeadd' ? [...new Set([...currentTypes(pokemon), ...types])] : types;
   }
 
   private updateCondition(ident: string, condition: string): void {
@@ -357,6 +399,10 @@ export class BattleView {
 
 function emptySide(id: SideId): ViewSide {
   return { id, name: id, preview: [], teamSize: null, pokemon: [], active: [], conditions: {} };
+}
+
+function isTypeName(text: string): text is TypeName {
+  return (TYPE_NAMES as readonly string[]).includes(text);
 }
 
 function isSide(text: string): text is SideId {
