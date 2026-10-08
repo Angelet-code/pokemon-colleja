@@ -3,7 +3,7 @@
  * player asks for it, once the battle is over: it carries the omniscient log, the player's
  * own log (to watch it "as the player") and the bot's explanation of every turn.
  */
-import type { ExplainedAction, TurnExplanation } from '@colleja/core';
+import type { ExplainedAction, PokemonBeliefs, TurnExplanation } from '@colleja/core';
 import { z } from 'zod';
 import { BattleOptionsSchema, BotLevelSchema, GameModeSchema, SideIdSchema } from './common';
 import { PokemonSetSchema, SavedIdSchema } from './teams';
@@ -26,6 +26,32 @@ export const ExplainedActionSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('hidden'), user: SpeciesSchema.optional() }),
 ]) satisfies z.ZodType<ExplainedAction>;
 
+const StatTableSchema = z.object({
+  hp: z.number().int(),
+  atk: z.number().int(),
+  def: z.number().int(),
+  spa: z.number().int(),
+  spd: z.number().int(),
+  spe: z.number().int(),
+});
+
+export const PokemonBeliefsSchema = z.object({
+  species: SpeciesSchema,
+  guesses: z
+    .array(
+      z.object({
+        probability: z.number().min(0).max(1),
+        item: z.string().max(40).optional(),
+        ability: z.string().max(40),
+        nature: z.string().max(20),
+        statPoints: StatTableSchema,
+        moves: z.array(z.string().max(40)).max(4),
+        variant: z.boolean().optional(),
+      }),
+    )
+    .max(8),
+}) satisfies z.ZodType<PokemonBeliefs>;
+
 export const TurnExplanationSchema = z.object({
   turn: z.number().int().min(0),
   kind: z.enum(['moves', 'switch']),
@@ -39,6 +65,7 @@ export const TurnExplanationSchema = z.object({
       }),
     )
     .max(40),
+  beliefs: z.array(PokemonBeliefsSchema).max(6).optional(),
 }) satisfies z.ZodType<TurnExplanation>;
 
 // ── Replays ────────────────────────────────────────────────────────────────

@@ -77,7 +77,7 @@ export class AggressiveAgent implements BattleAgent {
 
   choose(context: AgentContext): Choice {
     this.explainLast = null;
-    const situation = new Situation(context);
+    const situation = this.situation(context);
     const { request } = context;
     switch (requestKind(request)) {
       case 'team':
@@ -87,6 +87,11 @@ export class AggressiveAgent implements BattleAgent {
       default:
         return this.chooseMoves(situation, request as MoveRequest);
     }
+  }
+
+  /** What the bot makes of its context before deciding. */
+  protected situation(context: AgentContext): Situation {
+    return new Situation(context);
   }
 
   protected chooseTeam(situation: Situation, request: TeamPreviewRequest): Choice {

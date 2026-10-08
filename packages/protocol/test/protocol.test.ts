@@ -24,6 +24,7 @@ import {
   ServerMessageSchema,
   StartBattleSchema,
   TeamSchema,
+  TurnExplanationSchema,
   UpdateOpponentRequestSchema,
   UpdateTeamRequestSchema,
   ValidateTeamRequestSchema,
@@ -341,6 +342,41 @@ describe('phase 8: calculator, replays and explanations', () => {
         explanations: [{ ...explanation, kind: 'team' }],
       }).success,
     ).toBe(false);
+  });
+
+  it('carries what the bot believes about the player team (phase 11)', () => {
+    const withBeliefs = {
+      ...explanation,
+      beliefs: [
+        {
+          species: 'garchomp',
+          guesses: [
+            {
+              probability: 0.7,
+              item: 'choicescarf',
+              ability: 'roughskin',
+              nature: 'jolly',
+              statPoints: { hp: 2, atk: 32, def: 0, spa: 0, spd: 0, spe: 32 },
+              moves: ['earthquake', 'outrage'],
+              variant: true,
+            },
+            {
+              probability: 0.3,
+              ability: 'roughskin',
+              nature: 'careful',
+              statPoints: { hp: 32, atk: 0, def: 17, spa: 0, spd: 17, spe: 0 },
+              moves: ['earthquake'],
+            },
+          ],
+        },
+      ],
+    };
+    expect(TurnExplanationSchema.parse(withBeliefs)).toEqual(withBeliefs);
+    // Old explanations (and replays) have none.
+    expect(TurnExplanationSchema.parse(explanation)).toEqual(explanation);
+    const bad = structuredClone(withBeliefs);
+    (bad.beliefs[0]?.guesses[0] as { probability: number }).probability = 2;
+    expect(TurnExplanationSchema.safeParse(bad).success).toBe(false);
   });
 
   it('carries explanations in updates and the save-replay messages', () => {

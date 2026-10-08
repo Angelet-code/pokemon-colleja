@@ -26,6 +26,7 @@ import { pickBest } from '../analysis/evaluation';
 import { planSingles, singlesBaseline } from '../analysis/singles-plan';
 import { Situation } from '../analysis/situation';
 import { teamChainValue } from '../analysis/team-chain';
+import { actionKeys, type StylePrediction } from '../inference/style';
 import { type Assumption, rivalAssumptions } from './assumptions';
 import { forkFoeLineup, ownLineup } from './lineups';
 
@@ -55,6 +56,11 @@ export interface SearchSettings {
    * (`recentSwitches`): stops two players from switching back and forth forever.
    */
   loopPenalty: number;
+  /**
+   * Rival replies tried against the own obvious option to find its counter (`StylePrediction`);
+   * 0 turns the rival's style off.
+   */
+  counterCandidates: number;
 }
 
 export const SEARCH_SETTINGS: Record<'singles' | 'doubles', SearchSettings> = {
@@ -67,6 +73,7 @@ export const SEARCH_SETTINGS: Record<'singles' | 'doubles', SearchSettings> = {
     positionWeight: 0.5,
     chainWeight: 0.4,
     loopPenalty: 4,
+    counterCandidates: 6,
   },
   doubles: {
     assumptions: 2,
@@ -77,6 +84,7 @@ export const SEARCH_SETTINGS: Record<'singles' | 'doubles', SearchSettings> = {
     positionWeight: 0.5,
     chainWeight: 0,
     loopPenalty: 4,
+    counterCandidates: 6,
   },
 };
 
@@ -94,6 +102,16 @@ export interface ScoredOption {
 export interface SearchResult {
   options: ScoredOption[];
   chosen: ScoredOption;
+  /** What the search expected from the rival (with `SearchTools.style`). */
+  prediction?: StylePrediction;
+}
+
+/** How the rival's replies are adapted to its style (`RivalStyle`). */
+export interface StyleAdjustment {
+  /** Multiplies `replyTemperature`: below 1 for a rival that does the obvious. */
+  temperatureFactor: number;
+  /** Share of the replies' weight given to the counter of the own obvious option (0–1). */
+  counterWeight: number;
 }
 
 /** Everything the search needs besides the position. */
@@ -102,6 +120,8 @@ export interface SearchTools {
   random: SeededRandom;
   /** Chooses forced replacements inside the forks (for both sides). */
   replacements: BattleAgent;
+  /** Adapts the rival's replies to its style and predicts them (level 3 with a style). */
+  style?: StyleAdjustment;
 }
 
 /** Options for this turn ranked by level 2, best first (`null`: nothing to plan). */
@@ -137,9 +157,28 @@ export function searchMoves(
   const seed = String(random.int(2 ** 31));
   const totals = own.map(() => ({ sum: 0, count: 0 }));
   const assumptions = rivalAssumptions(situation, settings.assumptions, random);
+  let prediction: StylePrediction | undefined;
   assumptions.forEach((assumption, a) => {
     const root = sandbox.fork(assumption, `${seed}:${a}`);
-    const replies = rivalReplies(situation, root, assumption, tools);
+    const ranked = rankRivalReplies(situation, root, assumption, tools);
+    const counter = tools.style
+      ? counterReply(
+          situation,
+          root,
+          assumption,
+          own[0] as ScoredOption,
+          ranked,
+          tools,
+          `${seed}:${a}`,
+        )
+      : null;
+    if (a === 0 && ranked.request && ranked.options[0]) {
+      prediction = {
+        obvious: actionKeys(ranked.request, ranked.options[0].actions),
+        counter: counter ? actionKeys(ranked.request, counter.actions) : [],
+      };
+    }
+    const replies = replyWeights(ranked, counter, tools);
     for (let turn = 0; turn < settings.turns; turn++) {
       const reply = stratifiedPick(replies, (turn + 0.5) / settings.turns);
       own.forEach((option, o) => {
@@ -164,7 +203,8 @@ export function searchMoves(
     return [{ actions: option.actions, score: total.sum / total.count - (switches ? loop : 0) }];
   });
   const chosen = pickBest(options, random);
-  return chosen ? { options, chosen } : { options: own, chosen: own[0] as ScoredOption };
+  const result = chosen ? { options, chosen } : { options: own, chosen: own[0] as ScoredOption };
+  return prediction ? { ...result, prediction } : result;
 }
 
 interface Reply {
@@ -173,30 +213,85 @@ interface Reply {
   weight: number;
 }
 
-/** The rival's likely replies in a fork: level 2 playing its side, weighted by score. */
-function rivalReplies(
+/** The rival's options in a fork as level 2 ranks them from its side (best first). */
+interface RankedReplies {
+  /** The rival's request in the fork (`null`: it has nothing to plan). */
+  request: MoveRequest | null;
+  options: ScoredOption[];
+}
+
+function rankRivalReplies(
   situation: Situation,
   root: SandboxBattle,
   assumption: Assumption,
   tools: SearchTools,
-): Reply[] {
+): RankedReplies {
   const request = root.request(situation.foe);
-  if (!request || requestKind(request) !== 'move') return [{ choice: null, weight: 1 }];
+  if (!request || requestKind(request) !== 'move') return { request: null, options: [] };
   const rival = new Situation(rivalContext(situation, request, [], assumption));
-  const ranked = rankedOptions(rival, request as MoveRequest, tools.random)?.slice(
-    0,
+  const count = Math.max(
     tools.settings.rivalReplies,
+    tools.style ? tools.settings.counterCandidates : 0,
   );
-  const top = ranked?.[0];
-  if (!ranked || !top) return [{ choice: null, weight: 1 }];
-  const weights = ranked.map((option) =>
-    Math.exp((option.score - top.score) / tools.settings.replyTemperature),
-  );
-  const sum = weights.reduce((total, weight) => total + weight, 0);
-  return ranked.map((option, i) => ({
+  const ranked = rankedOptions(rival, request as MoveRequest, tools.random)?.slice(0, count) ?? [];
+  return { request: request as MoveRequest, options: ranked };
+}
+
+/**
+ * The rival's reply that does best against the own obvious option (level 2's best), among its
+ * best `counterCandidates`: one turn played for each.
+ */
+function counterReply(
+  situation: Situation,
+  root: SandboxBattle,
+  assumption: Assumption,
+  obvious: ScoredOption,
+  ranked: RankedReplies,
+  tools: SearchTools,
+  seed: string,
+): ScoredOption | null {
+  let counter: ScoredOption | null = null;
+  let lowest = Infinity;
+  ranked.options.slice(0, tools.settings.counterCandidates).forEach((reply, r) => {
+    const leaf = root.clone(`${seed}:counter:${r}`);
+    if (!leaf.choose(situation.me, actions(obvious.actions))) return;
+    if (!leaf.choose(situation.foe, actions(reply.actions))) return;
+    const value = positionValue(situation, leaf, assumption, tools);
+    if (value < lowest) {
+      lowest = value;
+      counter = reply;
+    }
+  });
+  return counter;
+}
+
+/**
+ * The rival's likely replies: level 2's best ones weighted by score (softmax, sharper for a
+ * rival that does the obvious) plus, for a rival that counters, its counter.
+ */
+function replyWeights(
+  ranked: RankedReplies,
+  counter: ScoredOption | null,
+  tools: SearchTools,
+): Reply[] {
+  const options = ranked.options.slice(0, tools.settings.rivalReplies);
+  const top = options[0];
+  if (!top) return [{ choice: null, weight: 1 }];
+  const temperature = tools.settings.replyTemperature * (tools.style?.temperatureFactor ?? 1);
+  const raw = options.map((option) => Math.exp((option.score - top.score) / temperature));
+  const sum = raw.reduce((total, weight) => total + weight, 0);
+  const countered = counter ? (tools.style?.counterWeight ?? 0) : 0;
+  const replies = options.map((option, i) => ({
     choice: actions(option.actions),
-    weight: (weights[i] ?? 0) / sum,
+    weight: ((raw[i] ?? 0) / sum) * (1 - countered),
+    option,
   }));
+  if (counter && countered > 0) {
+    const same = replies.find((reply) => reply.option === counter);
+    if (same) same.weight += countered;
+    else replies.push({ choice: actions(counter.actions), weight: countered, option: counter });
+  }
+  return replies.map(({ choice, weight }) => ({ choice, weight }));
 }
 
 /**

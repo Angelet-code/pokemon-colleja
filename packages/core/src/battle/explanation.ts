@@ -3,6 +3,7 @@
  * while deciding (the decision itself never depends on it); the server shows it to the player
  * only once the turn is resolved, hiding what the player has not seen yet.
  */
+import type { StatTable } from '@colleja/data';
 import type { SideId } from './types';
 import type { BattleView, ViewPokemon } from './view';
 
@@ -32,6 +33,26 @@ export interface ExplainedOption {
   chosen: boolean;
 }
 
+/** One guess of the bot about a set of the other player (level 3). */
+export interface SetGuess {
+  /** 0–1. */
+  probability: number;
+  item?: string;
+  ability: string;
+  nature: string;
+  statPoints: StatTable;
+  moves: string[];
+  /** A spread the bot came up with because no standard set fitted what it saw. */
+  variant?: boolean;
+}
+
+/** What the bot believes about one Pokémon of the other player, most likely guess first. */
+export interface PokemonBeliefs {
+  /** Base species (Showdown id). */
+  species: string;
+  guesses: SetGuess[];
+}
+
 export interface DecisionExplanation {
   /** What was decided: the moves of a turn or the replacements after a faint. */
   kind: 'moves' | 'switch';
@@ -39,6 +60,11 @@ export interface DecisionExplanation {
   method: string;
   /** Best first; includes the chosen one(s). */
   options: ExplainedOption[];
+  /**
+   * What the bot believed about the other player's Pokémon seen in battle (level 3). It is
+   * about the player's own team, so it reveals nothing hidden from them.
+   */
+  beliefs?: PokemonBeliefs[];
 }
 
 /** An explanation tied to the turn it was made for. */

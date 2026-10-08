@@ -2,11 +2,12 @@
  * Why the bot played as it did: the options it valued in a resolved turn, the chosen one
  * marked. Used in the battle screen and in the replay viewer.
  */
-import type { ExplainedAction, TurnExplanation } from '@colleja/core';
-import type { Locale } from '@colleja/data';
-import { moveName, speciesName } from '@colleja/narration';
+import type { ExplainedAction, PokemonBeliefs, SetGuess, TurnExplanation } from '@colleja/core';
+import { type Locale, STAT_IDS } from '@colleja/data';
+import { itemName, moveName, natureName, speciesName, statShort } from '@colleja/narration';
 import { useEffect, useState } from 'react';
 import { IconBolt, IconCheck, IconChevronDown } from '../../../components/icons';
+import { Chip } from '../../../components/ui';
 import { useSettings } from '../../../stores/settings';
 
 /** One action in Spanish, from the bot's point of view (p2). */
@@ -33,11 +34,64 @@ export function actionText(action: ExplainedAction, locale: Locale): string {
   }
 }
 
+/** A guessed set in one line: item, nature, main Stat Points and moves. */
+export function guessText(guess: SetGuess, locale: Locale): string {
+  const points = STAT_IDS.filter((stat) => guess.statPoints[stat] >= 16)
+    .map((stat) => `${guess.statPoints[stat]} ${statShort(stat, locale)}`)
+    .join(' ');
+  return [
+    guess.item ? itemName(guess.item, locale) : 'Sin objeto',
+    natureName(guess.nature, locale),
+    points,
+    guess.moves.map((move) => moveName(move, locale)).join(', '),
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+/** What the bot believed about the player's Pokémon (level 3). */
+function BeliefList({ beliefs, locale }: { beliefs: PokemonBeliefs[]; locale: Locale }) {
+  return (
+    <section className="flex flex-col gap-1.5">
+      <h4 className="eyebrow text-faint">Lo que cree de tu equipo</h4>
+      <ul className="flex flex-col gap-2" aria-label="Lo que cree el bot de tu equipo">
+        {beliefs.map((pokemon) => (
+          <li key={pokemon.species} className="flex flex-col gap-0.5 text-sm">
+            <span className="font-display font-semibold tracking-[0.04em] uppercase">
+              {speciesName(pokemon.species, locale)}
+            </span>
+            {pokemon.guesses.map((guess, index) => (
+              <span
+                // biome-ignore lint/suspicious/noArrayIndexKey: guesses keep their order.
+                key={index}
+                className={`flex items-baseline gap-2 ${index === 0 ? 'text-text' : 'text-muted'}`}
+              >
+                <span className="w-10 shrink-0 text-right font-display font-semibold tabular-nums">
+                  {Math.round(guess.probability * 100)} %
+                </span>
+                <span className="min-w-0">
+                  {guessText(guess, locale)}
+                  {guess.variant && (
+                    <Chip className="ml-1.5" title="Ningún set estándar cuadraba con lo que vio">
+                      Reparto propio
+                    </Chip>
+                  )}
+                </span>
+              </span>
+            ))}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 export function ExplanationList({ explanations }: { explanations: TurnExplanation[] }) {
   const locale = useSettings((state) => state.namesLocale);
   if (explanations.length === 0) {
     return <p className="text-sm text-muted">No tuvo que decidir nada.</p>;
   }
+  const beliefs = explanations.findLast((explanation) => explanation.beliefs?.length)?.beliefs;
   return (
     <div className="flex flex-col gap-4">
       {explanations.map((explanation, index) => {
@@ -88,6 +142,7 @@ export function ExplanationList({ explanations }: { explanations: TurnExplanatio
           </section>
         );
       })}
+      {beliefs && <BeliefList beliefs={beliefs} locale={locale} />}
     </div>
   );
 }

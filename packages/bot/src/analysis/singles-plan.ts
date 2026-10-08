@@ -28,7 +28,7 @@ import {
   SETUP_MOVES,
   STATUS_MOVES,
 } from './move-knowledge';
-import { battleForm, type OwnMember, type Situation } from './situation';
+import { battleForm, type FoeMember, type OwnMember, type Situation } from './situation';
 
 export interface PlannedOption {
   action: SlotAction;
@@ -71,8 +71,10 @@ export function planSingles(situation: Situation, slot: SlotOptions): PlannedOpt
   if (!first) return null;
   return first.map((option, i) => ({
     action: option.action,
-    score:
-      perVariant.reduce((sum, options) => sum + (options[i]?.score ?? 0), 0) / perVariant.length,
+    score: variantAverage(
+      foe,
+      perVariant.map((options) => options[i]?.score ?? 0),
+    ),
   }));
 }
 
@@ -100,13 +102,21 @@ export function singlesBaseline(situation: Situation, slot: SlotOptions): number
   const member = situation.own[slot.index];
   const foe = situation.foeAt(0);
   if (!member || !foe) return 0;
-  const total = foe.variants.reduce((sum, variant) => {
+  const values = foe.variants.map((variant) => {
     const next = nextInLine(situation, variant);
     const own =
       hpShare(member.combatant, member.combatant.hp) + (next ? hpShare(next, next.hp) : 0);
-    return sum + (own - hpShare(variant, variant.hp)) * 100;
-  }, 0);
-  return total / foe.variants.length;
+    return (own - hpShare(variant, variant.hp)) * 100;
+  });
+  return variantAverage(foe, values);
+}
+
+/** Average of one value per variant of `foe`, weighted by their probability if known. */
+function variantAverage(foe: FoeMember, values: readonly number[]): number {
+  const weights = foe.variantWeights;
+  if (!weights) return values.reduce((sum, value) => sum + value, 0) / values.length;
+  const total = weights.reduce((sum, weight) => sum + weight, 0) || 1;
+  return values.reduce((sum, value, i) => sum + value * (weights[i] ?? 0), 0) / total;
 }
 
 /** Options against one assumption of the rival's set. */

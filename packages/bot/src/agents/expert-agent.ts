@@ -6,16 +6,30 @@
  * Pokémon whose whole-team chain ends best. Team preview is level 2's. Without a sandbox (the
  * engine offers one only while choosing moves) it chooses moves as level 2.
  */
-import { type Choice, getSlotOptions, type MoveRequest, type SwitchRequest } from '@colleja/core';
+import {
+  type AgentContext,
+  type Choice,
+  getSlotOptions,
+  type MoveRequest,
+  requestKind,
+  type SwitchRequest,
+} from '@colleja/core';
 import { pickBest } from '../analysis/evaluation';
 import { fightingForm } from '../analysis/singles-plan';
-import type { Situation } from '../analysis/situation';
+import { Situation } from '../analysis/situation';
 import { teamChainValue } from '../analysis/team-chain';
 import { describeAction, EXPLANATION_METHODS, explanation, roundScore } from '../explain';
+import { explainBeliefs } from '../inference/explain-beliefs';
+import { COUNTER_CHANCE, RivalStyle, type StyleSummary } from '../inference/style';
 import type { BotLevel } from '../levels';
 import { rivalAssumptions } from '../search/assumptions';
 import { foeLineup } from '../search/lineups';
-import { SEARCH_SETTINGS, type SearchSettings, searchMoves } from '../search/lookahead';
+import {
+  SEARCH_SETTINGS,
+  type SearchSettings,
+  type StyleAdjustment,
+  searchMoves,
+} from '../search/lookahead';
 import { type BotOptions, explainContext } from './aggressive-agent';
 import { TacticalAgent } from './tactical-agent';
 
@@ -29,10 +43,37 @@ export class ExpertAgent extends TacticalAgent {
   override readonly level: BotLevel = 3;
   /** Level 2 deciding forced replacements inside the forks. */
   private readonly replacements: TacticalAgent;
+  /** How the rival has played so far in this battle. */
+  private readonly style = new RivalStyle();
+  /** The situation of the decision being made (to explain its beliefs). */
+  private lastSituation: Situation | null = null;
 
   constructor(private readonly options: ExpertOptions = {}) {
     super(options);
     this.replacements = new TacticalAgent({ seed: `${this.random.next()}` });
+  }
+
+  /**
+   * Level 3 weighs the rival's sets by what it has observed (`inferBeliefs`), except when it
+   * chooses moves without a sandbox (then it is level 2).
+   */
+  protected override situation(context: AgentContext): Situation {
+    const kind = requestKind(context.request);
+    const infer = kind === 'switch' || (kind === 'move' && context.sandbox !== undefined);
+    const situation = new Situation(context, infer ? { beliefs: 'infer' } : {});
+    this.lastSituation = situation;
+    return situation;
+  }
+
+  override choose(context: AgentContext): Choice {
+    this.lastSituation = null;
+    const choice = super.choose(context);
+    const situation = this.lastSituation as Situation | null;
+    const decided = this.explainLast;
+    if (situation?.beliefs && decided) {
+      this.explainLast = () => ({ ...decided(), beliefs: explainBeliefs(situation) });
+    }
+    return choice;
   }
 
   private settings(situation: Situation): SearchSettings {
@@ -79,12 +120,19 @@ export class ExpertAgent extends TacticalAgent {
   protected override chooseMoves(situation: Situation, request: MoveRequest): Choice {
     const { sandbox } = situation.context;
     if (!sandbox) return super.chooseMoves(situation, request);
+    const settings = this.settings(situation);
+    const style =
+      settings.counterCandidates > 0
+        ? styleAdjustment(this.style.summary(situation.context.log, situation.foe))
+        : undefined;
     const result = searchMoves(situation, sandbox, {
-      settings: this.settings(situation),
+      settings,
       random: this.random,
       replacements: this.replacements,
+      ...(style ? { style } : {}),
     });
     if (!result) return super.chooseMoves(situation, request);
+    if (result.prediction) this.style.record(situation.view.turn, result.prediction);
     const context = explainContext(situation);
     const slots = getSlotOptions(request);
     this.explainLast = () =>
@@ -100,4 +148,18 @@ export class ExpertAgent extends TacticalAgent {
       ]);
     return { type: 'actions', actions: result.chosen.actions };
   }
+}
+
+/** Most a counter can weigh among the rival's replies. */
+const MAX_COUNTER_WEIGHT = 0.6;
+
+/**
+ * Replies adapted to the rival's style: the more it does the obvious, the sharper (half the
+ * time obvious = unchanged); the more it counters beyond chance, the more its counter weighs.
+ */
+export function styleAdjustment(style: StyleSummary): StyleAdjustment {
+  const temperatureFactor = Math.min(2, Math.max(0.25, (1 - style.obviousRate) / 0.5));
+  const beyondChance = (style.counterRate - COUNTER_CHANCE) / (1 - COUNTER_CHANCE);
+  const counterWeight = Math.min(MAX_COUNTER_WEIGHT, Math.max(0, beyondChance));
+  return { temperatureFactor, counterWeight };
 }

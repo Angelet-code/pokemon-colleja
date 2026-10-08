@@ -1,8 +1,9 @@
 /**
  * Assumptions about the rival's hidden sets for the level 3 bot's forks. Each one is a full
  * guess ("determinization"): a set for every rival seen and the rivals not seen yet, drawn
- * from the opponent model. The first assumption uses the most likely set of each rival (the
- * most offensive one, like level 2); the next ones go down each list.
+ * from the opponent model. With beliefs (`Situation.beliefs`), the sets are spread by their
+ * probability (quantiles); otherwise the first assumption uses the first candidate of each
+ * rival (the most offensive one, like level 2) and the next ones go down each list.
  */
 import type { PokemonSet, RivalAssumption, SeededRandom } from '@colleja/core';
 import type { SpeciesId } from '@colleja/data';
@@ -31,7 +32,7 @@ export function rivalAssumptions(
     for (const foe of situation.foes) {
       const view = foe.view;
       if (!view) continue;
-      const set = foe.candidates[index % foe.candidates.length] as PokemonSet;
+      const set = pick(foe.candidates, foe.weights, index, count);
       // A removed or consumed item is known to be gone.
       const { item: _, ...withoutItem } = set;
       seen[view.name] = { ...(view.item === null ? withoutItem : set), nickname: view.name };
@@ -40,7 +41,7 @@ export function rivalAssumptions(
     // team preview nothing is known about them: more of what has been seen.
     const unseen = random
       .shuffle(unseenSpecies)
-      .map((species) => unseenSet(situation, species, index));
+      .map((species) => unseenSet(situation, species, index, count));
     const seenSets = Object.values(seen).map(({ nickname: _, ...set }) => set);
     for (let i = 0; unseen.length < MAX_TEAM && seenSets.length > 0; i++) {
       unseen.push(seenSets[i % seenSets.length] as PokemonSet);
@@ -50,7 +51,21 @@ export function rivalAssumptions(
   return assumptions;
 }
 
-function unseenSet(situation: Situation, species: SpeciesId, index: number): PokemonSet {
+function unseenSet(
+  situation: Situation,
+  species: SpeciesId,
+  index: number,
+  count: number,
+): PokemonSet {
+  const hypotheses = situation.beliefs?.of(species);
+  if (hypotheses && hypotheses.length > 0) {
+    return pick(
+      hypotheses.map((h) => h.set),
+      hypotheses.map((h) => h.probability),
+      index,
+      count,
+    );
+  }
   const candidates = situation.model.candidates({
     baseSpecies: species,
     species,
@@ -60,4 +75,24 @@ function unseenSet(situation: Situation, species: SpeciesId, index: number): Pok
     megaEvolved: false,
   });
   return candidates[index % candidates.length] as PokemonSet;
+}
+
+/**
+ * The candidate of assumption `index` of `count`: with probabilities, the one at quantile
+ * (index + ½) / count (likely sets get more assumptions); otherwise, going down the list.
+ */
+function pick(
+  candidates: readonly PokemonSet[],
+  weights: readonly number[] | undefined,
+  index: number,
+  count: number,
+): PokemonSet {
+  if (!weights) return candidates[index % candidates.length] as PokemonSet;
+  const quantile = (index + 0.5) / count;
+  let cumulative = 0;
+  for (const [i, candidate] of candidates.entries()) {
+    cumulative += weights[i] ?? 0;
+    if (quantile < cumulative) return candidate;
+  }
+  return candidates.at(-1) as PokemonSet;
 }

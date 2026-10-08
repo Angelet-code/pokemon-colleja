@@ -69,6 +69,41 @@ describe('bot explanation', () => {
   });
 });
 
+describe('bot beliefs', () => {
+  it('shows what the bot believes about your Pokémon', () => {
+    render(
+      <BotExplanation
+        explanations={[
+          {
+            ...EXPLANATION,
+            beliefs: [
+              {
+                species: 'garchomp',
+                guesses: [
+                  {
+                    probability: 0.62,
+                    item: 'choicescarf',
+                    ability: 'roughskin',
+                    nature: 'jolly',
+                    statPoints: { hp: 2, atk: 32, def: 0, spa: 0, spd: 0, spe: 32 },
+                    moves: ['earthquake'],
+                    variant: true,
+                  },
+                ],
+              },
+            ],
+          },
+        ]}
+      />,
+    );
+    const beliefs = within(screen.getByRole('list', { name: 'Lo que cree el bot de tu equipo' }));
+    expect(beliefs.getByText('Garchomp')).toBeTruthy();
+    expect(beliefs.getByText('62 %')).toBeTruthy();
+    expect(beliefs.getByText(/Pañuelo Elección · Alegre · 32 Atq 32 Vel · Terremoto/)).toBeTruthy();
+    expect(beliefs.getByText('Reparto propio')).toBeTruthy();
+  });
+});
+
 describe('battle store', () => {
   it('collects explanations, replaces them on snapshots and remembers the saved replay', () => {
     const status = { turn: 2, rewindableTurns: [], undoTarget: null, ended: false, winner: null };

@@ -36,6 +36,18 @@ describe('level 3 (expert)', () => {
     expect(explanation?.method).toMatch(/simulador/);
   });
 
+  it('explains what it believes about the rival Pokémon it has seen', () => {
+    const { explanation } = decide(
+      new ExpertAgent({ seed: 's', settings: LIGHT_SEARCH }),
+      scenario('singles', [garchomp], [ampharos]),
+    );
+    const [beliefs] = explanation?.beliefs ?? [];
+    expect(beliefs?.species).toBe('ampharos');
+    const total = beliefs?.guesses.reduce((sum, guess) => sum + guess.probability, 0) ?? 0;
+    expect(total).toBeGreaterThan(0.5);
+    expect(total).toBeLessThanOrEqual(1.01);
+  });
+
   it('plays as level 2 without a sandbox', () => {
     const session = scenario('singles', [garchomp], [ampharos]);
     const context = session.getAgentContext('p1');

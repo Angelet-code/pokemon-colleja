@@ -7,7 +7,6 @@ import {
   type AgentContext,
   BattleView,
   detailsSpecies,
-  identName,
   otherSide,
   type PokemonSet,
   parseCondition,
@@ -16,6 +15,7 @@ import {
   type ViewPokemon,
 } from '@colleja/core';
 import { type GameMode, getSpecies, type MoveId, type SpeciesId, toId } from '@colleja/data';
+import { inferBeliefs, type SetBeliefs } from '../inference/beliefs';
 import {
   type Combatant,
   effectiveSpeed,
@@ -26,6 +26,7 @@ import {
 } from './combatant';
 import { type DamageEstimate, estimateDamage, type FieldState, fieldFromView } from './damage';
 import { OpponentModel } from './opponent-model';
+import { findOwnSet } from './own-sets';
 
 export interface OwnMember {
   /** 1-based position in the request (`switch N`). */
@@ -48,10 +49,24 @@ export interface FoeMember {
   candidates: PokemonSet[];
   /** One combatant per plausible set (the first ones), to average over hidden information. */
   variants: Combatant[];
+  /** Probability of each candidate (with `beliefs`; otherwise they are equally likely). */
+  weights?: number[];
+  /** Weight of each variant when averaging (with `beliefs`; otherwise a plain average). */
+  variantWeights?: number[];
 }
 
 /** Plausible rival sets considered when averaging. */
 const MAX_VARIANTS = 3;
+/** With beliefs, variants less likely than this are not averaged over. */
+const MIN_VARIANT_PROBABILITY = 0.05;
+
+export interface SituationOptions {
+  /**
+   * What the bot believes about the rival's sets (level 3): given, or `'infer'` to deduce them
+   * from the log (`inferBeliefs`). Without it, the opponent model's order (level 2).
+   */
+  beliefs?: SetBeliefs | 'infer';
+}
 
 export class Situation {
   readonly view: BattleView;
@@ -64,12 +79,17 @@ export class Situation {
   readonly own: OwnMember[];
   /** Rivals: active and benched ones seen in battle, plus preview species not seen yet. */
   readonly foes: FoeMember[];
+  /** Beliefs about the rival's sets, when the bot weighs them (level 3). */
+  readonly beliefs: SetBeliefs | undefined;
   private readonly damageCache = new WeakMap<
     Combatant,
     WeakMap<Combatant, Map<MoveId, DamageEstimate>>
   >();
 
-  constructor(readonly context: AgentContext) {
+  constructor(
+    readonly context: AgentContext,
+    options: SituationOptions = {},
+  ) {
     this.view = BattleView.from(context.log);
     this.me = context.side;
     this.foe = otherSide(context.side);
@@ -77,6 +97,8 @@ export class Situation {
     this.field = fieldFromView(this.view);
     this.model = new OpponentModel(context.mode, context.opponentTeam);
     this.own = context.request.side.pokemon.map((pokemon, i) => this.ownMember(pokemon, i));
+    this.beliefs =
+      options.beliefs === 'infer' ? inferBeliefs(context, this.view, this.model) : options.beliefs;
     this.foes = this.foeMembers();
   }
 
@@ -150,7 +172,7 @@ export class Situation {
   private ownMember(pokemon: RequestPokemon, index: number): OwnMember {
     const condition = parseCondition(pokemon.condition);
     const view = this.view.getPokemon(pokemon.ident);
-    const set = findOwnSet(this.context.team, pokemon);
+    const set = requestSet(this.context.team, pokemon);
     return {
       position: index + 1,
       request: pokemon,
@@ -196,6 +218,22 @@ export class Situation {
   private foeMembers(): FoeMember[] {
     const side = this.view.sides[this.foe];
     const members = side.pokemon.map((pokemon): FoeMember => {
+      const hypotheses = this.beliefs?.of(pokemon.baseSpecies);
+      if (hypotheses && hypotheses.length > 0) {
+        const plausible = hypotheses
+          .slice(0, MAX_VARIANTS)
+          .filter((h, i) => i === 0 || h.probability >= MIN_VARIANT_PROBABILITY);
+        const variants = plausible.map((h) => this.foeCombatant(pokemon, h.set));
+        return {
+          position: pokemon.position,
+          view: pokemon,
+          candidates: hypotheses.map((h) => h.set),
+          weights: hypotheses.map((h) => h.probability),
+          combatant: variants[0] as Combatant,
+          variants,
+          variantWeights: plausible.map((h) => h.probability),
+        };
+      }
       const candidates = this.model.candidates(pokemon);
       const variants = candidates
         .slice(0, MAX_VARIANTS)
@@ -212,12 +250,14 @@ export class Situation {
     const seen = new Set(members.map((member) => speciesNum(member.view?.baseSpecies ?? '')));
     for (const species of side.preview) {
       if (seen.has(speciesNum(species))) continue;
-      const set = this.model.likelySetForSpecies(species);
+      const hypotheses = this.beliefs?.of(species);
+      const set = hypotheses?.[0]?.set ?? this.model.likelySetForSpecies(species);
       const combatant = makeCombatant({ side: this.foe, set });
       members.push({
         position: null,
         view: null,
-        candidates: [set],
+        candidates: hypotheses ? hypotheses.map((h) => h.set) : [set],
+        ...(hypotheses ? { weights: hypotheses.map((h) => h.probability) } : {}),
         combatant,
         variants: [combatant],
       });
@@ -252,19 +292,9 @@ function speciesNum(species: SpeciesId): number {
   return getSpecies(species)?.num ?? -1;
 }
 
-/** Name Showdown gives a set in battle: its nickname or its species name. */
-function battleName(set: PokemonSet): string {
-  return set.nickname || getSpecies(set.species)?.name || set.species;
-}
-
-/** Own team set behind a request Pokémon (by battle name, then by species). */
-function findOwnSet(team: readonly PokemonSet[], pokemon: RequestPokemon): PokemonSet {
-  const name = toId(identName(pokemon.ident));
-  const byName = team.find((set) => toId(battleName(set)) === name);
-  if (byName) return byName;
-  const species = getSpecies(toId(detailsSpecies(pokemon.details)));
-  const base = species?.changesFrom ?? species?.id;
-  const bySpecies = team.find((set) => set.species === base || set.species === species?.id);
-  if (bySpecies) return bySpecies;
-  throw new Error(`No se encuentra el set de ${pokemon.ident} en el equipo.`);
+/** Own team set behind a request Pokémon. */
+function requestSet(team: readonly PokemonSet[], pokemon: RequestPokemon): PokemonSet {
+  const set = findOwnSet(team, pokemon.ident, toId(detailsSpecies(pokemon.details)));
+  if (!set) throw new Error(`No se encuentra el set de ${pokemon.ident} en el equipo.`);
+  return set;
 }
