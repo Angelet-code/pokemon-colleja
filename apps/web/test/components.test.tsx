@@ -56,7 +56,7 @@ describe('ActionPanel (doubles)', () => {
     render(<ActionPanel request={DOUBLES_MOVE} view={VIEW} onChoose={vi.fn()} disabled={false} />);
     fireEvent.click(screen.getByRole('button', { name: /Onda Ígnea/ }));
     expect(screen.getByText('¿Qué hará Incineroar?')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: '← Atrás' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Atrás' }));
     expect(screen.getByText('¿Qué hará Charizard?')).toBeTruthy();
   });
 

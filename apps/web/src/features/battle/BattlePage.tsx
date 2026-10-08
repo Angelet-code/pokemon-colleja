@@ -1,11 +1,12 @@
 /**
- * Battle screen, Showdown style: field on top, controls below, log on the right (a tab on
- * small screens).
+ * Battle screen, Showdown style: scoreboard on top, then the field with the controls below it
+ * and the log on the right (a tab on small screens).
  */
 import { isActionable, requestKind, type TeamPreviewRequest } from '@colleja/core';
 import { type ReactNode, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { Button, Panel, Segmented } from '../../components/ui';
+import { Loading, Notice, Segmented } from '../../components/ui';
+import { botLevelName, useMeta } from '../../lib/use-meta';
 import { useSettings } from '../../stores/settings';
 import { rememberedBattle, useBattle } from './battle-store';
 import { ActionPanel } from './components/ActionPanel';
@@ -19,6 +20,7 @@ import { TeamPreview } from './components/TeamPreview';
 export function BattlePage() {
   const navigate = useNavigate();
   const battle = useBattle();
+  const meta = useMeta();
   const namesLocale = useSettings((state) => state.namesLocale);
   const [tab, setTab] = useState<'field' | 'log'>('field');
 
@@ -44,24 +46,24 @@ export function BattlePage() {
 
   if (!info) {
     return (
-      <div className="mx-auto max-w-md pt-16 text-center">
+      <div className="mx-auto flex max-w-md flex-col items-center gap-4 pt-20 text-center">
         {error ? (
-          <Panel>
-            <div className="flex flex-col items-center gap-3 p-6">
-              <p className="font-semibold">{error.message}</p>
-              <Link to="/" className="text-sm text-accent underline">
-                Volver al inicio
-              </Link>
-            </div>
-          </Panel>
+          <>
+            <p className="display text-3xl">{error.message}</p>
+            <Link to="/" className="text-sm text-accent-fg hover:underline">
+              Volver al inicio
+            </Link>
+          </>
         ) : (
-          <p className="text-muted">Conectando con el combate…</p>
+          <Loading>Conectando con el combate…</Loading>
         )}
       </div>
     );
   }
 
   const ended = status?.ended === true;
+  // During the team preview the field is empty: the preview shows both teams instead.
+  const previewing = request !== null && requestKind(request) === 'team' && !ended;
   let controls: ReactNode = null;
   if (ended && status) {
     controls = (
@@ -99,76 +101,51 @@ export function BattlePage() {
       );
   } else {
     controls = (
-      <Panel>
-        <p className="flex items-center gap-2 p-4 text-sm text-muted">
-          <span className="size-2 animate-pulse rounded-full bg-accent" />
-          {busy ? 'Resolviendo el turno…' : 'Esperando al rival…'}
-        </p>
-      </Panel>
+      <div className="flex h-[60px] items-center rounded-md border border-dashed border-line-strong px-4">
+        <Loading>{busy ? 'Resolviendo el turno…' : 'Esperando al rival…'}</Loading>
+      </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-lg font-bold">
-          {info.mode === 'singles' ? 'Individuales' : 'Dobles'}
-          <span className="ml-2 text-sm font-normal text-muted">
-            {info.players.p1} contra {info.players.p2}
-          </span>
-        </h1>
-        <div className="lg:hidden">
-          <Segmented
-            label="Vista"
-            size="sm"
-            value={tab}
-            onChange={setTab}
-            options={[
-              { value: 'field', label: 'Combate' },
-              { value: 'log', label: 'Registro' },
-            ]}
-          />
-        </div>
-      </div>
+      <BattleToolbar
+        players={info.players}
+        mode={info.mode}
+        level={botLevelName(meta, info.botLevel)}
+        status={status}
+        busy={busy}
+        onUndo={battle.undo}
+        onRewind={battle.rewind}
+        onForfeit={battle.forfeit}
+        onExport={battle.exportReplay}
+        onLeave={leave}
+      />
 
       {socketState === 'reconnecting' && (
-        <p role="status" className="rounded-lg border border-warn/40 bg-warn/10 px-3 py-2 text-sm">
-          Se ha perdido la conexión con el servidor. Reconectando…
-        </p>
+        <Notice tone="warn" role="status" title="Conexión perdida. Reconectando…" />
       )}
-      {error && (
-        <div
-          role="alert"
-          className="flex items-start justify-between gap-3 rounded-lg border border-bad/40 bg-bad/5 px-3 py-2 text-sm"
-        >
-          <div>
-            <p className="font-semibold text-bad">{error.message}</p>
-            {error.details?.map((detail) => (
-              <p key={detail} className="text-xs text-bad">
-                {detail}
-              </p>
-            ))}
-          </div>
-          <Button variant="ghost" onClick={battle.clearError} aria-label="Cerrar aviso">
-            ✕
-          </Button>
-        </div>
-      )}
+      {error && <Notice title={error.message} items={error.details} onClose={battle.clearError} />}
 
-      <div className="grid gap-4 lg:h-[calc(100vh-9.5rem)] lg:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="lg:hidden">
+        <Segmented
+          label="Vista"
+          size="sm"
+          stretch
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: 'field', label: 'Combate' },
+            { value: 'log', label: 'Registro' },
+          ]}
+        />
+      </div>
+
+      <div className="grid gap-3 lg:h-[calc(100vh-11.5rem)] lg:min-h-[640px] lg:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]">
         <div
-          className={`flex min-h-0 flex-col gap-3 lg:overflow-y-auto [&>*]:shrink-0 ${tab === 'log' ? 'hidden lg:flex' : ''}`}
+          className={`scroll-thin flex min-h-0 flex-col gap-3 lg:overflow-y-auto lg:pr-1 [&>*]:shrink-0 ${tab === 'log' ? 'hidden lg:flex' : ''}`}
         >
-          <BattleToolbar
-            status={status}
-            busy={busy}
-            onUndo={battle.undo}
-            onRewind={battle.rewind}
-            onForfeit={battle.forfeit}
-            onExport={battle.exportReplay}
-            onLeave={leave}
-          />
-          <Field view={screen.view} own={ownSide?.pokemon ?? []} />
+          {!previewing && <Field view={screen.view} own={ownSide?.pokemon ?? []} />}
           {controls}
           <BotExplanation explanations={battle.explanations} />
         </div>

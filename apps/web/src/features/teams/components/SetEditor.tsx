@@ -14,9 +14,19 @@ import {
 } from '@colleja/data';
 import { useMemo, useState } from 'react';
 import { Combobox } from '../../../components/Combobox';
+import { IconDownload, IconTrash, IconUpload } from '../../../components/icons';
 import { PokemonSprite } from '../../../components/PokemonIcon';
 import { TypeBadge } from '../../../components/TypeBadge';
-import { Button, Checkbox, Segmented } from '../../../components/ui';
+import {
+  Checkbox,
+  Chip,
+  Field,
+  IconButton,
+  Segmented,
+  Select,
+  TextInput,
+} from '../../../components/ui';
+import { typeColor } from '../../../lib/type-colors';
 import {
   abilityOptions,
   itemOptions,
@@ -66,16 +76,25 @@ export function SetEditor({
   if (!set || !species) return null;
 
   const mega = megaOf(set);
+  const shown = (mega && getSpecies(mega)) || species;
   const standardSets = getStandardSets(set.species, mode);
   const update = (change: Partial<PokemonSet>) => onChange({ ...set, ...change });
   const speciesLabel = getName('species', set.species, locale);
 
   return (
-    <div className="flex flex-col gap-4 p-4">
-      <div className="flex flex-wrap items-start gap-4">
-        <PokemonSprite species={mega ?? set.species} size={112} className="shrink-0" />
-        <div className="flex min-w-56 flex-1 flex-col gap-3">
-          <div className="grid gap-3 sm:grid-cols-2">
+    <div className="@container flex flex-col gap-6 p-5">
+      <div className="flex flex-wrap items-start gap-5">
+        <div
+          className="flex size-36 shrink-0 items-center justify-center rounded-sm bg-surface-2"
+          style={{
+            background: `radial-gradient(circle at 50% 62%, color-mix(in oklab, ${typeColor(shown.types[0])} 34%, transparent), transparent 68%), var(--surface-2)`,
+          }}
+        >
+          <PokemonSprite species={mega ?? set.species} size={128} />
+        </div>
+
+        <div className="flex min-w-60 flex-1 flex-col gap-3">
+          <div className="grid gap-3 @lg:grid-cols-2">
             <div>
               <Combobox
                 label="Especie"
@@ -84,16 +103,10 @@ export function SetEditor({
                 onChange={(id) => id && onChange(changeSpecies(set, id))}
                 invalid={Boolean(problems.species)}
               />
-              <div className="mt-1 flex gap-1">
-                {species.types.map((type) => (
-                  <TypeBadge key={type} type={type} locale={locale} />
-                ))}
-              </div>
               {problems.species && <FieldProblems messages={problems.species} />}
             </div>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs font-medium text-muted">Mote</span>
-              <input
+            <Field label="Mote">
+              <TextInput
                 value={set.nickname ?? ''}
                 maxLength={18}
                 placeholder={speciesLabel}
@@ -103,11 +116,15 @@ export function SetEditor({
                   if (!nickname.trim()) delete next.nickname;
                   onChange(next);
                 }}
-                className="rounded-lg border border-border bg-panel-2 px-3 py-1.5 text-sm placeholder:text-faint focus:border-accent focus:outline-none"
               />
-            </label>
+            </Field>
           </div>
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            <span className="flex gap-1">
+              {shown.types.map((type) => (
+                <TypeBadge key={type} type={type} locale={locale} />
+              ))}
+            </span>
             <GenderField set={set} onChange={onChange} />
             <Checkbox
               checked={Boolean(set.shiny)}
@@ -120,45 +137,44 @@ export function SetEditor({
             />
           </div>
         </div>
-        <div className="flex flex-col items-end gap-2">
-          {standardSets.length > 0 && (
-            <label className="flex flex-col gap-1 text-xs font-medium text-muted">
-              Set sugerido
-              <select
-                value=""
-                onChange={(event) => {
-                  const standard = standardSets[Number(event.target.value)];
-                  if (standard) onChange(applyStandardSet(set, standard));
-                }}
-                className="max-w-64 rounded-lg border border-border bg-panel-2 px-2 py-1.5 text-sm text-text focus:border-accent focus:outline-none"
-              >
-                <option value="">Cargar set sugerido…</option>
-                {standardSets.map((standard, i) => (
-                  // biome-ignore lint/suspicious/noArrayIndexKey: static list of the species' sets.
-                  <option key={i} value={i}>
-                    {standardSetLabel(standard, locale)}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          <div className="flex gap-2">
-            <Button variant="ghost" onClick={() => setDialog('import')}>
-              Importar
-            </Button>
-            <Button variant="ghost" onClick={() => setDialog('export')}>
-              Exportar
-            </Button>
+
+        <div className="flex flex-col items-end gap-2 @max-3xl:w-full @max-3xl:flex-row-reverse @max-3xl:items-center @max-3xl:justify-between">
+          <div className="flex gap-0.5">
+            <IconButton label="Importar" onClick={() => setDialog('import')}>
+              <IconUpload />
+            </IconButton>
+            <IconButton label="Exportar" onClick={() => setDialog('export')}>
+              <IconDownload />
+            </IconButton>
             {onRemove && (
-              <Button variant="danger" onClick={onRemove}>
-                Quitar
-              </Button>
+              <IconButton label="Quitar" onClick={onRemove} className="hover:text-bad">
+                <IconTrash />
+              </IconButton>
             )}
           </div>
+          {standardSets.length > 0 && (
+            <Select
+              aria-label="Set sugerido"
+              value=""
+              onChange={(event) => {
+                const standard = standardSets[Number(event.target.value)];
+                if (standard) onChange(applyStandardSet(set, standard));
+              }}
+              className="max-w-64"
+            >
+              <option value="">Set sugerido…</option>
+              {standardSets.map((standard, i) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: static list of the species' sets.
+                <option key={i} value={i}>
+                  {standardSetLabel(standard, locale)}
+                </option>
+              ))}
+            </Select>
+          )}
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 @2xl:grid-cols-3">
         <div>
           <Combobox
             label="Habilidad"
@@ -185,7 +201,7 @@ export function SetEditor({
             invalid={Boolean(problems.item)}
           />
           {set.item && !problems.item && (
-            <p className="mt-1 line-clamp-2 text-xs text-faint">
+            <p className="mt-1.5 line-clamp-2 text-xs text-faint">
               {getDescription('items', set.item, locale)}
             </p>
           )}
@@ -203,16 +219,19 @@ export function SetEditor({
         </div>
       </div>
 
-      <StatPointsEditor
-        set={set}
-        mode={mode}
-        mega={mega}
-        locale={locale}
-        problems={problems.statPoints}
-        onChange={(stat: StatId, value: number) => onChange(setStatPointOf(set, stat, value, mode))}
-      />
-
-      <MoveSlots set={set} locale={locale} problems={problems.moves} onChange={onChange} />
+      <div className="grid gap-x-10 gap-y-7 @4xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+        <StatPointsEditor
+          set={set}
+          mode={mode}
+          mega={mega}
+          locale={locale}
+          problems={problems.statPoints}
+          onChange={(stat: StatId, value: number) =>
+            onChange(setStatPointOf(set, stat, value, mode))
+          }
+        />
+        <MoveSlots set={set} locale={locale} problems={problems.moves} onChange={onChange} />
+      </div>
 
       {dialog === 'export' && (
         <ExportDialog
@@ -224,7 +243,7 @@ export function SetEditor({
       {dialog === 'import' && (
         <ImportDialog
           title={`Sustituir a ${speciesLabel}`}
-          hint="Pega un Pokémon en formato de Showdown. Sustituye al actual."
+          hint="Pokémon en formato de Showdown"
           onClose={() => setDialog(null)}
           onImport={(text) => {
             const { members, notes } = importText(text, mode);
@@ -243,8 +262,7 @@ export function SetEditor({
 function GenderField({ set, onChange }: { set: PokemonSet; onChange: (set: PokemonSet) => void }) {
   const fixed = getSpecies(set.species)?.gender ?? null;
   if (fixed !== null) {
-    const label = fixed === 'M' ? 'Macho' : fixed === 'F' ? 'Hembra' : 'Sin género';
-    return <span className="text-sm text-muted">Género: {label}</span>;
+    return <Chip>{fixed === 'M' ? '♂ Macho' : fixed === 'F' ? '♀ Hembra' : 'Sin género'}</Chip>;
   }
   return (
     <Segmented
@@ -284,28 +302,38 @@ function MoveSlots({
   // One empty slot after the filled ones (slots stay compact).
   const slots = Math.min(MAX_MOVES, set.moves.length + 1);
   return (
-    <div className="flex flex-col gap-2">
-      <h3 className="text-sm font-semibold">
-        Movimientos <span className="font-normal text-muted">({set.moves.length}/4)</span>
-      </h3>
-      <div className="grid gap-2 sm:grid-cols-2">
+    <div className="flex flex-col gap-3">
+      <div className="flex items-end justify-between">
+        <h3 className="eyebrow text-muted">Movimientos</h3>
+        <span className="eyebrow text-faint">
+          {set.moves.length}/{MAX_MOVES}
+        </span>
+      </div>
+      <div className="flex flex-col gap-2">
         {Array.from({ length: slots }, (_, slot) => {
           const move = set.moves[slot] ?? null;
           return (
-            <Combobox
-              // biome-ignore lint/suspicious/noArrayIndexKey: fixed move slots.
-              key={slot}
-              label={`Movimiento ${slot + 1}`}
-              value={move}
-              // The move of this slot stays selectable (it is "taken" by itself).
-              options={options.map((option) =>
-                option.value === move ? { ...option, disabled: false } : option,
-              )}
-              onChange={(next) => onChange(setMoveAt(set, slot, next))}
-              clearLabel={move ? 'Quitar movimiento' : undefined}
-              placeholder="Elige un movimiento…"
-              emptyText="No aprende ningún movimiento así en Champions."
-            />
+            // biome-ignore lint/suspicious/noArrayIndexKey: fixed move slots.
+            <div key={slot} className="flex items-center gap-3">
+              <span className="display w-4 text-xl text-faint" aria-hidden="true">
+                {slot + 1}
+              </span>
+              <div className="min-w-0 flex-1">
+                <Combobox
+                  label={`Movimiento ${slot + 1}`}
+                  hideLabel
+                  value={move}
+                  // The move of this slot stays selectable (it is "taken" by itself).
+                  options={options.map((option) =>
+                    option.value === move ? { ...option, disabled: false } : option,
+                  )}
+                  onChange={(next) => onChange(setMoveAt(set, slot, next))}
+                  clearLabel={move ? 'Quitar movimiento' : undefined}
+                  placeholder="Añadir movimiento…"
+                  emptyText="No lo aprende en Champions."
+                />
+              </div>
+            </div>
           );
         })}
       </div>

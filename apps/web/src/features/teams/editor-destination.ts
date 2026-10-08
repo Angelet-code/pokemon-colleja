@@ -36,7 +36,6 @@ export interface EditorDestination {
     /** Button that takes the saved draft to the start screen. */
     use: string;
     useTitle: string;
-    legal: string;
     leaveWarning: string;
   };
   newDraft(mode: GameMode): TeamDraft;
@@ -49,14 +48,13 @@ export const TEAM_DESTINATION: EditorDestination = {
   kind: 'teams',
   path: '/equipos',
   texts: {
-    back: '← Mis equipos',
+    back: 'Equipos',
     nameLabel: 'Nombre del equipo',
     loading: 'Cargando el equipo…',
-    unsaved: 'Equipo nuevo sin guardar',
+    unsaved: 'Sin guardar',
     use: 'Usar en combate',
     useTitle: 'Ir al inicio con este equipo',
-    legal: 'Equipo legal',
-    leaveWarning: 'Si sales ahora, perderás los cambios de este equipo.',
+    leaveWarning: 'Perderás los cambios de este equipo.',
   },
   newDraft: (mode) => newDraft(mode),
   load: async (id) => fromTeam(await api.getTeam(id)),
@@ -70,14 +68,13 @@ export const OPPONENT_DESTINATION: EditorDestination = {
   kind: 'opponents',
   path: '/rivales',
   texts: {
-    back: '← Mis rivales',
+    back: 'Rivales',
     nameLabel: 'Nombre del rival',
     loading: 'Cargando el rival…',
-    unsaved: 'Rival nuevo sin guardar',
+    unsaved: 'Sin guardar',
     use: 'Usar como rival',
     useTitle: 'Ir al inicio con este rival y su dificultad',
-    legal: 'Rival legal',
-    leaveWarning: 'Si sales ahora, perderás los cambios de este rival.',
+    leaveWarning: 'Perderás los cambios de este rival.',
   },
   newDraft: (mode) => newOpponentDraft(mode),
   load: async (id) => fromOpponent(await api.getOpponent(id)),

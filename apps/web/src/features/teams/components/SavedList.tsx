@@ -2,7 +2,8 @@
 import type { TeamSummary } from '@colleja/protocol';
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import { Button } from '../../../components/ui';
+import { IconPlus, IconUpload } from '../../../components/icons';
+import { Button, buttonClass, Empty, Loading, Notice, PageHeader } from '../../../components/ui';
 
 export interface SavedList<T extends TeamSummary> {
   /** `null` while loading. */
@@ -49,7 +50,6 @@ export function useSavedList<T extends TeamSummary>(load: () => Promise<T[]>): S
 
 export function SavedListLayout({
   title,
-  intro,
   newPath,
   newLabel,
   listLabel,
@@ -61,56 +61,55 @@ export function SavedListLayout({
   children,
 }: {
   title: string;
-  intro: ReactNode;
   newPath: string;
   newLabel: string;
   /** Accessible name of the list. */
   listLabel: string;
   empty: string;
   list: SavedList<TeamSummary>;
-  /** More buttons next to "Importar". */
+  /** More buttons before "Importar". */
   actions?: ReactNode;
   renderImport: (close: () => void) => ReactNode;
   /** Other open dialogs of the page. */
   dialogs?: ReactNode;
-  /** The cards. */
+  /** The rows. */
   children: ReactNode;
 }) {
   const [importing, setImporting] = useState(false);
+  const count = list.items?.length ?? 0;
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
-          <p className="text-sm text-muted">{intro}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {actions}
-          <Button onClick={() => setImporting(true)}>Importar</Button>
-          <Link
-            to={newPath}
-            className="inline-flex items-center rounded-lg border border-transparent bg-accent px-3 py-2 text-sm font-medium text-accent-text hover:brightness-110"
-          >
-            {newLabel}
-          </Link>
-        </div>
-      </div>
+    <div className="mx-auto flex max-w-[1280px] flex-col gap-6">
+      <PageHeader
+        title={
+          <>
+            {title}
+            {count > 0 && <span className="ml-3 text-faint">{count}</span>}
+          </>
+        }
+      >
+        {actions}
+        <Button onClick={() => setImporting(true)}>
+          <IconUpload size={14} />
+          Importar
+        </Button>
+        <Link to={newPath} className={buttonClass('primary')}>
+          <IconPlus size={14} />
+          {newLabel}
+        </Link>
+      </PageHeader>
 
-      {list.error && (
-        <p role="alert" className="rounded-lg border border-warn/40 bg-warn/10 px-3 py-2 text-sm">
-          {list.error}
-        </p>
-      )}
-      {list.items === null && !list.error && <p className="text-muted">Cargando…</p>}
-      {list.items?.length === 0 && (
-        <p className="rounded-xl border border-dashed border-border p-8 text-center text-muted">
-          {empty}
-        </p>
-      )}
+      {list.error && <Notice tone="warn" title={list.error} />}
+      {list.items === null && !list.error && <Loading />}
+      {list.items?.length === 0 && <Empty>{empty}</Empty>}
 
-      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-label={listLabel}>
-        {children}
-      </ul>
+      {count > 0 && (
+        <ul
+          className="overflow-hidden rounded-md border border-line bg-surface shadow-panel"
+          aria-label={listLabel}
+        >
+          {children}
+        </ul>
+      )}
 
       {importing && renderImport(() => setImporting(false))}
       {dialogs}

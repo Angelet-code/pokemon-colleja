@@ -8,8 +8,9 @@ import type { BotLevelValue, OpponentSummary, TeamSummary } from '@colleja/proto
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Dialog } from '../../components/Dialog';
+import { IconCopy, IconDice } from '../../components/icons';
 import { PokemonIcon } from '../../components/PokemonIcon';
-import { Button } from '../../components/ui';
+import { Button, Loading, Notice } from '../../components/ui';
 import { api } from '../../lib/api';
 import { botLevelName, useMeta } from '../../lib/use-meta';
 import { useSetup } from '../setup/setup-store';
@@ -71,35 +72,42 @@ export function OpponentsPage() {
 
   return (
     <SavedListLayout
-      title="Mis rivales"
-      intro="Equipos para el bot con su dificultad: genera uno aleatorio, cópialo de tus equipos o créalo, edítalo y practica contra él."
+      title="Rivales"
       newPath={NEW_OPPONENT}
-      newLabel="Desde cero"
+      newLabel="Nuevo rival"
       listLabel="Rivales guardados"
-      empty="Aún no tienes rivales guardados. Genera uno aleatorio y edítalo, o copia uno de tus equipos."
+      empty="Aún no tienes rivales guardados."
       list={list}
       actions={
         <>
-          <span className="flex items-center gap-1 rounded-lg border border-border bg-panel-2 py-0.5 pr-0.5 pl-2 text-sm">
-            <span className="text-muted">Generar aleatorio:</span>
+          <span className="flex h-9 items-center rounded-sm border border-line-strong pl-3">
+            <span className="eyebrow mr-1 flex items-center gap-1.5 text-faint">
+              <IconDice size={14} />
+              Aleatorio
+            </span>
             <Button
+              size="sm"
               variant="ghost"
               onClick={() => generate('singles')}
               disabled={generating !== null}
               aria-label="Generar aleatorio para individuales"
             >
-              {generating === 'singles' ? 'Generando…' : 'Individuales'}
+              {generating === 'singles' ? '…' : 'Individuales'}
             </Button>
             <Button
+              size="sm"
               variant="ghost"
               onClick={() => generate('doubles')}
               disabled={generating !== null}
               aria-label="Generar aleatorio para dobles"
             >
-              {generating === 'doubles' ? 'Generando…' : 'Dobles'}
+              {generating === 'doubles' ? '…' : 'Dobles'}
             </Button>
           </span>
-          <Button onClick={() => setCopying(true)}>Desde uno de mis equipos</Button>
+          <Button onClick={() => setCopying(true)}>
+            <IconCopy size={14} />
+            De mis equipos
+          </Button>
         </>
       }
       renderImport={(close) => <ImportOpponentDialog onClose={close} />}
@@ -184,17 +192,10 @@ function CopyTeamDialog({
   }
 
   return (
-    <Dialog title="Copiar uno de mis equipos como rival" onClose={onClose}>
-      <div className="flex flex-col gap-2">
-        <p className="text-sm text-muted">
-          Se abre en el editor como un rival nuevo; tu equipo no cambia.
-        </p>
-        {error && (
-          <p role="alert" className="text-sm text-bad">
-            {error}
-          </p>
-        )}
-        {teams === null && !error && <p className="text-sm text-muted">Cargando equipos…</p>}
+    <Dialog title="Copiar como rival" onClose={onClose}>
+      <div className="flex flex-col gap-1">
+        {error && <Notice title={error} />}
+        {teams === null && !error && <Loading />}
         {teams?.length === 0 && (
           <p className="text-sm text-muted">Aún no tienes equipos guardados.</p>
         )}
@@ -203,9 +204,9 @@ function CopyTeamDialog({
             key={team.id}
             type="button"
             onClick={() => pick(team)}
-            className="flex items-center gap-3 rounded-lg border border-border px-3 py-2 text-left transition hover:bg-panel-2 focus-visible:outline-2 focus-visible:outline-accent"
+            className="flex items-center gap-3 rounded-sm px-3 py-2 text-left transition-colors hover:bg-surface-3"
           >
-            <span className="min-w-0 flex-1 truncate text-sm font-semibold">{team.name}</span>
+            <span className="min-w-0 flex-1 truncate font-semibold">{team.name}</span>
             <span className="flex flex-wrap justify-end gap-0.5" aria-hidden="true">
               {team.species.map((species, index) => (
                 // biome-ignore lint/suspicious/noArrayIndexKey: members have no id; the order is the identity.

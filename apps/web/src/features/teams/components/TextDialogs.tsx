@@ -1,7 +1,8 @@
 /** Showdown export text in and out of the editor (whole team or one Pokémon). */
 import { type ReactNode, useId, useState } from 'react';
 import { Dialog } from '../../../components/Dialog';
-import { Button } from '../../../components/ui';
+import { IconCheck, IconCopy } from '../../../components/icons';
+import { Button, Notice, textareaClass } from '../../../components/ui';
 
 export function ExportDialog({
   title,
@@ -33,13 +34,14 @@ export function ExportDialog({
         <>
           <Button onClick={onClose}>Cerrar</Button>
           <Button variant="primary" onClick={copy}>
+            {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
             {copied ? 'Copiado' : 'Copiar'}
           </Button>
         </>
       }
     >
-      <label htmlFor={id} className="mb-1 block text-xs text-muted">
-        Formato de Showdown (nombres en inglés; los EVs son Stat Points).
+      <label htmlFor={id} className="sr-only">
+        Formato de Showdown
       </label>
       <textarea
         id={id}
@@ -47,7 +49,7 @@ export function ExportDialog({
         value={text}
         rows={16}
         onFocus={(event) => event.target.select()}
-        className="w-full resize-y rounded-lg border border-border bg-panel-2 px-3 py-2 font-mono text-xs leading-relaxed"
+        className={textareaClass}
       />
     </Dialog>
   );
@@ -98,8 +100,8 @@ export function ImportDialog({
     >
       <div className="flex flex-col gap-3">
         {children}
-        <div className="flex flex-col gap-1">
-          <label htmlFor={id} className="text-xs text-muted">
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor={id} className="eyebrow text-faint">
             {hint}
           </label>
           <textarea
@@ -108,16 +110,10 @@ export function ImportDialog({
             onChange={(event) => setText(event.target.value)}
             rows={14}
             spellCheck={false}
-            className="w-full resize-y rounded-lg border border-border bg-panel-2 px-3 py-2 font-mono text-xs leading-relaxed focus:border-accent focus:outline-none"
+            className={textareaClass}
           />
         </div>
-        {problems.length > 0 && (
-          <ul role="alert" className="space-y-0.5 text-xs text-bad">
-            {problems.map((problem) => (
-              <li key={problem}>{problem}</li>
-            ))}
-          </ul>
-        )}
+        {problems.length > 0 && <Notice items={problems} />}
       </div>
     </Dialog>
   );

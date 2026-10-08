@@ -1,26 +1,36 @@
-/** Start screen: mode, your team, the rival, the difficulty and the practice options. */
+/**
+ * Start screen, as a versus: your team on the left, the rival on the right, and the rules of
+ * the battle (difficulty, practice options) in the bar below.
+ */
 import type { MetaResponse, OpponentSummary, TeamSummary } from '@colleja/protocol';
-import { useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { Button, Checkbox, Panel, Segmented } from '../../components/ui';
+import { IconArrowRight, IconDice } from '../../components/icons';
+import { TeamSlots } from '../../components/TeamSlots';
+import {
+  Button,
+  Checkbox,
+  Chip,
+  Field,
+  LegalityChip,
+  Loading,
+  Notice,
+  Segmented,
+  TextInput,
+} from '../../components/ui';
 import { ApiRequestError, api } from '../../lib/api';
 import { type BattleError, useBattle } from '../battle/battle-store';
 import { SavedTeamPicker } from './SavedTeamPicker';
 import { toStartMessage, useSetup } from './setup-store';
 import { TeamInput, useTeamCheck } from './TeamInput';
 
-const TEAM_PLACEHOLDER = `Pega aquí tu equipo en formato de Showdown, por ejemplo:
-
-Garchomp @ Life Orb
+const TEAM_PLACEHOLDER = `Garchomp @ Life Orb
 Ability: Rough Skin
 EVs: 2 HP / 32 Atk / 32 Spe
 Jolly Nature
 - Earthquake
 - Dragon Claw
-- Rock Slide
-- Protect
-
-(Los EVs son Stat Points de Champions: 66 en total, 32 como máximo por stat.)`;
+…`;
 
 /** Attempts to reach the server before giving up (about one per second). */
 const META_RETRIES = 8;
@@ -39,7 +49,6 @@ export function SetupPage() {
 
   const teamCheck = useTeamCheck(form.team, form.mode);
   const rivalCheck = useTeamCheck(form.opponentTeam, form.mode);
-  const pickSize = form.mode === 'singles' ? 3 : 4;
 
   // Right after `npm run dev` the web may be up before the server: retry for a few seconds.
   useEffect(() => {
@@ -109,37 +118,75 @@ export function SetupPage() {
     else setStartError(result.error);
   }
 
+  const mine =
+    form.teamSource === 'saved'
+      ? {
+          name: savedTeam?.name ?? null,
+          species: savedTeam?.species ?? [],
+          status: savedTeam && <LegalityChip problems={savedTeam.problems} />,
+        }
+      : {
+          name: teamCheck.sets.length > 0 ? 'Pegado' : null,
+          species: teamCheck.sets.map((set) => set.species),
+          status: teamCheck.sets.length > 0 && <LegalityChip problems={teamCheck.problems} />,
+        };
+  const theirs =
+    form.opponentKind === 'random'
+      ? { name: 'Aleatorio', species: [], status: null }
+      : form.opponentKind === 'saved'
+        ? {
+            name: savedOpponent?.name ?? null,
+            species: savedOpponent?.species ?? [],
+            status:
+              savedOpponent &&
+              (savedOpponent.valid ? (
+                <Chip tone="rival">{levelName(savedOpponent.botLevel)}</Chip>
+              ) : (
+                <LegalityChip problems={savedOpponent.problems} />
+              )),
+          }
+        : {
+            name: rivalCheck.sets.length > 0 ? 'Pegado' : null,
+            species: rivalCheck.sets.map((set) => set.species),
+            status: rivalCheck.sets.length > 0 && <LegalityChip problems={rivalCheck.problems} />,
+          };
+
+  const missing = !teamReady ? 'Falta tu equipo' : !rivalReady ? 'Falta el rival' : null;
+
   return (
-    <div className="mx-auto grid max-w-6xl gap-4 lg:grid-cols-[1fr_340px]">
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Nuevo combate</h1>
-            <p className="text-sm text-muted">
-              Practica contra el bot con las reglas de Pokémon Champions (nivel 50, Stat Points,
-              Megas).
-            </p>
-          </div>
-          <Segmented
-            label="Modo de combate"
-            value={form.mode}
-            onChange={(mode) => form.update({ mode })}
-            options={[
-              { value: 'singles', label: 'Individuales', title: 'Llevas 6 y eliges 3' },
-              { value: 'doubles', label: 'Dobles', title: 'Llevas 6 y eliges 4' },
-            ]}
-          />
-        </div>
+    <div className="mx-auto flex max-w-[1280px] flex-col gap-7">
+      <div className="flex flex-wrap items-end justify-between gap-5">
+        <h1 className="display text-6xl sm:text-7xl">
+          Nuevo
+          <br />
+          <span className="text-accent-fg">combate</span>
+        </h1>
+        <Segmented
+          label="Modo de combate"
+          size="lg"
+          value={form.mode}
+          onChange={(mode) => form.update({ mode })}
+          options={[
+            { value: 'singles', label: 'Individuales', hint: '6 → 3' },
+            { value: 'doubles', label: 'Dobles', hint: '6 → 4' },
+          ]}
+        />
+      </div>
 
-        {serverError && (
-          <p role="alert" className="rounded-lg border border-warn/40 bg-warn/10 px-3 py-2 text-sm">
-            {serverError}
-          </p>
-        )}
+      {serverError && (
+        <Notice tone="warn" title="No hay conexión con el servidor">
+          <p className="text-xs text-muted">{serverError}</p>
+        </Notice>
+      )}
 
-        <Panel
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_88px_minmax(0,1fr)] lg:gap-0">
+        <Side
+          side="p1"
           title="Tu equipo"
-          actions={
+          name={mine.name}
+          status={mine.status}
+          species={mine.species}
+          source={
             <Segmented
               label="Origen de tu equipo"
               size="sm"
@@ -152,53 +199,63 @@ export function SetupPage() {
             />
           }
         >
-          <div className="p-4">
-            {form.teamSource === 'saved' ? (
-              <SavedTeamPicker
-                teams={savedTeams}
-                value={form.teamId}
-                onChange={(team) => form.update({ teamId: team.id })}
-                legend={`Equipo guardado (6 Pokémon; en combate eliges ${pickSize})`}
-                name="saved-team"
-                empty={
-                  <>
-                    No tienes equipos guardados.{' '}
-                    <Link to="/equipos/nuevo" className="text-accent hover:underline">
-                      Crea uno
-                    </Link>{' '}
-                    o pega uno en formato de Showdown.
-                  </>
-                }
-              />
-            ) : (
-              <TeamInput
-                label={`Export de Showdown (6 Pokémon; en combate eliges ${pickSize})`}
-                value={form.team}
-                onChange={(team) => form.update({ team })}
-                check={teamCheck}
-                placeholder={TEAM_PLACEHOLDER}
-                actions={
-                  <>
-                    <Button onClick={() => randomTeam('team')} disabled={generating !== null}>
-                      {generating === 'team' ? 'Generando…' : 'Equipo aleatorio'}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={() => form.update({ team: '' })}
-                      disabled={!form.team}
-                    >
-                      Borrar
-                    </Button>
-                  </>
-                }
-              />
-            )}
-          </div>
-        </Panel>
+          {form.teamSource === 'saved' ? (
+            <SavedTeamPicker
+              teams={savedTeams}
+              value={form.teamId}
+              onChange={(team) => form.update({ teamId: team.id })}
+              legend="Equipo guardado"
+              name="saved-team"
+              empty={
+                <>
+                  Sin equipos guardados.{' '}
+                  <Link to="/equipos/nuevo" className="text-accent-fg hover:underline">
+                    Crear uno
+                  </Link>
+                </>
+              }
+            />
+          ) : (
+            <TeamInput
+              label="Export de Showdown de tu equipo"
+              value={form.team}
+              onChange={(team) => form.update({ team })}
+              check={teamCheck}
+              placeholder={TEAM_PLACEHOLDER}
+              actions={
+                <>
+                  <Button
+                    size="sm"
+                    onClick={() => randomTeam('team')}
+                    disabled={generating !== null}
+                  >
+                    <IconDice size={14} />
+                    {generating === 'team' ? 'Generando…' : 'Equipo aleatorio'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => form.update({ team: '' })}
+                    disabled={!form.team}
+                  >
+                    Borrar
+                  </Button>
+                </>
+              }
+            />
+          )}
+        </Side>
 
-        <Panel
-          title="Equipo rival"
-          actions={
+        <Versus />
+
+        <Side
+          side="p2"
+          title="Rival"
+          name={theirs.name}
+          status={theirs.status}
+          species={theirs.species}
+          hidden={form.opponentKind === 'random'}
+          source={
             <Segmented
               label="Equipo rival"
               size="sm"
@@ -212,185 +269,185 @@ export function SetupPage() {
             />
           }
         >
-          <div className="p-4">
-            {form.opponentKind === 'random' && (
-              <p className="text-sm text-muted">
-                El bot llevará un equipo aleatorio y legal generado a partir de los sets estándar
-                (con una megapiedra como mucho).
-              </p>
-            )}
-            {form.opponentKind === 'saved' && (
-              <SavedTeamPicker
-                teams={savedOpponents}
-                value={form.opponentId}
-                // Picking an opponent applies its difficulty (it can still be changed).
-                onChange={(opponent) =>
-                  form.update({ opponentId: opponent.id, botLevel: opponent.botLevel })
-                }
-                legend="Rival guardado (se aplica su dificultad)"
-                name="saved-opponent"
-                detail={(opponent) => levelName(opponent.botLevel)}
-                empty={
-                  <>
-                    No tienes rivales guardados.{' '}
-                    <Link to="/rivales" className="text-accent hover:underline">
-                      Genera uno
-                    </Link>{' '}
-                    y guárdalo.
-                  </>
-                }
-              />
-            )}
-            {form.opponentKind === 'team' && (
-              <TeamInput
-                label="Export de Showdown del rival"
-                value={form.opponentTeam}
-                onChange={(opponentTeam) => form.update({ opponentTeam })}
-                check={rivalCheck}
-                actions={
-                  <Button onClick={() => randomTeam('rival')} disabled={generating !== null}>
-                    {generating === 'rival' ? 'Generando…' : 'Generar uno'}
-                  </Button>
-                }
-              />
-            )}
-          </div>
-        </Panel>
+          {form.opponentKind === 'saved' && (
+            <SavedTeamPicker
+              side="p2"
+              teams={savedOpponents}
+              value={form.opponentId}
+              // Picking an opponent applies its difficulty (it can still be changed).
+              onChange={(opponent) =>
+                form.update({ opponentId: opponent.id, botLevel: opponent.botLevel })
+              }
+              legend="Rival guardado"
+              name="saved-opponent"
+              detail={(opponent) => levelName(opponent.botLevel)}
+              empty={
+                <>
+                  Sin rivales guardados.{' '}
+                  <Link to="/rivales" className="text-accent-fg hover:underline">
+                    Crear uno
+                  </Link>
+                </>
+              }
+            />
+          )}
+          {form.opponentKind === 'team' && (
+            <TeamInput
+              label="Export de Showdown del rival"
+              value={form.opponentTeam}
+              onChange={(opponentTeam) => form.update({ opponentTeam })}
+              check={rivalCheck}
+              placeholder={TEAM_PLACEHOLDER}
+              actions={
+                <Button
+                  size="sm"
+                  onClick={() => randomTeam('rival')}
+                  disabled={generating !== null}
+                >
+                  <IconDice size={14} />
+                  {generating === 'rival' ? 'Generando…' : 'Equipo aleatorio'}
+                </Button>
+              }
+            />
+          )}
+        </Side>
       </div>
 
-      <aside className="flex flex-col gap-4">
-        <Panel title="Dificultad">
-          <fieldset className="flex flex-col gap-2 p-3">
-            <legend className="sr-only">Dificultad del bot</legend>
-            {(meta?.botLevels ?? []).map((level) => {
-              const selected = level.level === form.botLevel;
-              return (
-                <label
-                  key={level.level}
-                  className={`cursor-pointer rounded-lg border px-3 py-2 transition has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent ${
-                    selected ? 'border-accent bg-accent/10' : 'border-border hover:bg-panel-2'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="bot-level"
-                    value={level.level}
-                    aria-label={level.name}
-                    className="sr-only"
-                    checked={selected}
-                    onChange={() => form.update({ botLevel: level.level })}
-                  />
-                  <span className="flex items-center justify-between text-sm font-semibold">
-                    {level.name}
-                    <span className="text-xs font-normal text-muted">Nivel {level.level}</span>
-                  </span>
-                  <span className="mt-0.5 block text-xs text-muted">{level.description}</span>
-                </label>
-              );
-            })}
-            {!meta && !serverError && <p className="text-sm text-muted">Cargando…</p>}
-            {form.opponentKind === 'saved' &&
-              savedOpponent &&
-              savedOpponent.botLevel !== form.botLevel && (
-                <p className="text-xs text-muted">
-                  «{savedOpponent.name}» se guardó con la dificultad{' '}
-                  {levelName(savedOpponent.botLevel)}.{' '}
-                  <button
-                    type="button"
-                    className="text-accent hover:underline"
-                    onClick={() => form.update({ botLevel: savedOpponent.botLevel })}
-                  >
-                    Usar esa
-                  </button>
-                </p>
-              )}
-          </fieldset>
-        </Panel>
-
-        <Panel title="Opciones de práctica">
-          <div className="flex flex-col gap-3 p-4">
-            <Checkbox
-              checked={form.teamPreview}
-              onChange={(teamPreview) => form.update({ teamPreview })}
-              label="Vista previa de equipos"
-              hint={`Ves los 6 del rival y eliges tus ${pickSize}. Sin ella, salen los primeros en orden.`}
-            />
-            <Checkbox
-              checked={form.openTeamSheets}
-              onChange={(openTeamSheets) => form.update({ openTeamSheets })}
-              label="Equipo abierto"
-              hint="Ves los sets completos del rival (movimientos, objeto, habilidad)."
-            />
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="font-medium">Tu nombre</span>
-              <input
-                value={form.playerName}
-                onChange={(event) => form.update({ playerName: event.target.value })}
-                maxLength={18}
-                placeholder="Jugador"
-                className="rounded-lg border border-border bg-panel-2 px-3 py-1.5 focus:border-accent focus:outline-none"
+      <div className="flex flex-wrap items-center gap-x-7 gap-y-4 border-t border-line pt-5">
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-3">
+            <span className="eyebrow text-faint">Dificultad</span>
+            {meta ? (
+              <Segmented
+                label="Dificultad del bot"
+                value={form.botLevel}
+                onChange={(botLevel) => form.update({ botLevel })}
+                options={meta.botLevels.map((level) => ({
+                  value: level.level,
+                  label: level.name,
+                  title: level.description,
+                }))}
               />
-            </label>
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="font-medium">Semilla (opcional)</span>
-              <input
-                value={form.seed}
-                onChange={(event) => form.update({ seed: event.target.value })}
-                maxLength={100}
-                placeholder="Aleatoria"
-                className="rounded-lg border border-border bg-panel-2 px-3 py-1.5 focus:border-accent focus:outline-none"
-              />
-              <span className="text-xs text-muted">
-                Misma semilla y mismas elecciones = mismo combate.
-              </span>
-            </label>
-          </div>
-        </Panel>
-
-        {startError && (
-          <div role="alert" className="rounded-xl border border-bad/40 bg-bad/5 p-3 text-sm">
-            <p className="font-semibold text-bad">{startError.message}</p>
-            {startError.details && (
-              <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs text-bad">
-                {startError.details.map((detail) => (
-                  <li key={detail}>{detail}</li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-
-        <Button
-          variant="primary"
-          className="py-3 text-base"
-          onClick={onStart}
-          disabled={!teamReady || !rivalReady || starting || serverError !== null}
-        >
-          {starting ? 'Preparando el combate…' : 'Empezar combate'}
-        </Button>
-        {!teamReady && (
-          <p className="text-center text-xs text-muted">
-            {form.teamSource === 'saved' ? (
-              <>
-                Elige un equipo guardado legal o{' '}
-                <Link to="/equipos" className="text-accent hover:underline">
-                  créalo
-                </Link>
-                .
-              </>
             ) : (
-              'Pega un equipo legal para empezar.'
+              !serverError && <Loading />
             )}
-          </p>
-        )}
-        {teamReady && !rivalReady && (
-          <p className="text-center text-xs text-muted">
-            {form.opponentKind === 'saved'
-              ? 'Elige un rival guardado legal.'
-              : 'Pega un equipo rival legal o elige otro tipo de rival.'}
-          </p>
-        )}
-      </aside>
+          </div>
+          {form.opponentKind === 'saved' &&
+            savedOpponent &&
+            savedOpponent.botLevel !== form.botLevel && (
+              <p className="text-xs text-faint">
+                «{savedOpponent.name}» se guardó con la dificultad{' '}
+                {levelName(savedOpponent.botLevel)}.{' '}
+                <button
+                  type="button"
+                  className="text-accent-fg hover:underline"
+                  onClick={() => form.update({ botLevel: savedOpponent.botLevel })}
+                >
+                  Usar esa
+                </button>
+              </p>
+            )}
+        </div>
+        <Checkbox
+          checked={form.teamPreview}
+          onChange={(teamPreview) => form.update({ teamPreview })}
+          label="Vista previa"
+        />
+        <Checkbox
+          checked={form.openTeamSheets}
+          onChange={(openTeamSheets) => form.update({ openTeamSheets })}
+          label="Equipo abierto"
+        />
+        <div className="flex gap-3">
+          <Field label="Tu nombre" className="w-36">
+            <TextInput
+              value={form.playerName}
+              onChange={(event) => form.update({ playerName: event.target.value })}
+              maxLength={18}
+              placeholder="Jugador"
+            />
+          </Field>
+          <Field label="Semilla" className="w-36">
+            <TextInput
+              value={form.seed}
+              onChange={(event) => form.update({ seed: event.target.value })}
+              maxLength={100}
+              placeholder="Aleatoria"
+            />
+          </Field>
+        </div>
+        <div className="ml-auto flex items-center gap-4">
+          {missing && <span className="eyebrow text-faint">{missing}</span>}
+          <Button
+            variant="primary"
+            size="lg"
+            onClick={onStart}
+            disabled={!teamReady || !rivalReady || starting || serverError !== null}
+          >
+            {starting ? 'Preparando…' : 'Combatir'}
+            <IconArrowRight size={20} />
+          </Button>
+        </div>
+      </div>
+
+      {startError && <Notice title={startError.message} items={startError.details} />}
+    </div>
+  );
+}
+
+/** One side of the versus: its source, the chosen team in big slots and the picker. */
+function Side({
+  side,
+  title,
+  source,
+  name,
+  status,
+  species,
+  hidden = false,
+  children,
+}: {
+  side: 'p1' | 'p2';
+  title: string;
+  source: ReactNode;
+  name: string | null;
+  status: ReactNode;
+  species: string[];
+  hidden?: boolean;
+  children?: ReactNode;
+}) {
+  const color = side === 'p1' ? 'text-accent-fg' : 'text-rival';
+  const mark = side === 'p1' ? 'bg-accent' : 'bg-rival';
+  return (
+    <section
+      aria-label={title}
+      className="flex min-w-0 flex-col rounded-md border border-line bg-surface shadow-panel"
+    >
+      <header className="flex min-h-12 items-center justify-between gap-3 border-b border-line px-4 py-2">
+        <h2 className={`eyebrow flex items-center gap-2 ${color}`}>
+          <span className={`size-2 ${mark}`} aria-hidden="true" />
+          {title}
+        </h2>
+        {source}
+      </header>
+      <div className="flex flex-col gap-4 border-b border-line px-5 pt-5 pb-4">
+        <div className="flex min-h-9 items-baseline gap-3">
+          <span className={`display truncate text-[34px] ${name ? '' : 'text-faint'}`}>
+            {name ?? 'Sin elegir'}
+          </span>
+          {status}
+        </div>
+        <TeamSlots species={species} hidden={hidden} label={`Pokémon de ${title.toLowerCase()}`} />
+      </div>
+      {children && <div className="p-2">{children}</div>}
+    </section>
+  );
+}
+
+function Versus() {
+  return (
+    <div className="relative hidden items-center justify-center lg:flex" aria-hidden="true">
+      <span className="absolute inset-y-6 left-1/2 w-px bg-gradient-to-b from-transparent via-line-strong to-transparent" />
+      <span className="display relative bg-bg py-3 text-[44px] italic">VS</span>
     </div>
   );
 }

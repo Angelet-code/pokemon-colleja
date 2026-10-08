@@ -27,12 +27,11 @@ export function TeamsPage() {
 
   return (
     <SavedListLayout
-      title="Mis equipos"
-      intro="Crea equipos con Stat Points, guárdalos y úsalos en combate. Un equipo con problemas se guarda como borrador."
+      title="Equipos"
       newPath="/equipos/nuevo"
       newLabel="Nuevo equipo"
       listLabel="Equipos guardados"
-      empty="Aún no tienes equipos guardados. Crea uno desde cero o importa un export de Showdown."
+      empty="Aún no tienes equipos guardados."
       list={list}
       renderImport={(close) => (
         <ImportSavedDialog

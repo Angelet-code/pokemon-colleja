@@ -9,7 +9,6 @@ import {
   natureModifier,
   type PokemonSet,
   remainingStatPoints,
-  totalStatPoints,
 } from '@colleja/core';
 import {
   type GameMode,
@@ -20,9 +19,7 @@ import {
   type StatId,
 } from '@colleja/data';
 import { statShort } from '@colleja/narration';
-
-/** Bar scale: a final stat of this size fills the bar. */
-const BAR_MAX = 250;
+import type { CSSProperties } from 'react';
 
 export function StatPointsEditor({
   set,
@@ -46,54 +43,50 @@ export function StatPointsEditor({
   const stats = championsStats(set);
   const megaStats = mega ? championsStats(set, { species: mega }) : null;
   const megaBase = mega ? getSpecies(mega)?.baseStats : undefined;
-  const used = totalStatPoints(set.statPoints);
   const remaining = remainingStatPoints(set.statPoints, limits);
+  const columns = megaStats
+    ? 'grid-cols-[3rem_2.25rem_minmax(0,1fr)_2.75rem_2.75rem_2.75rem]'
+    : 'grid-cols-[3rem_2.25rem_minmax(0,1fr)_2.75rem_2.75rem]';
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-sm font-semibold">Stat Points</h3>
-        <p className="text-xs text-muted" aria-live="polite">
-          <span className={remaining === 0 ? 'font-semibold text-text' : ''}>
-            Restantes: <output aria-label="Stat Points restantes">{remaining}</output>
-          </span>{' '}
-          · usados {used}/{limits.total} · máximo {limits.perStat} por stat
+    <div className="flex flex-col gap-3">
+      <div className="flex items-end justify-between gap-3">
+        <h3 className="eyebrow text-muted">Stat Points</h3>
+        <p className="flex items-baseline gap-2" aria-live="polite">
+          <output
+            aria-label="Stat Points restantes"
+            className={`display text-3xl tabular-nums ${remaining === 0 ? 'text-faint' : 'text-accent-fg'}`}
+          >
+            {remaining}
+          </output>
+          <span className="eyebrow text-faint">de {limits.total}</span>
         </p>
       </div>
-      <div
-        className={`grid items-center gap-x-2 gap-y-1.5 text-sm ${
-          megaStats
-            ? 'grid-cols-[3rem_2rem_1fr_3.25rem_2.75rem_2.75rem]'
-            : 'grid-cols-[3rem_2rem_1fr_3.25rem_2.75rem]'
-        }`}
-      >
-        <span className="text-xs text-faint">Stat</span>
-        <span className="text-right text-xs text-faint">Base</span>
-        <span className="text-xs text-faint">Stat Points</span>
+      <div className={`grid items-center gap-x-3 gap-y-2 text-sm ${columns}`}>
+        <span className="eyebrow text-faint">Stat</span>
+        <span className="eyebrow text-right text-faint">Base</span>
+        <span className="eyebrow text-faint">Puntos</span>
         <span aria-hidden="true" />
-        <span className="text-right text-xs text-faint">Total</span>
+        <span className="eyebrow text-right text-faint">Total</span>
         {megaStats && (
           <span
-            className="text-right text-xs text-faint"
+            className="eyebrow text-right text-faint"
             title={`Stats de ${getName('species', mega ?? '', locale)}`}
           >
             Mega
           </span>
         )}
         {STAT_IDS.map((stat) => {
-          const name = getName('stats', stat, locale);
           const nature = natureModifier(set.nature, stat);
-          const tone = nature > 100 ? 'text-good' : nature < 100 ? 'text-bad' : '';
-          const value = set.statPoints[stat];
           return (
             <StatRow
               key={stat}
-              name={name}
+              name={getName('stats', stat, locale)}
               short={statShort(stat, locale)}
-              tone={tone}
-              arrow={nature > 100 ? '▲' : nature < 100 ? '▼' : ''}
+              tone={nature > 100 ? 'text-good' : nature < 100 ? 'text-bad' : ''}
+              arrow={nature > 100 ? '+' : nature < 100 ? '−' : ''}
               base={species.baseStats[stat]}
-              value={value}
+              value={set.statPoints[stat]}
               max={limits.perStat}
               total={stats[stat]}
               megaTotal={megaStats?.[stat]}
@@ -133,26 +126,24 @@ function StatRow({
   megaBase: number | undefined;
   onChange: (value: number) => void;
 }) {
-  const width = `${Math.min(100, (total / BAR_MAX) * 100)}%`;
   return (
     <>
-      <span className={`font-medium ${tone}`} title={name}>
+      <span className={`font-display text-[15px] font-semibold uppercase ${tone}`} title={name}>
         {short}
-        {arrow && <span className="ml-0.5 text-[10px]">{arrow}</span>}
+        {arrow && <span className="ml-0.5">{arrow}</span>}
       </span>
-      <span className="text-right text-muted tabular-nums">{base}</span>
-      <span className="relative flex items-center">
-        <input
-          type="range"
-          min={0}
-          max={max}
-          step={1}
-          value={value}
-          aria-label={`Stat Points de ${name}`}
-          onChange={(event) => onChange(Number(event.target.value))}
-          className="w-full accent-[var(--accent)]"
-        />
-      </span>
+      <span className="text-right font-display text-[15px] text-faint tabular-nums">{base}</span>
+      <input
+        type="range"
+        min={0}
+        max={max}
+        step={1}
+        value={value}
+        aria-label={`Stat Points de ${name}`}
+        onChange={(event) => onChange(Number(event.target.value))}
+        className="range w-full"
+        style={{ '--fill': `${(value / max) * 100}%` } as CSSProperties}
+      />
       <input
         type="number"
         inputMode="numeric"
@@ -162,21 +153,19 @@ function StatRow({
         aria-label={`Stat Points de ${name} (número)`}
         onChange={(event) => onChange(Number(event.target.value) || 0)}
         onFocus={(event) => event.target.select()}
-        className="w-full rounded-md border border-border bg-panel-2 px-1.5 py-0.5 text-right tabular-nums focus:border-accent focus:outline-none"
+        className="bare h-7 w-full rounded-xs border border-line bg-surface-2 px-1.5 text-right font-display text-[15px] font-semibold tabular-nums hover:border-line-strong focus:border-accent-fg focus:outline-none"
       />
-      <span className="flex flex-col items-end">
-        <output aria-label={`${name} final`} className={`font-semibold tabular-nums ${tone}`}>
-          {total}
-        </output>
-        <span className="h-1 w-full overflow-hidden rounded bg-panel-3" aria-hidden="true">
-          <span className="block h-full rounded bg-accent/70" style={{ width }} />
-        </span>
-      </span>
+      <output
+        aria-label={`${name} final`}
+        className={`text-right font-display text-lg font-bold tabular-nums ${tone}`}
+      >
+        {total}
+      </output>
       {megaTotal !== undefined && (
         <output
           aria-label={`${name} final (Mega)`}
           title={megaBase !== undefined ? `Base ${megaBase}` : undefined}
-          className={`text-right text-muted tabular-nums ${tone}`}
+          className={`text-right font-display text-lg font-semibold text-muted tabular-nums ${tone}`}
         >
           {megaTotal}
         </output>
@@ -187,7 +176,7 @@ function StatRow({
 
 export function FieldProblems({ messages }: { messages: string[] }) {
   return (
-    <ul className="space-y-0.5 text-xs text-bad" role="alert">
+    <ul className="mt-1 space-y-0.5 text-xs text-bad" role="alert">
       {messages.map((message) => (
         <li key={message}>{message}</li>
       ))}

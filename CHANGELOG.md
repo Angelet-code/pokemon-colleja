@@ -4,6 +4,21 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ## [Sin publicar]
 
+### Rediseño de la web (2026-10-08)
+
+#### Cambiado
+
+- **Interfaz rehecha desde cero** con un sistema de diseño propio, estética de «retransmisión de torneo» ([ADR-0009](docs/adr/0009-sistema-de-diseno.md)), elegida entre tres direcciones exploradas en Claude Design: tinta casi negra, acento voltio para ti y magenta para el rival, Barlow y Barlow Condensed, esquinas biseladas en la acción principal e iconos propios.
+- **Inicio** como un versus: tu equipo y el rival frente a frente con sus seis huecos, y una barra inferior con dificultad, opciones y «Combatir».
+- **Combate**: marcador (jugadores, turno y herramientas), escenario con plataformas y tarjetas de PS segmentadas, movimientos teñidos por tipo con su atajo de teclado visible, cambios con barra de PS y fin de combate con «Victoria/Derrota» a gran tamaño. Durante la vista previa no se muestra el campo vacío; la elección se ve en huecos con el líder marcado.
+- **Equipos, rivales y replays** como listas de filas; **editor** con nombre editable como titular, estado en chips y ficha con sprite sobre el color de su tipo, deslizadores propios de Stat Points y movimientos numerados; **calculadora** con barra del rango de daño sobre los PS del defensor.
+- **Textos**: fuera subtítulos, explicaciones y *hints* redundantes; los estados son chips y las descripciones largas, `title`. Algunos nombres cambian: «Por qué jugó así el bot», «Combatir», «De mis equipos», «Nuevo rival».
+- Contraste WCAG AA en todos los textos de los dos temas; tema claro revisado.
+
+#### Añadido
+
+- Web: `components/icons.tsx`, `components/TeamSlots.tsx` y nuevos bloques en `components/ui.tsx` (`buttonClass`, `IconButton`, `PageHeader`, `Field`, `TextInput`, `Select`, `Chip`, `LegalityChip`, `Notice`, `Loading`, `Empty`, `inputClass`, `textareaClass`). Dependencias `@fontsource/barlow` y `@fontsource/barlow-condensed`.
+
 ### Fase 8 — Herramientas de práctica (2026-10-08)
 
 #### Añadido

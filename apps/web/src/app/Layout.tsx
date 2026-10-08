@@ -1,6 +1,15 @@
 import { Link, NavLink, Outlet } from 'react-router';
-import { Segmented } from '../components/ui';
+import { IconMoon, IconSun } from '../components/icons';
+import { IconButton, Segmented } from '../components/ui';
 import { useSettings } from '../stores/settings';
+
+const SECTIONS: { to: string; label: string; end?: boolean }[] = [
+  { to: '/', label: 'Combate', end: true },
+  { to: '/equipos', label: 'Equipos' },
+  { to: '/rivales', label: 'Rivales' },
+  { to: '/calculadora', label: 'Calculadora' },
+  { to: '/replays', label: 'Replays' },
+];
 
 export function Layout() {
   const theme = useSettings((state) => state.theme);
@@ -10,27 +19,37 @@ export function Layout() {
 
   return (
     <div className="flex min-h-full flex-col">
-      <header className="sticky top-0 z-20 border-b border-border bg-panel/90 backdrop-blur">
-        <div className="mx-auto flex max-w-[1400px] items-center gap-3 px-4 py-2.5">
-          <Link to="/" className="flex items-center gap-2 font-semibold tracking-tight">
-            <img src="/favicon.svg" alt="" className="size-6" />
-            <span className="hidden sm:inline">Pokémon Colleja Simulator</span>
-            <span className="sm:hidden">Colleja</span>
+      <header className="sticky top-0 z-20 border-b border-line bg-bg/85 backdrop-blur-md">
+        <div className="mx-auto flex h-14 max-w-[1440px] items-center gap-3 px-4 sm:gap-6 sm:px-6">
+          <Link to="/" className="group flex items-center gap-2.5" aria-label="Colleja: inicio">
+            <Logo />
+            <span className="display hidden text-[22px] tracking-[0.02em] sm:inline">Colleja</span>
+            <span className="eyebrow hidden border-l border-line-strong pl-2.5 text-faint lg:inline">
+              Champions · Reg M-C
+            </span>
           </Link>
-          <span className="hidden rounded bg-panel-2 px-1.5 py-0.5 text-xs text-muted md:inline">
-            Champions · Reg M-C
-          </span>
-          <nav aria-label="Secciones" className="ml-2 flex min-w-0 gap-1 overflow-x-auto">
-            <NavItem to="/" end>
-              Combate
-            </NavItem>
-            <NavItem to="/equipos">Equipos</NavItem>
-            <NavItem to="/rivales">Rivales</NavItem>
-            <NavItem to="/calculadora">Calculadora</NavItem>
-            <NavItem to="/replays">Replays</NavItem>
+          <nav
+            aria-label="Secciones"
+            className="flex h-full min-w-0 overflow-x-auto [scrollbar-width:none]"
+          >
+            {SECTIONS.map((section) => (
+              <NavLink
+                key={section.to}
+                to={section.to}
+                end={section.end}
+                className={({ isActive }) =>
+                  `relative flex h-full shrink-0 items-center px-3 font-display text-[15px] font-semibold tracking-[0.06em] uppercase transition-colors after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:transition-colors ${
+                    isActive
+                      ? 'text-text after:bg-accent-fg'
+                      : 'text-faint after:bg-transparent hover:text-text'
+                  }`
+                }
+              >
+                {section.label}
+              </NavLink>
+            ))}
           </nav>
-          <div className="ml-auto flex items-center gap-2">
-            <span className="hidden text-xs text-muted sm:inline">Nombres</span>
+          <div className="ml-auto flex items-center gap-1.5">
             <Segmented
               label="Idioma de los nombres"
               size="sm"
@@ -41,68 +60,28 @@ export function Layout() {
                 { value: 'en', label: 'EN', title: 'Nombres en inglés' },
               ]}
             />
-            <button
-              type="button"
+            <IconButton
+              label={theme === 'dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
               onClick={toggleTheme}
-              aria-label={theme === 'dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
-              title={theme === 'dark' ? 'Tema claro' : 'Tema oscuro'}
-              className="rounded-lg p-2 text-muted transition hover:bg-panel-2 hover:text-text focus-visible:outline-2 focus-visible:outline-accent"
             >
-              {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
-            </button>
+              {theme === 'dark' ? <IconSun /> : <IconMoon />}
+            </IconButton>
           </div>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-4">
+      <main className="mx-auto w-full max-w-[1440px] flex-1 px-4 py-6 sm:px-6 sm:py-8">
         <Outlet />
       </main>
     </div>
   );
 }
 
-function NavItem({ to, end, children }: { to: string; end?: boolean; children: string }) {
+/** The mark: a cut square with the volt slash (same drawing as the favicon). */
+function Logo() {
   return (
-    <NavLink
-      to={to}
-      end={end}
-      className={({ isActive }) =>
-        `shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1 text-sm font-medium transition hover:bg-panel-2 ${
-          isActive ? 'bg-panel-2 text-text' : 'text-muted hover:text-text'
-        }`
-      }
-    >
-      {children}
-    </NavLink>
-  );
-}
-
-function SunIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="size-4"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="4" />
-      <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
-    </svg>
-  );
-}
-
-function MoonIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="size-4"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      aria-hidden="true"
-    >
-      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+    <svg viewBox="0 0 32 32" className="size-7" aria-hidden="true">
+      <path d="M7 1h24v24l-6 6H1V7z" className="fill-text" />
+      <path d="M9 24L21 8h5L14 24z" className="fill-accent" />
     </svg>
   );
 }

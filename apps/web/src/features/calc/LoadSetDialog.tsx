@@ -4,7 +4,9 @@ import { getName } from '@colleja/data';
 import type { TeamSummary } from '@colleja/protocol';
 import { useEffect, useState } from 'react';
 import { Dialog } from '../../components/Dialog';
+import { IconArrowLeft } from '../../components/icons';
 import { PokemonIcon } from '../../components/PokemonIcon';
+import { Loading, Notice } from '../../components/ui';
 import { api } from '../../lib/api';
 import { useSettings } from '../../stores/settings';
 
@@ -52,13 +54,9 @@ export function LoadSetDialog({
 
   return (
     <Dialog title={title} onClose={onClose}>
-      <div className="flex flex-col gap-2">
-        {error && (
-          <p role="alert" className="text-sm text-bad">
-            {error}
-          </p>
-        )}
-        {sources === null && !error && <p className="text-sm text-muted">Cargando…</p>}
+      <div className="flex flex-col gap-0.5">
+        {error && <Notice title={error} />}
+        {sources === null && !error && <Loading />}
         {sources?.length === 0 && (
           <p className="text-sm text-muted">No tienes equipos ni rivales guardados.</p>
         )}
@@ -67,9 +65,10 @@ export function LoadSetDialog({
             <button
               type="button"
               onClick={() => setOpen(null)}
-              className="self-start text-sm text-accent hover:underline"
+              className="eyebrow mb-1 flex items-center gap-1.5 self-start text-faint hover:text-text"
             >
-              ← {open.source.summary.name}
+              <IconArrowLeft size={13} />
+              {open.source.summary.name}
             </button>
             {open.members.map((set, index) => (
               <button
@@ -77,12 +76,12 @@ export function LoadSetDialog({
                 key={index}
                 type="button"
                 onClick={() => onPick(set)}
-                className="flex items-center gap-3 rounded-lg border border-border px-3 py-2 text-left text-sm hover:bg-panel-2"
+                className="flex items-center gap-3 rounded-sm px-3 py-1.5 text-left text-sm transition-colors hover:bg-surface-3"
               >
                 <PokemonIcon species={set.species} size={32} />
                 <span className="font-semibold">{getName('species', set.species, locale)}</span>
                 {set.item && (
-                  <span className="text-muted">@ {getName('items', set.item, locale)}</span>
+                  <span className="text-faint">{getName('items', set.item, locale)}</span>
                 )}
               </button>
             ))}
@@ -93,11 +92,13 @@ export function LoadSetDialog({
               key={`${source.kind}-${source.summary.id}`}
               type="button"
               onClick={() => expand(source)}
-              className="flex items-center gap-3 rounded-lg border border-border px-3 py-2 text-left hover:bg-panel-2"
+              className="flex items-center gap-3 rounded-sm px-3 py-2 text-left transition-colors hover:bg-surface-3"
             >
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-semibold">{source.summary.name}</span>
-                <span className="text-xs text-muted">
+                <span
+                  className={`eyebrow ${source.kind === 'team' ? 'text-accent-fg' : 'text-rival'}`}
+                >
                   {source.kind === 'team' ? 'Equipo' : 'Rival'}
                 </span>
               </span>

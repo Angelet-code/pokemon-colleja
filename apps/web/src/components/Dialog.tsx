@@ -1,5 +1,6 @@
 /** Modal dialog: closes with Esc or the backdrop, keeps the focus inside while open. */
 import { type ReactNode, useEffect, useId, useRef } from 'react';
+import { IconClose } from './icons';
 
 export function Dialog({
   title,
@@ -43,7 +44,7 @@ export function Dialog({
         aria-label="Cerrar ventana"
         data-dialog-close
         tabIndex={-1}
-        className="absolute inset-0 cursor-default bg-black/50"
+        className="absolute inset-0 cursor-default bg-[var(--scrim)] backdrop-blur-[2px]"
         onClick={onClose}
       />
       <div
@@ -52,12 +53,12 @@ export function Dialog({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={`relative flex max-h-[90vh] w-full flex-col rounded-xl border border-border bg-panel shadow-2xl ${
+        className={`rise relative flex max-h-[90vh] w-full flex-col rounded-md border border-line-strong bg-surface shadow-2xl ${
           wide ? 'max-w-2xl' : 'max-w-md'
         }`}
       >
-        <header className="flex items-center justify-between border-b border-border px-4 py-3">
-          <h2 id={titleId} className="font-semibold">
+        <header className="flex items-center justify-between gap-4 border-b border-line py-2.5 pr-2.5 pl-5">
+          <h2 id={titleId} className="display text-xl">
             {title}
           </h2>
           <button
@@ -65,14 +66,14 @@ export function Dialog({
             data-dialog-close
             onClick={onClose}
             aria-label="Cerrar ventana"
-            className="rounded p-1 text-muted hover:bg-panel-2 hover:text-text"
+            className="inline-flex size-8 items-center justify-center rounded-sm text-muted hover:bg-surface-3 hover:text-text"
           >
-            ✕
+            <IconClose />
           </button>
         </header>
-        <div className="overflow-y-auto p-4">{children}</div>
+        <div className="scroll-thin overflow-y-auto p-5">{children}</div>
         {footer && (
-          <footer className="flex flex-wrap justify-end gap-2 border-t border-border px-4 py-3">
+          <footer className="flex flex-wrap justify-end gap-2 border-t border-line px-5 py-3">
             {footer}
           </footer>
         )}

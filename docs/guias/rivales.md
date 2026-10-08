@@ -7,10 +7,10 @@ Cómo crear rivales para el bot (un equipo más su dificultad), guardarlos y pra
 Con `npm run dev`, entra en **Rivales** (cabecera) o en http://127.0.0.1:5173/rivales.
 
 - **Nuevo rival**, de cuatro maneras:
-  - **Generar aleatorio** (individuales o dobles): un equipo legal de los sets estándar (`teamgen`, como mucho una megapiedra).
-  - **Desde uno de mis equipos**: copia uno de tus equipos guardados. Tu equipo no cambia.
+  - **Aleatorio** (individuales o dobles): un equipo legal de los sets estándar (`teamgen`, como mucho una megapiedra).
+  - **De mis equipos**: copia uno de tus equipos guardados. Tu equipo no cambia.
   - **Importar**: texto de Showdown, con nombre, modo y dificultad.
-  - **Desde cero**: el editor vacío.
+  - **Nuevo rival**: el editor vacío.
 
   El aleatorio y la copia se abren en el editor **sin guardar**: hay que guardarlos para poder usarlos (el aviso de cambios sin guardar te lo recuerda).
 - **Editor** (`/rivales/nuevo` o `/rivales/<id>`): el mismo del teambuilder, con el selector de **dificultad** en la cabecera.

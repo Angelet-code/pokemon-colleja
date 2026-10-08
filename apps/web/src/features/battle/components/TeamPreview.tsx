@@ -4,7 +4,7 @@ import { type Locale, toId } from '@colleja/data';
 import { abilityName, itemName, moveName, speciesName } from '@colleja/narration';
 import { useState } from 'react';
 import { PokemonIcon } from '../../../components/PokemonIcon';
-import { Button, Panel } from '../../../components/ui';
+import { Button } from '../../../components/ui';
 import { useSettings } from '../../../stores/settings';
 
 export function TeamPreview({
@@ -42,9 +42,37 @@ export function TeamPreview({
   }
 
   return (
-    <Panel
-      title={`Vista previa · elige ${size}`}
-      actions={
+    <section className="rise @container rounded-md border border-line bg-surface shadow-panel">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
+        <div className="flex items-center gap-4">
+          <h2 className="display text-xl">Elige {size}</h2>
+          <ol className="flex gap-1" aria-label="Tu elección">
+            {Array.from({ length: size }, (_, index) => {
+              const position = order[index];
+              const entry = position ? request.side.pokemon[position - 1] : undefined;
+              return (
+                <li
+                  // biome-ignore lint/suspicious/noArrayIndexKey: fixed slots.
+                  key={index}
+                  className={`relative flex size-11 items-center justify-center rounded-sm ${
+                    entry ? 'bg-surface-3' : 'border border-dashed border-line-strong'
+                  }`}
+                >
+                  {entry ? (
+                    <PokemonIcon species={toId(entry.details.split(',')[0] ?? '')} size={40} />
+                  ) : (
+                    <span className="display text-faint">{index + 1}</span>
+                  )}
+                  {index < leads && (
+                    <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 bg-accent px-1 font-display text-[9px] leading-3 font-bold tracking-wider text-on-accent uppercase">
+                      Líder
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+        </div>
         <div className="flex gap-2">
           <Button variant="ghost" onClick={() => setOrder([])} disabled={order.length === 0}>
             Limpiar
@@ -57,15 +85,14 @@ export function TeamPreview({
             Confirmar equipo
           </Button>
         </div>
-      }
-    >
-      <div className="grid gap-4 p-4 @3xl:grid-cols-2">
+      </header>
+      <div className="grid gap-x-6 gap-y-4 p-4 @3xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div>
-          <p className="mb-2 text-xs text-muted">
-            Pulsa en orden:{' '}
-            {leads === 1 ? 'el primero sale de líder' : 'los dos primeros salen de líderes'}.
-          </p>
-          <ul className="grid gap-1.5">
+          <h3 className="eyebrow mb-2.5 flex items-center gap-2 text-accent-fg">
+            <span className="size-2 bg-accent" aria-hidden="true" />
+            Tu equipo
+          </h3>
+          <ul className="grid gap-1">
             {request.side.pokemon.map((pokemon, index) => {
               const position = index + 1;
               const picked = order.indexOf(position);
@@ -77,29 +104,26 @@ export function TeamPreview({
                     type="button"
                     onClick={() => toggle(position)}
                     aria-pressed={picked >= 0}
-                    className={`flex w-full items-center gap-2 rounded-lg border px-2 py-1.5 text-left transition focus-visible:outline-2 focus-visible:outline-accent ${
-                      picked >= 0 ? 'border-accent bg-accent/10' : 'border-border hover:bg-panel-2'
+                    className={`flex w-full items-center gap-3 rounded-sm px-2 py-1.5 text-left transition-colors ${
+                      picked >= 0 ? 'bg-surface-3' : 'hover:bg-surface-2'
                     }`}
                   >
                     <span
-                      className={`flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                        picked >= 0 ? 'bg-accent text-accent-text' : 'bg-panel-3 text-faint'
+                      className={`flex size-6 shrink-0 items-center justify-center font-display text-sm font-bold ${
+                        picked >= 0
+                          ? 'bg-accent text-on-accent'
+                          : 'text-faint ring-1 ring-line-strong ring-inset'
                       }`}
                     >
-                      {picked >= 0 ? picked + 1 : '·'}
+                      {picked >= 0 ? picked + 1 : ''}
                     </span>
-                    <PokemonIcon species={species} size={36} />
+                    <PokemonIcon species={species} size={40} />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold">
+                      <span className="block truncate font-semibold">
                         {speciesName(species, locale)}
                       </span>
                       {set && <SetSummary set={set} locale={locale} />}
                     </span>
-                    {picked >= 0 && picked < leads && (
-                      <span className="rounded bg-accent/15 px-1.5 text-[10px] font-bold text-accent uppercase">
-                        Líder
-                      </span>
-                    )}
                   </button>
                 </li>
               );
@@ -107,8 +131,11 @@ export function TeamPreview({
           </ul>
         </div>
         <div>
-          <p className="mb-2 text-xs text-muted">Equipo rival</p>
-          <ul className="grid gap-1.5">
+          <h3 className="eyebrow mb-2.5 flex items-center gap-2 text-rival">
+            <span className="size-2 bg-rival" aria-hidden="true" />
+            Rival
+          </h3>
+          <ul className="grid gap-1">
             {rivalSpecies.map((species, index) => {
               const set =
                 rivalTeam?.find((entry) => entry.species === species) ?? rivalTeam?.[index];
@@ -116,11 +143,12 @@ export function TeamPreview({
                 <li
                   // biome-ignore lint/suspicious/noArrayIndexKey: preview order is the identity.
                   key={index}
-                  className="flex items-center gap-2 rounded-lg border border-border px-2 py-1.5"
+                  className="flex items-center gap-3 rounded-sm px-2 py-1.5"
                 >
-                  <PokemonIcon species={species} size={36} />
+                  <span className="size-6 shrink-0" aria-hidden="true" />
+                  <PokemonIcon species={species} size={40} />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold">
+                    <span className="block truncate font-semibold">
                       {speciesName(species, locale)}
                     </span>
                     {set && <SetSummary set={set} locale={locale} />}
@@ -131,18 +159,20 @@ export function TeamPreview({
           </ul>
         </div>
       </div>
-    </Panel>
+    </section>
   );
 }
 
 function SetSummary({ set, locale }: { set: PokemonSet; locale: Locale }) {
   return (
-    <span className="block truncate text-[11px] text-muted">
+    <span className="block truncate text-xs text-muted">
       {[set.item && itemName(set.item, locale), abilityName(set.ability, locale)]
         .filter(Boolean)
         .join(' · ')}
-      {' — '}
-      {set.moves.map((move) => moveName(move, locale)).join(', ')}
+      <span className="text-faint">
+        {' — '}
+        {set.moves.map((move) => moveName(move, locale)).join(', ')}
+      </span>
     </span>
   );
 }

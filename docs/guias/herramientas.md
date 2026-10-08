@@ -35,7 +35,7 @@ Se guardan en `storage/replays/<id>.json` (no versionado):
 }
 ```
 
-### "¿Por qué hizo eso el bot?" (pantalla de combate)
+### "Por qué jugó así el bot" (pantalla de combate)
 
 - Panel plegable bajo los controles. Al resolverse cada turno aparece lo que valoró el bot: el método (qué mide la puntuación) y sus mejores opciones, con la elegida marcada. Puedes elegir cualquier turno ya jugado.
 - **Nunca antes de tiempo**: la decisión del turno que estás jugando no se envía hasta que se resuelve.

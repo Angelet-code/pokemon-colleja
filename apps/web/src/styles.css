@@ -2,58 +2,92 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Semantic colour tokens: light by default, dark under `.dark` on <html>. */
+/*
+ * Design tokens (see docs/adr/0009-sistema-de-diseno.md). Tournament-broadcast look: near-black
+ * ink, one volt accent for you, magenta for the rival, condensed type for figures and labels.
+ * Light by default, dark under `.dark` on <html>.
+ */
 :root {
-  --bg: #eeece9;
-  --panel: #ffffff;
-  --panel-2: #f5f4f2;
-  --panel-3: #e7e5e2;
-  --text: #1c1917;
-  --muted: #57534e;
-  --faint: #8a837d;
-  --border: #d6d3d1;
-  --accent: #c81e1e;
-  --accent-text: #ffffff;
-  --good: #16a34a;
-  --warn: #d97706;
-  --bad: #dc2626;
-  --stage-top: #cfe3f2;
-  --stage-bottom: #dcebd0;
+  --bg: #e9e6df;
+  --surface: #f7f5f0;
+  --surface-2: #efece5;
+  --surface-3: #e2ded5;
+  --line: #d6d1c6;
+  --line-strong: #bdb7aa;
+  --text: #121316;
+  --muted: #57554f;
+  --faint: #625e55;
+  /* Accent as a fill (with --on-accent text) and as text on the page background. */
+  --accent: #c8f031;
+  --on-accent: #0b0c0e;
+  --accent-fg: #4a6400;
+  --rival: #b80f4c;
+  --good: #0f7038;
+  --warn: #8f5600;
+  --bad: #b8262a;
+  --hp-good: #22b35e;
+  --hp-warn: #e6a700;
+  --hp-bad: #e5383b;
+  --stage: #d9e2e6;
+  --stage-floor: #c9d4d1;
+  --stage-line: rgb(18 19 22 / 0.07);
+  --shadow: 0 1px 0 rgb(255 255 255 / 0.6) inset, 0 12px 32px -18px rgb(18 19 22 / 0.35);
+  --scrim: rgb(10 11 13 / 0.45);
 }
 
 .dark {
-  --bg: #0e1014;
-  --panel: #161920;
-  --panel-2: #1d2129;
-  --panel-3: #262b35;
-  --text: #ebe8e4;
-  --muted: #a9a29b;
-  --faint: #6f6a65;
-  --border: #2d323d;
-  --accent: #ef4444;
-  --accent-text: #ffffff;
-  --good: #22c55e;
-  --warn: #f59e0b;
-  --bad: #f87171;
-  --stage-top: #1d2a3a;
-  --stage-bottom: #1f2a22;
+  --bg: #08090b;
+  --surface: #0f1114;
+  --surface-2: #15181c;
+  --surface-3: #1d2126;
+  --line: #22262c;
+  --line-strong: #323840;
+  --text: #edebe5;
+  --muted: #9b9890;
+  --faint: #8a8880;
+  --accent: #d4ff3a;
+  --on-accent: #0b0c0e;
+  --accent-fg: #d4ff3a;
+  --rival: #ff4f8b;
+  --good: #3ddc84;
+  --warn: #ffb020;
+  --bad: #ff5a5a;
+  --hp-good: #3ddc84;
+  --hp-warn: #ffc233;
+  --hp-bad: #ff4d4d;
+  --stage: #0d1116;
+  --stage-floor: #121a1c;
+  --stage-line: rgb(237 235 229 / 0.045);
+  --shadow: 0 1px 0 rgb(255 255 255 / 0.03) inset, 0 16px 40px -20px rgb(0 0 0 / 0.9);
+  --scrim: rgb(0 0 0 / 0.65);
 }
 
 @theme inline {
   --color-bg: var(--bg);
-  --color-panel: var(--panel);
-  --color-panel-2: var(--panel-2);
-  --color-panel-3: var(--panel-3);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
   --color-text: var(--text);
   --color-muted: var(--muted);
   --color-faint: var(--faint);
-  --color-border: var(--border);
   --color-accent: var(--accent);
-  --color-accent-text: var(--accent-text);
+  --color-on-accent: var(--on-accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-rival: var(--rival);
   --color-good: var(--good);
   --color-warn: var(--warn);
   --color-bad: var(--bad);
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans: "Barlow", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  --font-display: "Barlow Condensed", "Barlow", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, monospace;
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --shadow-panel: var(--shadow);
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 html,
@@ -66,12 +100,172 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.45;
   -webkit-font-smoothing: antialiased;
+  font-feature-settings: "tnum" 0;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-fg);
+  outline-offset: 2px;
+}
+
+/* Condensed uppercase label: section titles, table heads, chips. */
+@utility eyebrow {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+/* Big condensed figures and titles. */
+@utility display {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+
+/* The signature cut corner (top-left and bottom-right), for primary actions and hero blocks. */
+@utility chamfer {
+  clip-path: polygon(
+    var(--cut, 10px) 0,
+    100% 0,
+    100% calc(100% - var(--cut, 10px)),
+    calc(100% - var(--cut, 10px)) 100%,
+    0 100%,
+    0 var(--cut, 10px)
+  );
 }
 
 /* Pixel art icons (Gen 8 menu icons) keep their crisp edges when scaled. */
 .pixel {
   image-rendering: pixelated;
+}
+
+/* Keyboard hint (1–4 moves, 5–9 switches). */
+kbd {
+  font-family: var(--font-display);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* Range inputs: hairline track filled up to the value (`--fill`), square thumb. */
+input[type="range"].range {
+  appearance: none;
+  height: 18px;
+  background: transparent;
+  cursor: pointer;
+}
+input[type="range"].range::-webkit-slider-runnable-track {
+  height: 4px;
+  background: linear-gradient(
+    to right,
+    var(--accent) 0 var(--fill, 0%),
+    var(--surface-3) var(--fill, 0%) 100%
+  );
+}
+input[type="range"].range::-moz-range-track {
+  height: 4px;
+  background: var(--surface-3);
+}
+input[type="range"].range::-moz-range-progress {
+  height: 4px;
+  background: var(--accent);
+}
+input[type="range"].range::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 18px;
+  margin-top: -7px;
+  background: var(--text);
+  border: 2px solid var(--surface);
+  transition: transform 120ms var(--ease-out);
+}
+input[type="range"].range::-moz-range-thumb {
+  width: 10px;
+  height: 16px;
+  border-radius: 0;
+  background: var(--text);
+  border: 2px solid var(--surface);
+}
+input[type="range"].range:hover::-webkit-slider-thumb {
+  transform: scaleY(1.15);
+}
+
+/* Number inputs without spinners (the slider sits next to them). */
+input[type="number"].bare::-webkit-inner-spin-button,
+input[type="number"].bare::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+input[type="number"].bare {
+  appearance: textfield;
+}
+
+/* Thin scrollbars in scrolling panels (log, lists). */
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+/* Battle stage: floor grid in perspective under a soft glow per side. */
+.stage {
+  background:
+    radial-gradient(
+      60% 55% at 78% 22%,
+      color-mix(in oklab, var(--rival) 9%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      60% 55% at 22% 80%,
+      color-mix(in oklab, var(--accent) 7%, transparent),
+      transparent 70%
+    ),
+    linear-gradient(180deg, var(--stage) 0%, var(--stage-floor) 100%);
+}
+.stage::before {
+  content: "";
+  position: absolute;
+  inset: 38% -40% -10% -40%;
+  background-image:
+    linear-gradient(var(--stage-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--stage-line) 1px, transparent 1px);
+  background-size: 48px 48px;
+  transform: perspective(420px) rotateX(58deg);
+  transform-origin: top;
+  mask-image: linear-gradient(180deg, transparent, black 30%);
+  pointer-events: none;
+}
+
+/* Elliptic platform under each active Pokémon. */
+.platform {
+  background: radial-gradient(
+    closest-side,
+    color-mix(in oklab, var(--side, var(--accent)) 22%, transparent),
+    color-mix(in oklab, var(--side, var(--accent)) 6%, transparent) 60%,
+    transparent
+  );
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+.rise {
+  animation: rise 220ms var(--ease-out) both;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -16,7 +16,17 @@ import {
   useParams,
 } from 'react-router';
 import { Dialog } from '../../components/Dialog';
-import { Button, Panel, Segmented } from '../../components/ui';
+import { IconArrowLeft, IconDownload, IconSave, IconUpload } from '../../components/icons';
+import {
+  Button,
+  buttonClass,
+  Chip,
+  Loading,
+  Notice,
+  Panel,
+  Segmented,
+  textareaClass,
+} from '../../components/ui';
 import { useSettings } from '../../stores/settings';
 import { useSetup } from '../setup/setup-store';
 import { BotLevelSelect } from './components/BotLevelSelect';
@@ -124,14 +134,13 @@ export function TeamEditorPage({ destination }: { destination: EditorDestination
     navigate('/');
   }
 
-  if (editor.status === 'loading') return <p className="text-muted">{texts.loading}</p>;
+  if (editor.status === 'loading') return <Loading>{texts.loading}</Loading>;
   if (editor.loadError) {
     return (
-      <div className="mx-auto flex max-w-md flex-col items-start gap-3">
-        <p role="alert" className="text-bad">
-          {editor.loadError}
-        </p>
-        <Link to={destination.path} className="text-accent hover:underline">
+      <div className="mx-auto flex max-w-md flex-col items-start gap-4">
+        <Notice title={editor.loadError} />
+        <Link to={destination.path} className={buttonClass('ghost', 'sm')}>
+          <IconArrowLeft size={14} />
           {texts.back}
         </Link>
       </div>
@@ -139,50 +148,84 @@ export function TeamEditorPage({ destination }: { destination: EditorDestination
   }
 
   const total = issues.total + validatorProblems.length;
+  const problemList = [...issues.team, ...validatorProblems];
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-4">
-      <div className="flex flex-wrap items-end gap-3">
-        <Link to={destination.path} className="text-sm text-muted hover:text-text">
+    <div className="mx-auto flex max-w-[1280px] flex-col gap-5">
+      <div className="flex flex-col gap-3">
+        <Link
+          to={destination.path}
+          className="eyebrow flex w-fit items-center gap-1.5 text-faint hover:text-text"
+        >
+          <IconArrowLeft size={13} />
           {texts.back}
         </Link>
-        <label className="flex min-w-48 flex-1 flex-col gap-1">
-          <span className="text-xs font-medium text-muted">{texts.nameLabel}</span>
-          <input
-            value={draft.name}
-            maxLength={60}
-            onChange={(event) =>
-              editor.edit((current) => ({ ...current, name: event.target.value }))
-            }
-            className="rounded-lg border border-border bg-panel-2 px-3 py-1.5 text-lg font-semibold focus:border-accent focus:outline-none"
-          />
-        </label>
-        <Segmented
-          label="Modo preferido"
-          value={draft.mode}
-          onChange={(mode) => editor.edit((current) => ({ ...current, mode }))}
-          options={[
-            {
-              value: 'singles',
-              label: 'Individuales',
-              title: 'Modo preferido (vale para los dos)',
-            },
-            { value: 'doubles', label: 'Dobles', title: 'Modo preferido (vale para los dos)' },
-          ]}
-        />
-        {destination.kind === 'opponents' && (
-          <BotLevelSelect
-            value={draft.botLevel ?? DEFAULT_OPPONENT_LEVEL}
-            onChange={(botLevel) => editor.edit((current) => ({ ...current, botLevel }))}
-          />
-        )}
-        <div className="flex flex-wrap gap-2">
-          <Button onClick={() => setDialog('import')}>Importar</Button>
-          <Button onClick={() => setDialog('export')} disabled={draft.members.length === 0}>
+        <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
+          <label className="min-w-64 flex-1">
+            <span className="sr-only">{texts.nameLabel}</span>
+            <input
+              value={draft.name}
+              maxLength={60}
+              placeholder="Sin nombre"
+              onChange={(event) =>
+                editor.edit((current) => ({ ...current, name: event.target.value }))
+              }
+              className="display w-full border-b border-transparent bg-transparent pb-1 text-5xl placeholder:text-faint hover:border-line-strong focus:border-accent-fg focus:outline-none"
+            />
+          </label>
+          <div className="flex flex-wrap items-end gap-2">
+            <Segmented
+              label="Modo preferido"
+              value={draft.mode}
+              onChange={(mode) => editor.edit((current) => ({ ...current, mode }))}
+              options={[
+                {
+                  value: 'singles',
+                  label: 'Individuales',
+                  title: 'Modo preferido (vale para los dos)',
+                },
+                { value: 'doubles', label: 'Dobles', title: 'Modo preferido (vale para los dos)' },
+              ]}
+            />
+            {destination.kind === 'opponents' && (
+              <BotLevelSelect
+                value={draft.botLevel ?? DEFAULT_OPPONENT_LEVEL}
+                onChange={(botLevel) => editor.edit((current) => ({ ...current, botLevel }))}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-3 border-y border-line py-2.5">
+        <p className="flex items-center gap-2" aria-live="polite">
+          <Chip tone={dirty ? 'warn' : 'neutral'}>
+            {dirty ? 'Cambios sin guardar' : editor.savedId !== null ? 'Guardado' : texts.unsaved}
+          </Chip>
+          {total > 0 ? (
+            <Chip tone="bad">
+              {total} problema{total === 1 ? '' : 's'}
+            </Chip>
+          ) : (
+            <Chip tone="good">Legal</Chip>
+          )}
+        </p>
+        <div className="ml-auto flex flex-wrap items-center gap-1.5">
+          <Button size="sm" variant="ghost" onClick={() => setDialog('import')}>
+            <IconUpload size={14} />
+            Importar
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setDialog('export')}
+            disabled={draft.members.length === 0}
+          >
+            <IconDownload size={14} />
             Exportar
           </Button>
           {editor.savedId && !dirty && (
-            <Button onClick={goToBattle} disabled={total > 0} title={texts.useTitle}>
+            <Button size="sm" onClick={goToBattle} disabled={total > 0} title={texts.useTitle}>
               {texts.use}
             </Button>
           )}
@@ -195,57 +238,31 @@ export function TeamEditorPage({ destination }: { destination: EditorDestination
               !draft.name.trim()
             }
           >
+            <IconSave size={15} />
             {editor.status === 'saving' ? 'Guardando…' : 'Guardar'}
           </Button>
         </div>
       </div>
 
-      <StatusLine dirty={dirty} saved={editor.savedId !== null} problems={total} texts={texts} />
-
       {editor.saveError && (
-        <div
-          role="alert"
-          className="rounded-lg border border-bad/40 bg-bad/5 px-3 py-2 text-sm text-bad"
-        >
-          <p className="font-semibold">No se ha podido guardar: {editor.saveError.message}</p>
-          {editor.saveError.details.length > 0 && (
-            <ul className="mt-1 list-disc pl-4 text-xs">
-              {editor.saveError.details.map((detail) => (
-                <li key={detail}>{detail}</li>
-              ))}
-            </ul>
-          )}
-        </div>
+        <Notice
+          title={`No se ha podido guardar: ${editor.saveError.message}`}
+          items={editor.saveError.details}
+        />
       )}
       {notes.length > 0 && (
-        <div className="flex items-start justify-between gap-3 rounded-lg border border-warn/40 bg-warn/10 px-3 py-2 text-sm">
-          <div>
-            <p className="font-semibold">Al importar:</p>
-            <ul className="list-disc pl-4 text-xs">
-              {notes.map((note) => (
-                <li key={note}>{note}</li>
-              ))}
-            </ul>
-          </div>
-          <Button variant="ghost" onClick={() => setNotes([])} aria-label="Cerrar aviso">
-            ✕
-          </Button>
-        </div>
+        <Notice
+          tone="warn"
+          title="Ajustes al importar"
+          items={notes}
+          onClose={() => setNotes([])}
+        />
       )}
-      {(issues.team.length > 0 || validatorProblems.length > 0) && (
-        <ul
-          role="alert"
-          className="space-y-0.5 rounded-lg border border-bad/40 bg-bad/5 px-3 py-2 text-sm text-bad"
-        >
-          {[...issues.team, ...validatorProblems].map((problem) => (
-            <li key={problem}>{problem}</li>
-          ))}
-        </ul>
-      )}
+      {problemList.length > 0 && <Notice items={problemList} />}
 
-      <div className="grid items-start gap-4 lg:grid-cols-[280px_1fr]">
+      <div className="grid items-start gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
         <Panel
-          title={`Pokémon (${draft.members.length}/${size})`}
+          title={`Pokémon ${draft.members.length}/${size}`}
           className={mobileSheet ? 'max-lg:hidden' : ''}
         >
           <div className="p-2">
@@ -271,8 +288,8 @@ export function TeamEditorPage({ destination }: { destination: EditorDestination
               }}
             />
           </div>
-          <label className="flex flex-col gap-1 border-t border-border p-3">
-            <span className="text-xs font-medium text-muted">Notas</span>
+          <label className="flex flex-col gap-1.5 border-t border-line p-3">
+            <span className="eyebrow text-faint">Notas</span>
             <textarea
               value={draft.notes ?? ''}
               maxLength={2000}
@@ -280,17 +297,20 @@ export function TeamEditorPage({ destination }: { destination: EditorDestination
               onChange={(event) =>
                 editor.edit((current) => ({ ...current, notes: event.target.value }))
               }
-              className="resize-y rounded-lg border border-border bg-panel-2 px-2 py-1.5 text-sm focus:border-accent focus:outline-none"
+              className={`${textareaClass} font-sans text-sm`}
             />
           </label>
         </Panel>
 
-        <Panel className={mobileSheet ? '' : 'max-lg:hidden'}>
+        <section
+          className={`min-w-0 rounded-md border border-line bg-surface shadow-panel ${mobileSheet ? '' : 'max-lg:hidden'}`}
+        >
           {selected >= 0 && draft.members[selected] ? (
             <>
-              <div className="border-b border-border px-4 py-2 lg:hidden">
-                <Button variant="ghost" onClick={() => setMobileSheet(false)}>
-                  ← Equipo
+              <div className="border-b border-line px-3 py-2 lg:hidden">
+                <Button size="sm" variant="ghost" onClick={() => setMobileSheet(false)}>
+                  <IconArrowLeft size={14} />
+                  Equipo
                 </Button>
               </div>
               <SetEditor
@@ -309,13 +329,16 @@ export function TeamEditorPage({ destination }: { destination: EditorDestination
               />
             </>
           ) : (
-            <p className="p-6 text-sm text-muted">
-              {draft.members.length === 0
-                ? 'Añade el primer Pokémon con el buscador de la izquierda, o importa un equipo en formato de Showdown.'
-                : 'Elige un Pokémon de la lista para editarlo.'}
-            </p>
+            <div className="flex min-h-72 flex-col items-center justify-center gap-2 p-8 text-center">
+              <p className="display text-3xl text-faint">
+                {draft.members.length === 0 ? 'Equipo vacío' : 'Elige un Pokémon'}
+              </p>
+              {draft.members.length === 0 && (
+                <p className="text-sm text-muted">Añade uno a la izquierda o importa un equipo.</p>
+              )}
+            </div>
           )}
-        </Panel>
+        </section>
       </div>
 
       {dialog === 'export' && (
@@ -328,7 +351,7 @@ export function TeamEditorPage({ destination }: { destination: EditorDestination
       {dialog === 'import' && (
         <ImportDialog
           title="Importar equipo"
-          hint="Pega el equipo en formato de Showdown. Sustituye a los Pokémon actuales (el nombre y el modo se mantienen)."
+          hint="Sustituye a los Pokémon actuales"
           onClose={() => setDialog(null)}
           onImport={(text) => {
             const result = importText(text, draft.mode);
@@ -360,30 +383,5 @@ export function TeamEditorPage({ destination }: { destination: EditorDestination
         </Dialog>
       )}
     </div>
-  );
-}
-
-function StatusLine({
-  dirty,
-  saved,
-  problems,
-  texts,
-}: {
-  dirty: boolean;
-  saved: boolean;
-  problems: number;
-  texts: EditorDestination['texts'];
-}) {
-  return (
-    <p className="flex flex-wrap gap-3 text-sm" aria-live="polite">
-      <span className={dirty ? 'text-warn' : 'text-muted'}>
-        {dirty ? 'Cambios sin guardar' : saved ? 'Guardado' : texts.unsaved}
-      </span>
-      <span className={problems > 0 ? 'text-bad' : 'text-good'}>
-        {problems > 0
-          ? `${problems} problema${problems === 1 ? '' : 's'} (se puede guardar como borrador; para combatir tiene que ser legal)`
-          : texts.legal}
-      </span>
-    </p>
   );
 }

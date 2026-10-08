@@ -4,6 +4,8 @@
  * accents, so "lanzal" finds "Lanzallamas" and "flameth" finds "Flamethrower".
  */
 import { type KeyboardEvent, type ReactNode, useId, useMemo, useRef, useState } from 'react';
+import { IconChevronDown } from './icons';
+import { inputClass } from './ui';
 
 export interface ComboOption {
   value: string;
@@ -109,8 +111,8 @@ export function Combobox({
   const activeId = open && visible[active] ? `${id}-opt-${active}` : undefined;
 
   return (
-    <div className="relative flex flex-col gap-1">
-      <label htmlFor={id} className={hideLabel ? 'sr-only' : 'text-xs font-medium text-muted'}>
+    <div className="relative flex min-w-0 flex-col gap-1.5">
+      <label htmlFor={id} className={hideLabel ? 'sr-only' : 'eyebrow text-faint'}>
         {label}
       </label>
       <input
@@ -138,16 +140,18 @@ export function Combobox({
           setActive(0);
         }}
         onKeyDown={onKeyDown}
-        className={`w-full rounded-lg border bg-panel-2 px-3 py-1.5 text-sm placeholder:text-faint focus:border-accent focus:outline-none ${
-          invalid ? 'border-bad/70' : 'border-border'
-        }`}
+        className={`${inputClass} pr-7`}
+      />
+      <IconChevronDown
+        size={14}
+        className={`pointer-events-none absolute right-2.5 bottom-[11px] text-faint transition-transform ${open ? 'rotate-180' : ''}`}
       />
       {open && (
         <div
           id={listId}
           role="listbox"
           aria-label={label}
-          className="absolute top-full right-0 left-0 z-30 mt-1 max-h-72 overflow-y-auto rounded-lg border border-border bg-panel py-1 shadow-xl"
+          className="scroll-thin absolute top-full right-0 left-0 z-30 mt-1 max-h-80 min-w-64 overflow-y-auto rounded-sm border border-line-strong bg-surface py-1 shadow-2xl"
         >
           {visible.map((option, index) => (
             // ARIA combobox pattern: the focus stays in the input (aria-activedescendant) and the
@@ -164,8 +168,8 @@ export function Combobox({
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => pick(option)}
               onMouseEnter={() => setActive(index)}
-              className={`cursor-pointer px-3 py-1.5 text-sm ${
-                index === active ? 'bg-panel-3' : ''
+              className={`cursor-pointer border-l-2 px-3 py-1.5 text-sm ${
+                index === active ? 'border-accent bg-surface-3' : 'border-transparent'
               } ${option.disabled ? 'cursor-not-allowed opacity-50' : ''} ${
                 option.value === value ? 'font-semibold' : ''
               }`}

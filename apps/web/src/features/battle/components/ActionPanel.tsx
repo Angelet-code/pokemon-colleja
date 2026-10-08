@@ -16,11 +16,13 @@ import {
   validateChoice,
 } from '@colleja/core';
 import { getDescription, getMove, type Locale, toId } from '@colleja/data';
-import { moveName, speciesName, typeName } from '@colleja/narration';
+import { moveName, speciesName } from '@colleja/narration';
 import { useEffect, useMemo, useState } from 'react';
+import { IconArrowLeft, IconSparkle } from '../../../components/icons';
 import { PokemonIcon } from '../../../components/PokemonIcon';
-import { Button, Panel } from '../../../components/ui';
-import { moveDetails } from '../../../lib/move-labels';
+import { TypeBadge } from '../../../components/TypeBadge';
+import { Button, Notice, Panel } from '../../../components/ui';
+import { CATEGORY_LABEL, moveDetails } from '../../../lib/move-labels';
 import { typeColor } from '../../../lib/type-colors';
 import { useSettings } from '../../../stores/settings';
 import {
@@ -34,7 +36,8 @@ import {
   megaTaken,
   toChoice,
 } from '../choice-draft';
-import { hpPercent } from '../format';
+import { hpPercent, hpTone } from '../format';
+import { HpBar } from './Field';
 
 export function ActionPanel({
   request,
@@ -151,34 +154,25 @@ export function ActionPanel({
       : `¿Qué hará ${name}?`;
 
   return (
-    <Panel
-      title={
-        <span className="normal-case tracking-normal">
+    <section className="rise rounded-md border border-line bg-surface shadow-panel">
+      <header className="flex min-h-12 items-center justify-between gap-3 border-b border-line px-4 py-2">
+        <h2 className="display flex items-baseline gap-3 text-xl">
           {title}
-          {doubles && (
-            <span className="ml-2 text-xs font-normal text-faint">Posición {slot.index + 1}</span>
-          )}
-        </span>
-      }
-      actions={
-        (aiming || canGoBack(draft)) && (
-          <Button variant="ghost" onClick={goBack}>
-            ← Atrás
+          {doubles && <span className="eyebrow text-faint">Posición {slot.index + 1}</span>}
+        </h2>
+        {aiming || canGoBack(draft) ? (
+          <Button size="sm" variant="ghost" onClick={goBack}>
+            <IconArrowLeft size={14} />
+            Atrás
           </Button>
-        )
-      }
-    >
-      <div className="flex flex-col gap-3 p-3">
-        {problems.length > 0 && (
-          <ul
-            role="alert"
-            className="rounded-lg border border-bad/40 bg-bad/5 px-3 py-2 text-xs text-bad"
-          >
-            {problems.map((problem) => (
-              <li key={problem}>{problem}</li>
-            ))}
-          </ul>
+        ) : (
+          <span className="eyebrow text-faint max-sm:hidden">
+            {slot.moves.length > 0 ? '1–4 · 5–9 · Esc' : '5–9'}
+          </span>
         )}
+      </header>
+      <div className="flex flex-col gap-3.5 p-4">
+        {problems.length > 0 && <Notice items={problems} />}
 
         {aiming ? (
           <TargetPicker
@@ -191,11 +185,12 @@ export function ActionPanel({
         ) : (
           slot.moves.length > 0 && (
             <>
-              <div className="grid grid-cols-2 gap-2">
-                {slot.moves.map((option) => (
+              <div className="grid gap-2 sm:grid-cols-2">
+                {slot.moves.map((option, index) => (
                   <MoveButton
                     key={option.slot}
                     option={option}
+                    hotkey={index + 1}
                     locale={locale}
                     disabled={disabled}
                     onClick={() => pickMove(option)}
@@ -203,13 +198,20 @@ export function ActionPanel({
                 ))}
               </div>
               {slot.canMega && !megaTaken(draft) && (
-                <label className="flex w-fit cursor-pointer items-center gap-2 rounded-lg border border-accent/50 bg-accent/10 px-3 py-1.5 text-sm font-semibold">
+                <label
+                  className={`flex h-9 w-fit cursor-pointer items-center gap-2 rounded-sm px-3.5 font-display text-sm font-semibold tracking-[0.06em] uppercase transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent-fg ${
+                    mega
+                      ? 'bg-accent text-on-accent'
+                      : 'border border-accent-fg/50 text-accent-fg hover:bg-accent/10'
+                  }`}
+                >
                   <input
                     type="checkbox"
                     checked={mega}
                     onChange={(event) => setMega(event.target.checked)}
-                    className="size-4 accent-[var(--accent)]"
+                    className="sr-only"
                   />
+                  <IconSparkle size={15} />
                   Megaevolucionar
                 </label>
               )}
@@ -228,46 +230,54 @@ export function ActionPanel({
           />
         )}
       </div>
-    </Panel>
+    </section>
   );
 }
 
 function MoveButton({
   option,
+  hotkey,
   locale,
   disabled,
   onClick,
 }: {
   option: MoveOption;
+  hotkey: number;
   locale: Locale;
   disabled: boolean;
   onClick: () => void;
 }) {
   const data = getMove(option.move.id);
   const color = typeColor(data?.type);
-  const details = moveDetails(option.move.id);
   const description = getDescription('moves', option.move.id);
+  const facts = data
+    ? [CATEGORY_LABEL[data.category], data.basePower ? String(data.basePower) : null]
+        .filter(Boolean)
+        .join(' · ')
+    : '';
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={option.disabled || disabled}
-      title={[details, description].filter(Boolean).join('\n')}
-      className="group relative overflow-hidden rounded-lg border border-border bg-panel-2 px-3 py-2 text-left transition hover:-translate-y-px hover:bg-panel-3 focus-visible:outline-2 focus-visible:outline-accent disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-40"
-      style={{ borderLeft: `4px solid ${color}` }}
+      title={[moveDetails(option.move.id), description].filter(Boolean).join('\n')}
+      className="flex flex-col gap-2 rounded-sm border border-line px-3.5 py-3 text-left transition-[border-color,transform] duration-150 hover:-translate-y-px hover:border-text/70 disabled:pointer-events-none disabled:opacity-35"
+      style={{
+        background: `linear-gradient(100deg, color-mix(in oklab, ${color} 26%, var(--surface-2)), var(--surface-2) 72%)`,
+      }}
     >
-      <span className="flex items-baseline justify-between gap-2">
-        <span className="truncate font-semibold">{moveName(option.move.id, locale)}</span>
-        <span className="shrink-0 text-xs text-faint">{option.slot}</span>
-      </span>
-      <span className="mt-0.5 flex items-center justify-between gap-2 text-xs">
-        <span
-          className="rounded px-1.5 py-px font-semibold text-white"
-          style={{ background: color }}
-        >
-          {data ? typeName(data.type, locale) : '—'}
+      <span className="flex items-center justify-between gap-2">
+        <span className="truncate text-[17px] font-semibold">
+          {moveName(option.move.id, locale)}
         </span>
-        <span className="text-muted tabular-nums">
+        <Kbd>{hotkey}</Kbd>
+      </span>
+      <span className="flex items-center justify-between gap-2">
+        <span className="flex min-w-0 items-center gap-2">
+          {data ? <TypeBadge type={data.type} locale={locale} /> : null}
+          <span className="truncate text-xs text-muted">{facts}</span>
+        </span>
+        <span className="shrink-0 font-display text-[13px] font-semibold text-muted tabular-nums">
           {option.move.pp !== undefined ? `PP ${option.move.pp}/${option.move.maxpp}` : ''}
         </span>
       </span>
@@ -289,7 +299,7 @@ function TargetPicker({
   locale: Locale;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div className="grid gap-2 sm:grid-cols-2">
       {targets.map((target, i) => {
         const rival = target > 0;
         const pokemon = (rival ? view.sides.p2 : view.sides.p1).active[Math.abs(target) - 1];
@@ -300,18 +310,20 @@ function TargetPicker({
             key={target}
             type="button"
             onClick={() => onPick(target)}
-            className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left transition hover:bg-panel-3 focus-visible:outline-2 focus-visible:outline-accent ${
-              rival ? 'border-bad/40' : 'border-good/40'
+            className={`flex items-center gap-3 rounded-sm border bg-surface-2 px-3 py-2 text-left transition-colors hover:bg-surface-3 ${
+              rival
+                ? 'border-rival/40 hover:border-rival'
+                : 'border-accent-fg/40 hover:border-accent-fg'
             }`}
           >
-            {pokemon && <PokemonIcon species={pokemon.species} size={32} />}
+            {pokemon && <PokemonIcon species={pokemon.species} size={40} />}
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-semibold">{label}</span>
-              <span className="block text-xs text-muted">
-                {rival ? 'Rival' : self ? 'Él mismo' : 'Aliado'} · posición {Math.abs(target)}
+              <span className="block truncate font-semibold">{label}</span>
+              <span className={`eyebrow ${rival ? 'text-rival' : 'text-accent-fg'}`}>
+                {rival ? 'Rival' : self ? 'Él mismo' : 'Aliado'} · {Math.abs(target)}
               </span>
             </span>
-            <span className="text-xs text-faint">{i + 1}</span>
+            <Kbd>{i + 1}</Kbd>
           </button>
         );
       })}
@@ -335,39 +347,48 @@ function SwitchList({
   trapped: boolean;
 }) {
   if (positions.length === 0) {
-    return trapped ? <p className="text-xs text-muted">No puede cambiar de Pokémon.</p> : null;
+    return trapped ? <p className="eyebrow text-faint">No puede cambiar</p> : null;
   }
   return (
-    <div>
-      <p className="mb-1.5 text-xs font-medium text-muted uppercase">Cambiar</p>
-      <div className="flex flex-wrap gap-2">
-        {positions.map((position, i) => {
-          const entry = pokemon[position - 1];
-          if (!entry) return null;
-          const species = toId(entry.details.split(',')[0] ?? '');
-          const condition = parseCondition(entry.condition);
-          const percent = Math.round(hpPercent(condition.hp, condition.maxhp));
-          return (
-            <button
-              key={position}
-              type="button"
-              onClick={() => onPick(position)}
-              disabled={disabled}
-              className="flex items-center gap-2 rounded-lg border border-border bg-panel-2 py-1 pr-3 pl-1 text-left transition hover:bg-panel-3 focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-40"
-            >
-              <PokemonIcon species={species} size={32} />
-              <span>
-                <span className="block text-sm font-semibold">{speciesName(species, locale)}</span>
-                <span className="block text-xs text-muted tabular-nums">
-                  {percent} %{condition.status ? ` · ${condition.status.toUpperCase()}` : ''}
-                  {i < 5 ? ` · ${i + 5}` : ''}
-                </span>
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="eyebrow w-16 text-faint">Cambiar</span>
+      {positions.map((position, i) => {
+        const entry = pokemon[position - 1];
+        if (!entry) return null;
+        const species = toId(entry.details.split(',')[0] ?? '');
+        const condition = parseCondition(entry.condition);
+        const percent = hpPercent(condition.hp, condition.maxhp);
+        return (
+          <button
+            key={position}
+            type="button"
+            onClick={() => onPick(position)}
+            disabled={disabled}
+            className="flex items-center gap-2.5 rounded-sm border border-line bg-surface-2 py-1 pr-2.5 pl-1 text-left transition-colors hover:border-text/60 hover:bg-surface-3 disabled:opacity-35"
+          >
+            <PokemonIcon species={species} size={40} />
+            <span className="flex min-w-24 flex-col gap-1">
+              <span className="flex items-baseline justify-between gap-2 text-sm font-semibold">
+                {speciesName(species, locale)}
+                {condition.status && (
+                  <span className="eyebrow text-warn">{condition.status.toUpperCase()}</span>
+                )}
               </span>
-            </button>
-          );
-        })}
-      </div>
+              <HpBar percent={percent} tone={hpTone(percent)} thin />
+            </span>
+            {i < 5 && <Kbd>{i + 5}</Kbd>}
+          </button>
+        );
+      })}
     </div>
+  );
+}
+
+function Kbd({ children }: { children: number }) {
+  return (
+    <kbd className="inline-flex size-[18px] shrink-0 items-center justify-center rounded-xs border border-text/20 text-muted">
+      {children}
+    </kbd>
   );
 }
 

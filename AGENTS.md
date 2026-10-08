@@ -24,6 +24,7 @@ El proyecto avanza **por fases** (PLAN §8). Cuando te pidan *"continúa con la 
 | 6. Teambuilder y equipos guardados | ✅ ([guía](docs/guias/teambuilder.md), [ADR-0006](docs/adr/0006-equipos-guardados-y-teambuilder.md)) |
 | 7. Rivales guardados | ✅ ([guía](docs/guias/rivales.md), [ADR-0007](docs/adr/0007-rivales-guardados.md)) |
 | 8. Herramientas de práctica | ✅ ([guía](docs/guias/herramientas.md), [ADR-0008](docs/adr/0008-herramientas-de-practica.md)) |
+| Rediseño de la web | ✅ ([guía](docs/guias/web.md#sistema-de-diseño), [ADR-0009](docs/adr/0009-sistema-de-diseno.md)) |
 | **9. Siguiente ampliación** | ⏭️ **Siguiente**: [docs/fases/fase-9.md](docs/fases/fase-9.md) (propuesta: el usuario elige) |
 
 ### Protocolo de cierre de fase
@@ -53,6 +54,7 @@ El proyecto avanza **por fases** (PLAN §8). Cuando te pidan *"continúa con la 
   - Web (2026-10-07): pantalla de combate al estilo Showdown (campo arriba, controles abajo, log a la derecha), tema oscuro por defecto con opción clara, animaciones mínimas, y el selector ES/EN cambia los **nombres** (la interfaz y el log siguen en español).
   - Teambuilder (2026-10-08): un equipo con problemas **se guarda como borrador** (solo se exige legalidad para combatir); el modo del equipo es el **preferido** y vale para los dos si es legal; lista a la izquierda y ficha a la derecha; botón de set sugerido.
   - Rivales (2026-10-08): **colección aparte** con su dificultad (se pueden copiar de tus equipos); **solo se guarda la dificultad**, no las opciones de práctica; en el inicio **se aplica la dificultad del rival y se puede cambiar**; un rival generado **hay que guardarlo** para combatir contra él.
+  - Rediseño (2026-10-08): dirección **«retransmisión de torneo»** (opción A de las tres del lienzo de Claude Design): tinta casi negra, voltio para el jugador, magenta para el rival, tipografía condensada; **sin textos explicativos redundantes**.
   - Herramientas (2026-10-08): calculadora **en el servidor**; replays guardados **solo si el usuario lo pide**; explicación del bot **tras cada turno**; visor de replays omnisciente con interruptor "Como jugador"; con equipo cerrado, la explicación **oculta lo no revelado**.
 
 ## Puesta en marcha
@@ -152,6 +154,13 @@ assets/     → sprites descargados: local, no versionado
 - Para los bots en el servidor (o en cualquier bucle humano contra bot), usa `decideFor` de `engine`: reintenta tras `[Unavailable choice]`.
 - El servidor escucha en `127.0.0.1` y usa `SERVER_PORT`/`SERVER_HOST` (no `PORT`, que las herramientas de desarrollo suelen fijar para la web). La web usa `WEB_PORT`.
 - Champions añade el color de la barra de PS al 20 % y al 50 % justos (`50/100y`): usa siempre `parseCondition` de `core` para leer condiciones.
+
+## Particularidades del diseño de la web
+
+- **Todo color sale de los tokens** de `apps/web/src/styles.css` (`bg-surface`, `text-faint`, `border-line`, `text-accent-fg`, `text-rival`…), nunca de un hex suelto (salvo los colores de tipo de `lib/type-colors.ts`). Lo tuyo usa `accent`/`accent-fg`; lo del rival, `rival`. `accent` es un relleno (con `text-on-accent` encima); como texto usa `accent-fg`.
+- **Los bloques están en `components/ui.tsx`** (`Button`/`buttonClass`, `Panel`, `Segmented`, `Chip`, `Notice`…) y los iconos en `components/icons.tsx`. No repitas cadenas de clases ni uses emojis o flechas Unicode como iconos.
+- **Sin textos de relleno**: ni subtítulos ni *hints* que repitan la interfaz. Un estado es un `Chip`; una explicación larga, un `title`.
+- Todo texto nuevo debe cumplir **contraste AA** (≥ 4,5:1) sobre `bg`, `surface`, `surface-2` y `surface-3` en los dos temas ([ADR-0009](docs/adr/0009-sistema-de-diseno.md)).
 
 ## Particularidades de los equipos y rivales guardados y el teambuilder
 

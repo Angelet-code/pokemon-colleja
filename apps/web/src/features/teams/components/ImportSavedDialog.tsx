@@ -1,7 +1,7 @@
 /** Imports Showdown text from a list page as a new saved team or opponent (name and mode). */
 import type { GameMode } from '@colleja/data';
 import { type ReactNode, useState } from 'react';
-import { Segmented } from '../../../components/ui';
+import { Field, Segmented, TextInput } from '../../../components/ui';
 import { ApiRequestError } from '../../../lib/api';
 import { useSetup } from '../../setup/setup-store';
 import { ImportDialog } from './TextDialogs';
@@ -32,7 +32,7 @@ export function ImportSavedDialog({
   return (
     <ImportDialog
       title={title}
-      hint="Export de Showdown (los EVs son Stat Points de Champions)."
+      hint="Equipo en formato de Showdown"
       onClose={onClose}
       confirmLabel="Importar y editar"
       onImport={async (text) => {
@@ -47,15 +47,13 @@ export function ImportSavedDialog({
       }}
     >
       <div className="flex flex-wrap items-end gap-3">
-        <label className="flex flex-1 flex-col gap-1">
-          <span className="text-xs text-muted">Nombre</span>
-          <input
+        <Field label="Nombre" className="min-w-48 flex-1">
+          <TextInput
             value={name}
             maxLength={60}
             onChange={(event) => setName(event.target.value)}
-            className="rounded-lg border border-border bg-panel-2 px-3 py-1.5 text-sm focus:border-accent focus:outline-none"
           />
-        </label>
+        </Field>
         <Segmented
           label="Modo preferido"
           value={mode}

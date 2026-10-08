@@ -9,7 +9,18 @@ import { boostShort, moveName, statusName, weatherName } from '@colleja/narratio
 import type { CalcResponse } from '@colleja/protocol';
 import { CALC_SCREENS, CALC_STATUSES, CALC_TERRAINS, CALC_WEATHERS } from '@colleja/protocol';
 import { useEffect, useMemo, useState } from 'react';
-import { Button, Checkbox, Panel, Segmented } from '../../components/ui';
+import { IconSwap, IconUpload } from '../../components/icons';
+import { TypeBadge } from '../../components/TypeBadge';
+import {
+  Button,
+  Checkbox,
+  Field,
+  PageHeader,
+  Panel,
+  Segmented,
+  Select,
+  TextInput,
+} from '../../components/ui';
 import { api } from '../../lib/api';
 import { useSettings } from '../../stores/settings';
 import { SetEditor } from '../teams/components/SetEditor';
@@ -51,19 +62,15 @@ export function CalculatorPage() {
   const results = useMoveResults(calc.attacker, calc.defender, calc.field);
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Calculadora de daño</h1>
-          <p className="text-sm text-muted">
-            Reglas de Champions (nivel 50, Stat Points, Megas). Calcula con el mismo código que usa
-            el bot.
-          </p>
-        </div>
-        <Button onClick={calc.swap}>⇄ Intercambiar</Button>
-      </div>
+    <div className="mx-auto flex max-w-[1440px] flex-col gap-5">
+      <PageHeader title="Calculadora">
+        <Button onClick={calc.swap}>
+          <IconSwap size={14} />
+          Intercambiar
+        </Button>
+      </PageHeader>
 
-      <Panel title={`Daño de los movimientos del atacante`}>
+      <Panel title="Daño">
         <ResultsTable results={results} defender={calc.defender} locale={locale} />
       </Panel>
 
@@ -71,17 +78,27 @@ export function CalculatorPage() {
 
       <div className="grid items-start gap-4 xl:grid-cols-2">
         {(['attacker', 'defender'] as const).map((side) => (
-          <Panel
+          <section
             key={side}
-            title={side === 'attacker' ? 'Atacante' : 'Defensor'}
-            actions={
-              <Button variant="ghost" onClick={() => setLoading(side)}>
+            className="min-w-0 rounded-md border border-line bg-surface shadow-panel"
+          >
+            <header className="flex min-h-12 items-center justify-between gap-3 border-b border-line px-4 py-2">
+              <h2
+                className={`eyebrow flex items-center gap-2 ${side === 'attacker' ? 'text-accent-fg' : 'text-rival'}`}
+              >
+                <span
+                  className={`size-2 ${side === 'attacker' ? 'bg-accent' : 'bg-rival'}`}
+                  aria-hidden="true"
+                />
+                {side === 'attacker' ? 'Atacante' : 'Defensor'}
+              </h2>
+              <Button size="sm" variant="ghost" onClick={() => setLoading(side)}>
+                <IconUpload size={14} />
                 Cargar de mis equipos
               </Button>
-            }
-          >
+            </header>
             <SideEditor side={side} locale={locale} />
-          </Panel>
+          </section>
         ))}
       </div>
 
@@ -147,44 +164,83 @@ function ResultsTable({
     return <p className="p-4 text-sm text-muted">El atacante no tiene movimientos.</p>;
   }
   return (
-    <table className="w-full text-sm">
-      <caption className="sr-only">Daño de cada movimiento</caption>
-      <thead className="text-left text-xs text-muted">
-        <tr>
-          <th className="px-4 py-2 font-medium">Movimiento</th>
-          <th className="px-2 py-2 font-medium">Daño</th>
-          <th className="px-2 py-2 font-medium">% de PS</th>
-          <th className="px-4 py-2 font-medium">Resultado</th>
-        </tr>
-      </thead>
-      <tbody>
-        {results.map(({ move, result, error }) => (
-          <tr key={move} className="border-t border-border">
-            <th scope="row" className="px-4 py-2 text-left font-semibold">
-              {moveName(move, locale)}
-            </th>
-            {result && result.max > 0 ? (
-              <>
-                <td className="px-2 py-2 font-mono">
-                  {result.min}–{result.max}
-                </td>
-                <td className="px-2 py-2 font-mono">
-                  {result.minPercent}–{result.maxPercent} %
-                </td>
-                <td className="px-4 py-2">{koText(result, defender)}</td>
-              </>
-            ) : (
-              <td colSpan={3} className="px-2 py-2 text-muted">
-                {error ??
-                  (getMove(move)?.category === 'Status'
-                    ? 'Movimiento de estado: no hace daño directo.'
-                    : 'No le afecta.')}
-              </td>
-            )}
+    <div className="scroll-thin overflow-x-auto">
+      <table className="w-full min-w-[720px] text-sm">
+        <caption className="sr-only">Daño de cada movimiento</caption>
+        <thead className="text-left">
+          <tr className="eyebrow text-faint">
+            <th className="px-4 py-3 font-semibold">Movimiento</th>
+            <th className="px-3 py-3 text-right font-semibold">PS</th>
+            <th className="px-3 py-3 font-semibold">% de PS</th>
+            <th className="px-4 py-3 font-semibold">Resultado</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {results.map(({ move, result, error }) => {
+            const data = getMove(move);
+            return (
+              <tr key={move} className="border-t border-line">
+                <th scope="row" className="px-4 py-3 text-left font-normal">
+                  <span className="flex items-center gap-3">
+                    {data && <TypeBadge type={data.type} locale={locale} />}
+                    <span className="font-semibold">{moveName(move, locale)}</span>
+                  </span>
+                </th>
+                {result && result.max > 0 ? (
+                  <>
+                    <td className="px-3 py-3 text-right font-display text-base font-semibold whitespace-nowrap tabular-nums">
+                      {result.min}–{result.max}
+                    </td>
+                    <td className="w-[38%] px-3 py-3">
+                      <div className="flex items-center gap-3">
+                        <span className="w-24 shrink-0 font-display text-base font-semibold whitespace-nowrap tabular-nums">
+                          {result.minPercent}–{result.maxPercent} %
+                        </span>
+                        <DamageBar result={result} hpPercent={defender.hpPercent} />
+                      </div>
+                    </td>
+                    <td
+                      className={`px-4 py-3 ${result.koChance >= 1 ? 'font-semibold text-bad' : result.koChance > 0 ? 'text-warn' : 'text-muted'}`}
+                    >
+                      {koText(result, defender)}
+                    </td>
+                  </>
+                ) : (
+                  <td colSpan={3} className="px-3 py-3 text-faint">
+                    {error ??
+                      (data?.category === 'Status' ? 'Movimiento de estado' : 'No le afecta')}
+                  </td>
+                )}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** The damage range over the defender's HP bar; the tick is its current HP. */
+function DamageBar({ result, hpPercent }: { result: CalcResponse; hpPercent: number }) {
+  const from = Math.min(100, result.minPercent);
+  const to = Math.min(100, result.maxPercent);
+  const color =
+    result.koChance >= 1 ? 'var(--bad)' : result.koChance > 0 ? 'var(--warn)' : 'var(--accent)';
+  return (
+    <span className="relative h-2 min-w-20 flex-1 bg-surface-3" aria-hidden="true">
+      <span
+        className="absolute inset-y-0 left-0 opacity-35"
+        style={{ width: `${from}%`, background: color }}
+      />
+      <span
+        className="absolute inset-y-0"
+        style={{ left: `${from}%`, width: `${Math.max(1, to - from)}%`, background: color }}
+      />
+      <span
+        className="absolute -inset-y-1 w-0.5 bg-text"
+        style={{ left: `calc(${Math.min(100, hpPercent)}% - 1px)` }}
+      />
+    </span>
   );
 }
 
@@ -206,70 +262,64 @@ function FieldControls() {
   const { field, updateField } = useCalc();
   const locale = useSettings((state) => state.namesLocale);
   return (
-    <Panel title="Campo">
-      <div className="flex flex-wrap items-end gap-4 p-4">
-        <Segmented
-          label="Modo"
-          value={field.mode}
-          onChange={(mode) => updateField({ mode })}
-          options={[
-            { value: 'singles', label: 'Individuales' },
-            { value: 'doubles', label: 'Dobles', title: 'Los movimientos múltiples hacen el 75 %' },
-          ]}
-        />
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-xs font-medium text-muted">Clima</span>
-          <select
-            value={field.weather ?? ''}
-            onChange={(event) =>
-              updateField({ weather: (event.target.value || null) as typeof field.weather })
-            }
-            className="rounded-lg border border-border bg-panel-2 px-2 py-1.5"
-          >
-            <option value="">Ninguno</option>
-            {CALC_WEATHERS.map((weather) => (
-              <option key={weather} value={weather}>
-                {weatherName(weather, locale)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-xs font-medium text-muted">Campo</span>
-          <select
-            value={field.terrain ?? ''}
-            onChange={(event) =>
-              updateField({ terrain: (event.target.value || null) as typeof field.terrain })
-            }
-            className="rounded-lg border border-border bg-panel-2 px-2 py-1.5"
-          >
-            <option value="">Ninguno</option>
-            {CALC_TERRAINS.map((terrain) => (
-              <option key={terrain} value={terrain}>
-                {TERRAIN_LABEL[terrain]}
-              </option>
-            ))}
-          </select>
-        </label>
-        <fieldset className="flex flex-wrap gap-3">
-          <legend className="mb-1 text-xs font-medium text-muted">Pantallas del defensor</legend>
-          {CALC_SCREENS.map((screen) => (
-            <Checkbox
-              key={screen}
-              label={SCREEN_LABEL[screen]}
-              checked={field.screens.includes(screen)}
-              onChange={(checked) =>
-                updateField({
-                  screens: checked
-                    ? [...field.screens, screen]
-                    : field.screens.filter((other) => other !== screen),
-                })
-              }
-            />
+    <div className="flex flex-wrap items-end gap-x-6 gap-y-4 rounded-md border border-line bg-surface px-4 py-3.5">
+      <Segmented
+        label="Modo"
+        value={field.mode}
+        onChange={(mode) => updateField({ mode })}
+        options={[
+          { value: 'singles', label: 'Individuales' },
+          { value: 'doubles', label: 'Dobles', title: 'Los movimientos múltiples hacen el 75 %' },
+        ]}
+      />
+      <Field label="Clima" className="w-40">
+        <Select
+          value={field.weather ?? ''}
+          onChange={(event) =>
+            updateField({ weather: (event.target.value || null) as typeof field.weather })
+          }
+        >
+          <option value="">Ninguno</option>
+          {CALC_WEATHERS.map((weather) => (
+            <option key={weather} value={weather}>
+              {weatherName(weather, locale)}
+            </option>
           ))}
-        </fieldset>
-      </div>
-    </Panel>
+        </Select>
+      </Field>
+      <Field label="Campo" className="w-44">
+        <Select
+          value={field.terrain ?? ''}
+          onChange={(event) =>
+            updateField({ terrain: (event.target.value || null) as typeof field.terrain })
+          }
+        >
+          <option value="">Ninguno</option>
+          {CALC_TERRAINS.map((terrain) => (
+            <option key={terrain} value={terrain}>
+              {TERRAIN_LABEL[terrain]}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      <fieldset className="flex flex-wrap items-center gap-x-5 gap-y-2 pb-2">
+        <legend className="eyebrow mb-2.5 text-faint">Pantallas del defensor</legend>
+        {CALC_SCREENS.map((screen) => (
+          <Checkbox
+            key={screen}
+            label={SCREEN_LABEL[screen]}
+            checked={field.screens.includes(screen)}
+            onChange={(checked) =>
+              updateField({
+                screens: checked
+                  ? [...field.screens, screen]
+                  : field.screens.filter((other) => other !== screen),
+              })
+            }
+          />
+        ))}
+      </fieldset>
+    </div>
   );
 }
 
@@ -283,16 +333,17 @@ function SideEditor({ side, locale }: { side: 'attacker' | 'defender'; locale: L
 
   return (
     <div className="flex flex-col">
-      <div className="flex flex-wrap items-end gap-4 border-b border-border p-4">
-        <Checkbox
-          label="Megaevolucionado"
-          checked={state.mega && canMega}
-          onChange={(mega) => updateSide(side, { mega })}
-          hint={canMega ? undefined : 'Necesita su megapiedra.'}
-        />
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-xs font-medium text-muted">PS (%)</span>
-          <input
+      <div className="flex flex-wrap items-end gap-x-5 gap-y-3 border-b border-line bg-surface-2/50 px-5 py-3.5">
+        <div className="pb-2" title={canMega ? undefined : 'Necesita su megapiedra'}>
+          <Checkbox
+            label="Mega"
+            checked={state.mega && canMega}
+            onChange={(mega) => canMega && updateSide(side, { mega })}
+            className={canMega ? '' : 'pointer-events-none opacity-40'}
+          />
+        </div>
+        <Field label="PS %" className="w-20">
+          <TextInput
             type="number"
             min={1}
             max={100}
@@ -303,18 +354,16 @@ function SideEditor({ side, locale }: { side: 'attacker' | 'defender'; locale: L
                 hpPercent: Math.min(100, Math.max(1, Number(event.target.value) || 1)),
               })
             }
-            className="w-20 rounded-lg border border-border bg-panel-2 px-2 py-1.5"
+            className="font-display text-base font-semibold tabular-nums"
           />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-xs font-medium text-muted">Estado</span>
-          <select
+        </Field>
+        <Field label="Estado" className="w-36">
+          <Select
             value={state.status ?? ''}
             aria-label={`Estado del ${label}`}
             onChange={(event) =>
               updateSide(side, { status: (event.target.value || null) as CalcStatus | null })
             }
-            className="rounded-lg border border-border bg-panel-2 px-2 py-1.5"
           >
             <option value="">Sano</option>
             {CALC_STATUSES.map((status) => (
@@ -322,33 +371,41 @@ function SideEditor({ side, locale }: { side: 'attacker' | 'defender'; locale: L
                 {statusName(status, locale)}
               </option>
             ))}
-          </select>
-        </label>
-        <fieldset className="flex flex-wrap gap-2">
-          <legend className="mb-1 text-xs font-medium text-muted">
-            Cambios de características
-          </legend>
-          {BOOST_STATS.map((stat) => (
-            <label key={stat} className="flex items-center gap-1 text-sm">
-              <span className="text-xs text-muted">{boostShort(stat, locale)}</span>
-              <select
-                value={state.boosts[stat] ?? 0}
-                aria-label={`${boostShort(stat, locale)} del ${label}`}
-                onChange={(event) =>
-                  updateSide(side, {
-                    boosts: { ...state.boosts, [stat]: Number(event.target.value) },
-                  })
-                }
-                className="rounded-lg border border-border bg-panel-2 px-1 py-1"
+          </Select>
+        </Field>
+        <fieldset className="flex flex-wrap gap-1.5">
+          <legend className="eyebrow mb-1.5 text-faint">Cambios</legend>
+          {BOOST_STATS.map((stat) => {
+            const value = state.boosts[stat] ?? 0;
+            return (
+              <label
+                key={stat}
+                className={`flex h-9 items-center gap-1.5 rounded-sm border pl-2 ${
+                  value > 0 ? 'border-good/50' : value < 0 ? 'border-bad/50' : 'border-line'
+                }`}
               >
-                {BOOST_VALUES.map((value) => (
-                  <option key={value} value={value}>
-                    {value > 0 ? `+${value}` : value}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ))}
+                <span className="eyebrow text-faint">{boostShort(stat, locale)}</span>
+                <select
+                  value={value}
+                  aria-label={`${boostShort(stat, locale)} del ${label}`}
+                  onChange={(event) =>
+                    updateSide(side, {
+                      boosts: { ...state.boosts, [stat]: Number(event.target.value) },
+                    })
+                  }
+                  className={`h-full cursor-pointer appearance-none bg-transparent pr-2 font-display text-sm font-semibold tabular-nums focus:outline-none ${
+                    value > 0 ? 'text-good' : value < 0 ? 'text-bad' : ''
+                  }`}
+                >
+                  {BOOST_VALUES.map((option) => (
+                    <option key={option} value={option}>
+                      {option > 0 ? `+${option}` : option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            );
+          })}
         </fieldset>
       </div>
       <SetEditor

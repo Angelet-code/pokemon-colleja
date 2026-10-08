@@ -25,8 +25,8 @@ En el combate:
 
 - Los menús salen de la petición del motor: movimientos con tipo y PP, Megaevolucionar, objetivos en dobles (posición por posición, con "← Atrás") y cambios.
 - **Teclado**: 1–4 movimientos (u objetivos al apuntar), 5–9 cambios, Esc atrás.
-- Barra superior: **Deshacer**, **Rebobinar a…** un turno, **Rendirse** y **Replay**. El replay solo se puede descargar o **guardar** ("Guardar replay", para verlo en [Replays](herramientas.md)) al terminar, porque contiene la información oculta del rival.
-- Bajo los controles, **"¿Por qué hizo eso el bot?"**: lo que valoró el bot en cada turno ya jugado ([herramientas](herramientas.md)).
+- Marcador superior: los dos jugadores, el turno y **Deshacer**, **Rebobinar** a un turno, **Rendirse**, **Replay** y salir. El replay solo se puede descargar o **guardar** ("Guardar replay", para verlo en [Replays](herramientas.md)) al terminar, porque contiene la información oculta del rival.
+- Bajo los controles, **"Por qué jugó así el bot"**: lo que valoró el bot en cada turno ya jugado ([herramientas](herramientas.md)).
 - Pantalla final: revancha (misma configuración, otra semilla), replay o volver al inicio.
 - **Nombres ES/EN** en la cabecera: cambia el idioma de los nombres; la interfaz y el log siguen en español. También se puede cambiar el tema (oscuro o claro).
 - Si recargas la página o se corta la conexión, la web vuelve a engancharse al combate mientras el servidor siga arrancado.
@@ -78,8 +78,27 @@ apps/web (React)  ──REST /api/*──▶  apps/server (Fastify)
    - Añade la ruta en `apps/server/src/routes/`.
    - Añade la llamada en `apps/web/src/lib/api.ts`.
    - Tests con `app.inject` en `apps/server/test/`.
-4. Componentes con los bloques de `components/ui.tsx` y los tokens de color de `styles.css` (`bg-panel`, `text-muted`, `border-border`, `text-accent`…), que funcionan en los dos temas.
+4. Componentes con los bloques de `components/ui.tsx` y los tokens de `styles.css` (ver [Sistema de diseño](#sistema-de-diseño)), que funcionan en los dos temas.
 5. Tests de componentes con Testing Library: añade `// @vitest-environment happy-dom` en la primera línea del fichero `.test.tsx`.
+
+## Sistema de diseño
+
+Estética de «retransmisión de torneo» ([ADR-0009](../adr/0009-sistema-de-diseno.md)): tinta casi negra, voltio para ti, magenta para el rival y tipografía condensada para cifras y títulos.
+
+| Pieza | Dónde | Uso |
+|---|---|---|
+| Tokens | `src/styles.css` (`:root` claro, `.dark` oscuro) | `bg`, `surface`, `surface-2`, `surface-3`, `line`, `line-strong`, `text`, `muted`, `faint`, `accent` (relleno) + `on-accent`, `accent-fg` (acento como texto), `rival`, `good`, `warn`, `bad`, `hp-*`. En Tailwind: `bg-surface`, `text-faint`, `border-line`, `text-accent-fg`… |
+| Tipos | `@fontsource/barlow` y `barlow-condensed` (importados en `main.tsx`) | `font-sans` (Barlow), `font-display` (condensada); utilidades `display` (titular) y `eyebrow` (etiqueta) |
+| Forma | `styles.css` | `chamfer` (corte diagonal, solo la acción principal), `range` (deslizadores), `stage` y `platform` (campo de batalla), `rise` (entrada) |
+| Componentes | `components/ui.tsx` | `Button`/`buttonClass`, `IconButton`, `Panel`, `PageHeader`, `Segmented`, `Checkbox` (interruptor), `Field`, `TextInput`, `Select`, `Chip`, `LegalityChip`, `Notice`, `Loading`, `Empty` |
+| Iconos | `components/icons.tsx` | Trazo de 1,75 sobre 24 px, `currentColor`. Nunca emojis ni flechas Unicode |
+
+Reglas:
+
+- **No repitas cadenas de clases**: si un patrón aparece dos veces, va a `ui.tsx`. Para un `Link` con aspecto de botón, `buttonClass(variante, tamaño)`.
+- **Sin textos de relleno**: nada de subtítulos que repiten el título ni *hints* obvios. Un estado es un `Chip`; una descripción larga, un `title`.
+- **Contraste AA**: todo texto ≥ 4,5:1 sobre las cuatro superficies en los dos temas. Si añades un color, compruébalo en claro y en oscuro.
+- **Lados**: lo tuyo usa `accent`/`accent-fg`; lo del rival, `rival`.
 
 ## Tests relevantes
 

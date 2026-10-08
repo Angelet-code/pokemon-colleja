@@ -49,7 +49,7 @@ export function PokemonSprite({
       src={pokemonSprite(species)}
       alt=""
       style={{ width: size, height: size }}
-      className={`object-contain drop-shadow-[0_6px_6px_rgba(0,0,0,0.35)] ${className}`}
+      className={`object-contain drop-shadow-[0_8px_10px_rgba(0,0,0,0.35)] ${className}`}
       onError={() => setFailed(true)}
       draggable={false}
     />
@@ -70,7 +70,7 @@ function Initials({
     <span
       aria-hidden="true"
       style={{ width: size, height: size, fontSize: Math.max(10, size / 3) }}
-      className={`inline-flex shrink-0 items-center justify-center rounded-full bg-panel-3 font-semibold text-muted ${className}`}
+      className={`inline-flex shrink-0 items-center justify-center rounded-full bg-surface-3 font-display font-semibold text-muted uppercase ${className}`}
     >
       {name.slice(0, 2)}
     </span>

@@ -72,7 +72,7 @@ Documentación de soporte:
 ```
 pokemon-colleja-simulator/
 ├─ apps/
-│  ├─ web/                 # ✅ React + Vite: inicio, combate, teambuilder, rivales, calculadora y replays
+│  ├─ web/                 # ✅ React + Vite: inicio, combate, teambuilder, rivales, calculadora y replays (sistema de diseño: ADR-0009)
 │  └─ server/              # ✅ Node + Fastify + WebSocket: combates contra el bot, API REST, lo guardado y la calculadora
 ├─ packages/
 │  ├─ showdown/            # ✅ Puente único y tipado hacia vendor/pokemon-showdown (Node-only)

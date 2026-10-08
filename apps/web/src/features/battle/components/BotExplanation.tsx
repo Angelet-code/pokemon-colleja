@@ -1,11 +1,12 @@
 /**
- * "¿Por qué hizo eso el bot?": the options the bot valued in a resolved turn, the chosen one
+ * Why the bot played as it did: the options it valued in a resolved turn, the chosen one
  * marked. Used in the battle screen and in the replay viewer.
  */
 import type { ExplainedAction, TurnExplanation } from '@colleja/core';
 import type { Locale } from '@colleja/data';
 import { moveName, speciesName } from '@colleja/narration';
 import { useEffect, useState } from 'react';
+import { IconBolt, IconCheck, IconChevronDown } from '../../../components/icons';
 import { useSettings } from '../../../stores/settings';
 
 /** One action in Spanish, from the bot's point of view (p2). */
@@ -35,10 +36,10 @@ export function actionText(action: ExplainedAction, locale: Locale): string {
 export function ExplanationList({ explanations }: { explanations: TurnExplanation[] }) {
   const locale = useSettings((state) => state.namesLocale);
   if (explanations.length === 0) {
-    return <p className="text-sm text-muted">El bot no tuvo que decidir nada en este turno.</p>;
+    return <p className="text-sm text-muted">No tuvo que decidir nada.</p>;
   }
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4">
       {explanations.map((explanation, index) => {
         const scores = explanation.options.map((option) => option.score);
         const top = Math.max(...scores);
@@ -46,9 +47,9 @@ export function ExplanationList({ explanations }: { explanations: TurnExplanatio
         return (
           // biome-ignore lint/suspicious/noArrayIndexKey: explanations of a turn keep their order.
           <section key={index} className="flex flex-col gap-1.5">
-            <h4 className="text-xs font-semibold text-muted">
-              {explanation.kind === 'switch' ? 'Pokémon que saca' : 'Acciones del turno'} ·{' '}
-              <span className="font-normal">{explanation.method}</span>
+            <h4 className="eyebrow flex gap-2 text-faint">
+              <span>{explanation.kind === 'switch' ? 'Qué saca' : 'Acciones'}</span>
+              <span className="tracking-normal normal-case">{explanation.method}</span>
             </h4>
             <ol className="flex flex-col gap-1" aria-label="Opciones valoradas por el bot">
               {explanation.options.map((option, optionIndex) => {
@@ -57,21 +58,26 @@ export function ExplanationList({ explanations }: { explanations: TurnExplanatio
                   <li
                     // biome-ignore lint/suspicious/noArrayIndexKey: options keep their order.
                     key={optionIndex}
-                    className={`relative overflow-hidden rounded-md border px-2 py-1 text-sm ${
-                      option.chosen ? 'border-accent bg-accent/10' : 'border-border'
+                    className={`relative overflow-hidden rounded-xs px-2.5 py-1.5 text-sm ${
+                      option.chosen ? 'bg-rival/10 text-text' : 'text-muted'
                     }`}
                   >
                     <span
                       aria-hidden="true"
-                      className="absolute inset-y-0 left-0 bg-accent/10"
+                      className={`absolute inset-y-0 left-0 ${option.chosen ? 'bg-rival/20' : 'bg-surface-3'}`}
                       style={{ width: `${Math.max(2, width)}%` }}
                     />
-                    <span className="relative flex items-center justify-between gap-2">
-                      <span>
-                        {option.chosen && <strong className="mr-1 text-accent">✓ Elegida:</strong>}
+                    <span className="relative flex items-center justify-between gap-3">
+                      <span className="min-w-0">
+                        {option.chosen && (
+                          <strong className="mr-1.5 inline-flex items-center gap-1 font-display tracking-[0.08em] text-rival uppercase">
+                            <IconCheck size={13} />
+                            Elegida
+                          </strong>
+                        )}
                         {option.actions.map((action) => actionText(action, locale)).join(' · ')}
                       </span>
-                      <span className="shrink-0 font-mono text-xs text-muted">
+                      <span className="shrink-0 font-display text-sm font-semibold tabular-nums">
                         {option.score.toFixed(1)}
                       </span>
                     </span>
@@ -98,17 +104,24 @@ export function BotExplanation({ explanations }: { explanations: TurnExplanation
   if (last === null) return null;
   const selected = turn !== null && turns.includes(turn) ? turn : last;
   return (
-    <details className="rounded-xl border border-border bg-panel">
-      <summary className="cursor-pointer px-4 py-2.5 text-sm font-semibold">
-        ¿Por qué hizo eso el bot?
+    <details className="group rounded-md border border-line bg-surface">
+      <summary className="flex cursor-pointer list-none items-center gap-2.5 px-4 py-3 [&::-webkit-details-marker]:hidden">
+        <IconBolt size={16} className="text-rival" />
+        <span className="font-display text-base font-semibold tracking-[0.04em] uppercase">
+          Por qué jugó así el bot
+        </span>
+        <IconChevronDown
+          size={14}
+          className="ml-auto text-faint transition-transform group-open:rotate-180"
+        />
       </summary>
-      <div className="flex flex-col gap-3 border-t border-border p-4">
-        <label className="flex items-center gap-2 text-sm">
-          <span className="text-muted">Turno</span>
+      <div className="flex flex-col gap-4 border-t border-line p-4">
+        <label className="flex items-center gap-2">
+          <span className="eyebrow text-faint">Turno</span>
           <select
             value={selected}
             onChange={(event) => setTurn(Number(event.target.value))}
-            className="rounded-lg border border-border bg-panel-2 px-2 py-1 text-sm"
+            className="h-7 cursor-pointer rounded-sm border border-line-strong bg-surface-2 px-2 font-display text-sm font-semibold"
           >
             {turns.map((value) => (
               <option key={value} value={value}>

@@ -6,7 +6,7 @@ Simulador de combates de **Pokémon Champions** para practicar en individuales y
 
 ## Estado
 
-✅ Fase 0 (investigación y plan) · ✅ Fase 1 (cimientos) · ✅ Fase 2 (datos) · ✅ Fase 3 (dominio + motor + combate en terminal) · ✅ Fase 4 (bot de 3 niveles, equipos aleatorios, arena) · ✅ Fase 5 (servidor + UI de combate: **MVP**) · ✅ Fase 6 (teambuilder y equipos guardados) · ✅ Fase 7 (rivales guardados) · ✅ Fase 8 (calculadora, replays y explicación del bot) · ⏭️ Fase 9 (eliges la siguiente ampliación). Ver [CHANGELOG](CHANGELOG.md).
+✅ Fase 0 (investigación y plan) · ✅ Fase 1 (cimientos) · ✅ Fase 2 (datos) · ✅ Fase 3 (dominio + motor + combate en terminal) · ✅ Fase 4 (bot de 3 niveles, equipos aleatorios, arena) · ✅ Fase 5 (servidor + UI de combate: **MVP**) · ✅ Fase 6 (teambuilder y equipos guardados) · ✅ Fase 7 (rivales guardados) · ✅ Fase 8 (calculadora, replays y explicación del bot) · ✅ Rediseño de la web · ⏭️ Fase 9 (eliges la siguiente ampliación). Ver [CHANGELOG](CHANGELOG.md).
 
 ## Puesta en marcha
 
@@ -30,7 +30,7 @@ En **Equipos** (http://127.0.0.1:5173/equipos) creas equipos desde cero o import
 
 En **Rivales** (http://127.0.0.1:5173/rivales) preparas equipos para el bot con su dificultad: genera uno aleatorio, cópialo de tus equipos, impórtalo o créalo, edítalo con el mismo editor y guárdalo. En el inicio eliges ese rival guardado y practicas contra él ([guía de rivales](docs/guias/rivales.md)).
 
-Para aprender de cada combate: **Calculadora** (http://127.0.0.1:5173/calculadora) con las reglas de Champions y el mismo cálculo que usa el bot; **Replays** guardados al terminar, para revivirlos turno a turno; y el panel **"¿Por qué hizo eso el bot?"** en el combate, que enseña lo que valoró el bot en cada turno ya jugado sin revelar lo que aún no has visto ([guía de herramientas](docs/guias/herramientas.md)).
+Para aprender de cada combate: **Calculadora** (http://127.0.0.1:5173/calculadora) con las reglas de Champions y el mismo cálculo que usa el bot; **Replays** guardados al terminar, para revivirlos turno a turno; y el panel **"Por qué jugó así el bot"** en el combate, que enseña lo que valoró el bot en cada turno ya jugado sin revelar lo que aún no has visto ([guía de herramientas](docs/guias/herramientas.md)).
 
 ```bash
 npm run play
