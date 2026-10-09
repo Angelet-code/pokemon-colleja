@@ -6,10 +6,12 @@ import { MAX_MOVES, type PokemonSet, type SetField } from '@colleja/core';
 import {
   type GameMode,
   getDescription,
+  getMove,
   getName,
   getSpecies,
   getStandardSets,
   type Locale,
+  type MoveId,
   type StatId,
 } from '@colleja/data';
 import { useMemo, useState } from 'react';
@@ -26,6 +28,7 @@ import {
   Select,
   TextInput,
 } from '../../../components/ui';
+import { CATEGORY_LABEL } from '../../../lib/move-labels';
 import { typeColor } from '../../../lib/type-colors';
 import {
   abilityOptions,
@@ -314,8 +317,8 @@ function MoveSlots({
           const move = set.moves[slot] ?? null;
           return (
             // biome-ignore lint/suspicious/noArrayIndexKey: fixed move slots.
-            <div key={slot} className="flex items-center gap-3">
-              <span className="display w-4 text-xl text-faint" aria-hidden="true">
+            <div key={slot} className="flex items-start gap-3">
+              <span className="display mt-2 w-4 text-xl text-faint" aria-hidden="true">
                 {slot + 1}
               </span>
               <div className="min-w-0 flex-1">
@@ -332,12 +335,44 @@ function MoveSlots({
                   placeholder="Añadir movimiento…"
                   emptyText="No lo aprende en Champions."
                 />
+                {move && <MoveSummary move={move} locale={locale} />}
               </div>
             </div>
           );
         })}
       </div>
       {problems && <FieldProblems messages={problems} />}
+    </div>
+  );
+}
+
+/** Type, category, power, accuracy, PP and effect of a chosen move. */
+function MoveSummary({ move, locale }: { move: MoveId; locale: Locale }) {
+  const data = getMove(move);
+  if (!data) return null;
+  const description = getDescription('moves', move, locale);
+  const accuracy = typeof data.accuracy === 'number' ? `${data.accuracy} %` : '—';
+  return (
+    <div className="mt-1.5 flex flex-col gap-1 px-1">
+      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs">
+        <TypeBadge type={data.type} locale={locale} />
+        <span className="text-muted">{CATEGORY_LABEL[data.category]}</span>
+        <span className="text-muted tabular-nums">
+          {data.basePower > 0 && (
+            <>
+              <span className="text-faint">Pot.</span> {data.basePower}
+              <span className="text-faint"> · </span>
+            </>
+          )}
+          <span className="text-faint">Prec.</span> {accuracy}
+          <span className="text-faint"> · PP</span> {data.pp}
+        </span>
+      </div>
+      {description && (
+        <p className="line-clamp-2 text-xs text-faint" title={description}>
+          {description}
+        </p>
+      )}
     </div>
   );
 }
