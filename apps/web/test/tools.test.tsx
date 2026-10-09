@@ -237,6 +237,7 @@ describe('calculator', () => {
     koChance: 0,
     hitsToKo: { best: 2, worst: 2 },
     accuracy: 1,
+    moveType: 'Ground',
   };
 
   beforeEach(() => {

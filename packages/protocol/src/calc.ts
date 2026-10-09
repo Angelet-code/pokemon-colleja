@@ -78,4 +78,6 @@ export interface CalcResponse {
   hitsToKo: { best: number; worst: number } | null;
   /** Accuracy as a probability (1 = never misses). */
   accuracy: number;
+  /** Type the move ends up with (abilities like Pixilate or Weather Ball change it). */
+  moveType: string;
 }

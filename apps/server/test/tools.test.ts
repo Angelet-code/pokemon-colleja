@@ -86,6 +86,22 @@ describe('POST /api/calc', () => {
     expect(unscreened.max).toBeGreaterThan(body.max);
   });
 
+  it('gives the type the move ends up with', async () => {
+    const sylveon = {
+      species: 'sylveon',
+      ability: 'pixilate',
+      nature: 'modest',
+      statPoints: { hp: 32, atk: 0, def: 0, spa: 32, spd: 2, spe: 0 },
+      moves: ['hypervoice'],
+    };
+    const typeOf = async (attacker: CalcRequest['attacker'], move: string) =>
+      (
+        await calc({ attacker, defender: { set: INCINEROAR }, move, field: { doubles: true } })
+      ).json<CalcResponse>().moveType;
+    expect(await typeOf({ set: sylveon }, 'hypervoice')).toBe('Fairy');
+    expect(await typeOf({ set: GARCHOMP }, 'earthquake')).toBe('Ground');
+  });
+
   it('applies critical hits and the field effects like the bot', async () => {
     const base: CalcRequest = {
       attacker: { set: GARCHOMP },

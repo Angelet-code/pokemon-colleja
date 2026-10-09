@@ -5,7 +5,15 @@
  */
 
 import type { BattleView, SideId } from '@colleja/core';
-import { getAbility, getItem, getMove, getNature, getSpecies, type MoveId } from '@colleja/data';
+import {
+  getAbility,
+  getItem,
+  getMove,
+  getNature,
+  getSpecies,
+  type MoveId,
+  type TypeName,
+} from '@colleja/data';
 import { calculate, Field, Generations, Move, Pokemon, Side } from '@smogon/calc';
 import type { Combatant } from './combatant';
 
@@ -327,6 +335,32 @@ export function estimateDamageUncached(
   const move = getMove(moveId);
   if (!move || move.category === 'Status' || defender.hp <= 0) return NO_DAMAGE;
   return calculateEstimate(attacker, defender, move, field, options);
+}
+
+/**
+ * The type `move` ends up with (Pixilate, Weather Ball, Liquid Voice…), as the calc sees it.
+ * For the calculator page only: the bots never need it, so it stays out of `estimateDamage`.
+ */
+export function finalMoveType(
+  attacker: Combatant,
+  defender: Combatant,
+  moveId: MoveId,
+  field: FieldState,
+): TypeName | null {
+  const move = getMove(moveId);
+  if (!move) return null;
+  try {
+    const result = calculate(
+      GEN,
+      toCalcPokemon(attacker),
+      toCalcPokemon(defender),
+      new Move(GEN, move.name),
+      toCalcField(field, attacker.side, defender.side),
+    );
+    return (result.move.type as TypeName) ?? move.type;
+  } catch {
+    return move.type;
+  }
 }
 
 /** Expected share of the defender's max HP removed (0–1), capped at its current HP. */

@@ -17,6 +17,7 @@ import {
 } from '@colleja/core';
 import { getDescription, getMove, type Locale, toId } from '@colleja/data';
 import { moveName, speciesName } from '@colleja/narration';
+import type { CalcResponse } from '@colleja/protocol';
 import { useEffect, useMemo, useState } from 'react';
 import { IconArrowLeft, IconSparkle } from '../../../components/icons';
 import { PokemonIcon } from '../../../components/PokemonIcon';
@@ -25,6 +26,7 @@ import { Button, Notice, Panel } from '../../../components/ui';
 import { CATEGORY_LABEL, moveDetails } from '../../../lib/move-labels';
 import { typeColor } from '../../../lib/type-colors';
 import { useSettings } from '../../../stores/settings';
+import { koText } from '../../calc/CalculatorPage';
 import {
   availableSwitches,
   back,
@@ -37,6 +39,16 @@ import {
   toChoice,
 } from '../choice-draft';
 import { hpPercent, hpTone } from '../format';
+import {
+  type EstimateContext,
+  estimateKey,
+  isTypeName,
+  moveCalcRequests,
+  moveEffectiveness,
+  type RivalTarget,
+  rivalTargets,
+  useMoveEstimates,
+} from '../move-estimates';
 import { HpBar } from './Field';
 
 export function ActionPanel({
@@ -44,11 +56,14 @@ export function ActionPanel({
   view,
   onChoose,
   disabled,
+  estimate,
 }: {
   request: MoveRequest | SwitchRequest;
   view: BattleView;
   onChoose: (choice: Choice) => void;
   disabled: boolean;
+  /** Without it the moves show no damage estimate (no calculator requests). */
+  estimate?: EstimateContext;
 }) {
   const locale = useSettings((state) => state.namesLocale);
   const [draft, setDraft] = useState<ChoiceDraft>(() => createDraft(request));
@@ -68,6 +83,29 @@ export function ActionPanel({
   const switches = useMemo(() => availableSwitches(draft), [draft]);
   const forced = 'forceSwitch' in request;
   const doubles = draft.slots.length > 1;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `slot` comes from `draft`.
+  const calcRequests = useMemo(
+    () =>
+      estimate && slot && slot.moves.length > 0
+        ? moveCalcRequests({
+            view,
+            context: estimate,
+            attackerIndex: slot.index,
+            moves: slot.moves.map((option) => option.move.id),
+            mega,
+          })
+        : null,
+    [estimate, draft, view, mega],
+  );
+  const estimates = useMoveEstimates(calcRequests);
+  const rivals = rivalTargets(view);
+  const effectsOf = (option: MoveOption): MoveEffect[] =>
+    rivals.flatMap((target) => {
+      const result = estimates[estimateKey(option.move.id, target.position)];
+      const multiplier = moveEffectiveness(option.move.id, target.pokemon, result);
+      if (multiplier === null) return [];
+      return [{ target, multiplier, result }];
+    });
 
   function commit(next: ChoiceDraft) {
     setMega(false);
@@ -181,6 +219,7 @@ export function ActionPanel({
             slotIndex={slot.index}
             onPick={pickTarget}
             locale={locale}
+            effects={effectsOf(aiming)}
           />
         ) : (
           slot.moves.length > 0 && (
@@ -193,6 +232,8 @@ export function ActionPanel({
                     hotkey={index + 1}
                     locale={locale}
                     disabled={disabled}
+                    effects={effectsOf(option)}
+                    showTarget={doubles}
                     onClick={() => pickMove(option)}
                   />
                 ))}
@@ -239,19 +280,31 @@ function MoveButton({
   hotkey,
   locale,
   disabled,
+  effects,
+  showTarget,
   onClick,
 }: {
   option: MoveOption;
   hotkey: number;
   locale: Locale;
   disabled: boolean;
+  effects: MoveEffect[];
+  /** In doubles each line says which rival it is about. */
+  showTarget: boolean;
   onClick: () => void;
 }) {
   const data = getMove(option.move.id);
-  const color = typeColor(data?.type);
+  // The type the calculator says it ends up with (Pixilate turns Hyper Voice Fairy).
+  const finalType = effects.find((effect) => effect.result)?.result?.moveType;
+  const type = isTypeName(finalType) ? finalType : data?.type;
+  const color = typeColor(type);
   const description = getDescription('moves', option.move.id);
   const facts = data
-    ? [CATEGORY_LABEL[data.category], data.basePower ? String(data.basePower) : null]
+    ? [
+        CATEGORY_LABEL[data.category],
+        data.basePower ? `Pot. ${data.basePower}` : null,
+        `Prec. ${typeof data.accuracy === 'number' ? `${data.accuracy} %` : '—'}`,
+      ]
         .filter(Boolean)
         .join(' · ')
     : '';
@@ -274,13 +327,26 @@ function MoveButton({
       </span>
       <span className="flex items-center justify-between gap-2">
         <span className="flex min-w-0 items-center gap-2">
-          {data ? <TypeBadge type={data.type} locale={locale} /> : null}
+          {type ? <TypeBadge type={type} locale={locale} /> : null}
           <span className="truncate text-xs text-muted">{facts}</span>
         </span>
         <span className="shrink-0 font-display text-[13px] font-semibold text-muted tabular-nums">
           {option.move.pp !== undefined ? `PP ${option.move.pp}/${option.move.maxpp}` : ''}
         </span>
       </span>
+      {description && <span className="truncate text-xs text-faint">{description}</span>}
+      {effects.length > 0 && (
+        <span className="flex flex-col gap-1 border-t border-text/10 pt-1.5">
+          {effects.map((effect) => (
+            <EffectLine
+              key={effect.target.position}
+              effect={effect}
+              locale={locale}
+              showTarget={showTarget}
+            />
+          ))}
+        </span>
+      )}
     </button>
   );
 }
@@ -291,12 +357,14 @@ function TargetPicker({
   slotIndex,
   onPick,
   locale,
+  effects,
 }: {
   targets: number[];
   view: BattleView;
   slotIndex: number;
   onPick: (target: number) => void;
   locale: Locale;
+  effects: MoveEffect[];
 }) {
   return (
     <div className="grid gap-2 sm:grid-cols-2">
@@ -305,6 +373,9 @@ function TargetPicker({
         const pokemon = (rival ? view.sides.p2 : view.sides.p1).active[Math.abs(target) - 1];
         const self = !rival && Math.abs(target) - 1 === slotIndex;
         const label = pokemon ? speciesName(pokemon.species, locale) : 'Posición vacía';
+        const effect = rival
+          ? effects.find((candidate) => candidate.target.position === target)
+          : undefined;
         return (
           <button
             key={target}
@@ -322,6 +393,7 @@ function TargetPicker({
               <span className={`eyebrow ${rival ? 'text-rival' : 'text-accent-fg'}`}>
                 {rival ? 'Rival' : self ? 'Él mismo' : 'Aliado'} · {Math.abs(target)}
               </span>
+              {effect && <EffectLine effect={effect} locale={locale} showTarget={false} />}
             </span>
             <Kbd>{i + 1}</Kbd>
           </button>
@@ -382,6 +454,75 @@ function SwitchList({
       })}
     </div>
   );
+}
+
+/** What a move would do to one rival: type multiplier and expected damage. */
+interface MoveEffect {
+  target: RivalTarget;
+  multiplier: number;
+  /** Missing while the calculator answers (or if it cannot). */
+  result: CalcResponse | undefined;
+}
+
+const EFFECTIVENESS: { min: number; label: string; tone: string; title: string }[] = [
+  { min: 4, label: '×4', tone: 'text-good', title: 'Superefectivo (×4)' },
+  { min: 2, label: '×2', tone: 'text-good', title: 'Superefectivo (×2)' },
+  { min: 1, label: '×1', tone: 'text-faint', title: 'Eficacia normal' },
+  { min: 0.5, label: '×½', tone: 'text-warn', title: 'Poco eficaz (×½)' },
+  { min: 0.01, label: '×¼', tone: 'text-warn', title: 'Poco eficaz (×¼)' },
+  { min: 0, label: 'Inmune', tone: 'text-bad', title: 'No le afecta' },
+];
+
+function EffectLine({
+  effect,
+  locale,
+  showTarget,
+}: {
+  effect: MoveEffect;
+  locale: Locale;
+  showTarget: boolean;
+}) {
+  const { target, multiplier, result } = effect;
+  const level = EFFECTIVENESS.find((candidate) => multiplier >= candidate.min);
+  const damage = result && result.max > 0 && multiplier > 0 ? result : null;
+  const hp = Math.round((target.pokemon.hp / (target.pokemon.maxhp || 100)) * 100);
+  const name = speciesName(target.pokemon.species, locale);
+  return (
+    <span
+      className="flex items-center gap-2 text-xs tabular-nums"
+      title={[
+        `${name}: ${level?.title ?? ''}`,
+        damage ? `${decimal(damage.minPercent)}–${decimal(damage.maxPercent)} % de sus PS` : null,
+        damage ? koText(damage, { hpPercent: hp }) : null,
+      ]
+        .filter(Boolean)
+        .join('\n')}
+    >
+      {showTarget && <PokemonIcon species={target.pokemon.species} size={24} />}
+      <span className={`w-11 shrink-0 font-display font-semibold ${level?.tone ?? ''}`}>
+        {level?.label}
+      </span>
+      {damage && (
+        <>
+          <span className="text-text">
+            {Math.round(damage.minPercent)}–{Math.round(damage.maxPercent)} %
+          </span>
+          <span className={damage.koChance > 0 ? 'text-bad' : 'text-muted'}>{koShort(damage)}</span>
+        </>
+      )}
+    </span>
+  );
+}
+
+const decimal = (value: number) => value.toLocaleString('es-ES', { maximumFractionDigits: 1 });
+
+/** `KO`, `KO 44 %` or `2–3 golpes`. */
+function koShort(result: CalcResponse): string {
+  if (result.koChance >= 1) return 'KO';
+  if (result.koChance > 0) return `KO ${Math.round(result.koChance * 100)} %`;
+  if (!result.hitsToKo) return '';
+  const { best, worst } = result.hitsToKo;
+  return `${best === worst ? best : `${best}–${worst}`} golpes`;
 }
 
 function Kbd({ children }: { children: number }) {

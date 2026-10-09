@@ -2,7 +2,13 @@
  * Damage calculator: `POST /api/calc`. Same code as the bots (`estimateDamage`, Champions as
  * generation 0 of `@smogon/calc`), so the calculator and the bot always agree.
  */
-import { emptyField, estimateDamage, makeCombatant, megaEvolved } from '@colleja/bot';
+import {
+  emptyField,
+  estimateDamage,
+  finalMoveType,
+  makeCombatant,
+  megaEvolved,
+} from '@colleja/bot';
 import type { SideId } from '@colleja/core';
 import { getMove, type MoveId } from '@colleja/data';
 import {
@@ -60,6 +66,7 @@ export function registerCalcRoutes(app: FastifyInstance): void {
       koChance: estimate.koChance,
       hitsToKo: hitsToKo(defender.hp, estimate.min, estimate.max),
       accuracy: estimate.accuracy,
+      moveType: finalMoveType(attacker, defender, body.move as MoveId, field) ?? '',
     };
     return response;
   });

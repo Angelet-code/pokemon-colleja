@@ -3,7 +3,7 @@
  * and the log on the right (a tab on small screens).
  */
 import { isActionable, requestKind, type TeamPreviewRequest } from '@colleja/core';
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { Loading, Notice, Segmented } from '../../components/ui';
 import { botLevelName, useMeta } from '../../lib/use-meta';
@@ -39,6 +39,11 @@ export function BattlePage() {
   }, [namesLocale]);
 
   const { info, status, request, ownSide, screen, busy, error, socketState } = battle;
+  const estimate = useMemo(
+    () =>
+      info ? { mode: info.mode, team: info.team, opponentTeam: info.opponentTeam } : undefined,
+    [info],
+  );
 
   function leave() {
     battle.leave();
@@ -98,6 +103,7 @@ export function BattlePage() {
           view={screen.view}
           onChoose={battle.choose}
           disabled={busy}
+          estimate={estimate}
         />
       );
   } else {

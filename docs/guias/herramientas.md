@@ -21,6 +21,11 @@ Con `npm run dev`:
 - Lleva los PS (en %), el estado, los cambios de características y la Mega de los dos, y el campo: clima, campo, pantallas del rival, Gravedad y las zonas.
 - **Sin información oculta**: con equipo cerrado, el rival lleva su set estándar más probable (el que supone el bot, `OpponentModel`) con lo ya revelado encima (objeto, habilidad, movimientos; sin objeto si lo perdió). Con equipo abierto, su set real.
 
+### Datos y efecto de los movimientos (pantalla de combate)
+
+- Cada botón de movimiento lleva su tipo, categoría, potencia, precisión, PP y efecto, y, por cada rival en el campo, la **eficacia** (×4, ×2, ×1, ×½, ×¼, «Inmune»), el **daño estimado** en % de sus PS y los golpes para KO (o la probabilidad de KO). El detalle va en el `title`. En dobles, el selector de objetivo lo repite para cada rival.
+- Se calcula **como «Calcular»** (`features/battle/move-estimates.ts`: `calcFromBattle` + `POST /api/calc`), así que solo usa lo que ves. La eficacia sigue el **tipo final** que da la calculadora (`moveType`: Piel Feérica, Meteorobola, Voz Fluida…), y un ataque que no hace daño es una inmunidad por habilidad (la supuesta, con equipo cerrado).
+
 ### Replays (`/replays`)
 
 - Al terminar un combate, **"Guardar replay"** lo añade a la lista (solo si lo pides). "Descargar" sigue bajando el JSON sin guardarlo.
@@ -65,7 +70,7 @@ Se guardan en `storage/replays/<id>.json` (no versionado):
 
 | Petición | Respuesta |
 |---|---|
-| `POST /api/calc` `{ attacker, defender, move, crit?, field }` | `CalcResponse` (tiradas, mín./máx. en PS y %, probabilidad de KO, golpes para KO, precisión). `field` admite `helpingHand` y `friendGuard` (solo dobles), `gravity`, `magicRoom` y `wonderRoom` |
+| `POST /api/calc` `{ attacker, defender, move, crit?, field }` | `CalcResponse` (tiradas, mín./máx. en PS y %, probabilidad de KO, golpes para KO, precisión, tipo final del movimiento `moveType`). `field` admite `helpingHand` y `friendGuard` (solo dobles), `gravity`, `magicRoom` y `wonderRoom` |
 | `GET /api/replays` | `{ replays: ReplaySummary[] }`, los más recientes primero |
 | `GET /api/replays/:id` | `{ replay: SavedReplay, updatedAt }` |
 | `PATCH /api/replays/:id` `{ name }` | `{ replay, updatedAt }` (400 si el nombre está vacío o pasa de 100 caracteres, 404 si no existe) |

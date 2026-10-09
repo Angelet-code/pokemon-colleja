@@ -6,6 +6,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ### Añadido
 
+- En combate, cada movimiento muestra sus **datos** (tipo, categoría, potencia, precisión, PP y efecto) y **cómo afecta a cada rival**: eficacia, daño estimado en % y golpes para KO, con la calculadora del servidor y solo lo que ve el jugador ([guía](docs/guias/herramientas.md#datos-y-efecto-de-los-movimientos-pantalla-de-combate)). El tipo es el final (Piel Feérica convierte Vozarrón en Hada): `POST /api/calc` devuelve `moveType` (`finalMoveType` del bot, fuera de `estimateDamage`).
+- En el teambuilder, cada movimiento elegido muestra su tipo, categoría, potencia, precisión, PP y efecto sin abrir el desplegable.
 - En combate, cada tarjeta de PS muestra los **tipos** del Pokémon. Siguen los cambios de tipo (Protean, Libero, Empapar, Bosque Maldito, Clonatipo…) hasta que se retira, y los de la Mega Evolución. `BattleView` guarda `typeChange` y `currentTypes` (core) da los tipos actuales.
 
 ### Cambiado
