@@ -8,7 +8,7 @@ import type { CALC_STATUSES, CalcPokemon, CalcRequest } from '@colleja/protocol'
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { safeStorage } from '../../stores/settings';
-import { applyStandardSet, megaOf, newMember } from '../teams/team-draft';
+import { applyStandardSet, megaOf, megaStonesOf, newMember } from '../teams/team-draft';
 
 export type CalcStatus = (typeof CALC_STATUSES)[number];
 export type CalcBoostStat = 'atk' | 'def' | 'spa' | 'spd' | 'spe';
@@ -90,6 +90,31 @@ export function standardSide(species: SpeciesId, mode: GameMode = 'singles'): Ca
 /** A side for a set (Mega Evolved when it holds its stone). */
 export function fromSet(set: PokemonSet): CalcSide {
   return { set, mega: megaOf(set) !== null, hpPercent: 100, status: null, boosts: {} };
+}
+
+/** Whether the species can Mega Evolve at all (with some stone). */
+export function canMegaEvolve(set: PokemonSet): boolean {
+  return megaStonesOf(set.species).length > 0;
+}
+
+/**
+ * Turns the Mega switch on or off. On, it equips the species' first Mega Stone when the set
+ * holds none; off, it keeps the item (a Mega Stone can be held without evolving yet).
+ */
+export function withMega(side: CalcSide, mega: boolean): CalcSide {
+  if (!mega) return { ...side, mega: false };
+  if (megaOf(side.set)) return { ...side, mega: true };
+  const [stone] = megaStonesOf(side.set.species);
+  return stone ? { ...side, set: { ...side.set, item: stone.id }, mega: true } : side;
+}
+
+/**
+ * Replaces the set of a side. Equipping a Mega Stone (or another one) turns the switch on,
+ * losing it turns it off, and any other change keeps the switch as it was.
+ */
+export function withSet(side: CalcSide, set: PokemonSet): CalcSide {
+  const mega = megaOf(set);
+  return { ...side, set, mega: mega !== null && (side.mega || mega !== megaOf(side.set)) };
 }
 
 export const useCalc = create<CalcState>()(

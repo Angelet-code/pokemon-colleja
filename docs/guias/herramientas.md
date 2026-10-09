@@ -9,7 +9,7 @@ Con `npm run dev`:
 ### Calculadora (`/calculadora`)
 
 - **Atacante** y **defensor** se editan con la ficha del teambuilder (especie, objeto, habilidad, naturaleza, Stat Points, movimientos, set sugerido, importar/exportar). "Cargar de mis equipos" toma un Pokémon de tus equipos o rivales guardados.
-- **Estado de cada uno**: megaevolucionado (con su megapiedra), PS en %, estado alterado y cambios de características (−6 a +6).
+- **Estado de cada uno**: megaevolucionado (el interruptor «Mega» equipa la megapiedra si no la lleva, y la ficha enseña la forma Mega solo con él activo), PS en %, estado alterado y cambios de características (−6 a +6).
 - **Campo**: individuales o dobles (los ataques múltiples hacen el 75 %), clima, campo, pantallas del defensor y **efectos**: Gravedad, Zona Mágica y Zona Extraña; en dobles, también Refuerzo (el aliado del atacante) y Compiescolta (el aliado del defensor).
 - **Crítico** (en la cabecera de «Daño»): todos los golpes son críticos.
 - **Resultado**: el daño de los cuatro movimientos del atacante a la vez (rango en PS y en %, y "KO seguro", "62,5 % de KO de un golpe" o "2–3 golpes para KO", desde los PS actuales). "Intercambiar" cambia los papeles.

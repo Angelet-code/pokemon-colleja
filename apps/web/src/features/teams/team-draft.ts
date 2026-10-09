@@ -222,6 +222,11 @@ export function megaOf(set: PokemonSet): SpeciesId | null {
   return item?.megaEvolutions.find((mega) => mega.from === set.species)?.to ?? null;
 }
 
+/** The Mega Stones of a species (Charizard has two). */
+export function megaStonesOf(species: SpeciesId): ItemData[] {
+  return listItems().filter((item) => item.category === 'mega-stone' && itemAllowed(item, species));
+}
+
 // ── Problems ───────────────────────────────────────────────────────────────
 
 export interface DraftIssues {

@@ -24,14 +24,17 @@ import {
 import { api } from '../../lib/api';
 import { useSettings } from '../../stores/settings';
 import { SetEditor } from '../teams/components/SetEditor';
-import { megaOf, newDraft, replaceMembers } from '../teams/team-draft';
+import { newDraft, replaceMembers } from '../teams/team-draft';
 import {
   type CalcBoostStat,
   type CalcSide,
   type CalcStatus,
   calcRequest,
+  canMegaEvolve,
   fromSet,
   useCalc,
+  withMega,
+  withSet,
 } from './calc-store';
 import { LoadSetDialog } from './LoadSetDialog';
 
@@ -379,16 +382,16 @@ function SideEditor({ side, locale }: { side: 'attacker' | 'defender'; locale: L
   const updateSide = useCalc((store) => store.updateSide);
   const draft = useMemo(() => replaceMembers(newDraft(mode), [state.set]), [mode, state.set]);
   const label = side === 'attacker' ? 'atacante' : 'defensor';
-  const canMega = megaOf(state.set) !== null;
+  const canMega = canMegaEvolve(state.set);
 
   return (
     <div className="flex flex-col">
       <div className="flex flex-wrap items-end gap-x-5 gap-y-3 border-b border-line bg-surface-2/50 px-5 py-3.5">
-        <div className="pb-2" title={canMega ? undefined : 'Necesita su megapiedra'}>
+        <div className="pb-2" title={canMega ? undefined : 'No tiene Mega Evolución'}>
           <Checkbox
             label="Mega"
             checked={state.mega && canMega}
-            onChange={(mega) => canMega && updateSide(side, { mega })}
+            onChange={(mega) => canMega && updateSide(side, withMega(state, mega))}
             className={canMega ? '' : 'pointer-events-none opacity-40'}
           />
         </div>
@@ -463,7 +466,8 @@ function SideEditor({ side, locale }: { side: 'attacker' | 'defender'; locale: L
         index={0}
         locale={locale}
         problems={{}}
-        onChange={(set) => updateSide(side, { set, mega: state.mega && megaOf(set) !== null })}
+        megaEvolved={state.mega}
+        onChange={(set) => updateSide(side, withSet(state, set))}
       />
     </div>
   );

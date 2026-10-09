@@ -19,6 +19,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ### Corregido
 
+- Calculadora: la ficha salía en **forma Mega** (sprite, tipos y stats) con solo llevar la megapiedra, aunque el interruptor «Mega» estuviera apagado y el cálculo usara la forma base. Ahora la forma la manda el interruptor; activarlo **equipa la megapiedra** si no la lleva (antes no se podía), y equipar una lo activa. Test: `apps/web/test/calc-store.test.ts`.
 - En «Nuevo combate», los nombres largos de equipos y rivales guardados ensanchaban la lista y se salían del panel; ahora se recortan.
 - Nivel 1 en dobles: con dos Pokémon capaces de megaevolucionar en el campo, la segunda posición pasaba turno (todas sus opciones llevaban mega). Ahora ataca sin megaevolucionar.
 - Niveles 2 y 3 en dobles: en el **turno de recarga** (tras Hiperrayo, Gigaimpacto…) la posición pasaba turno y Showdown rechazaba la elección (combate con error en el banco, ≈ 8 % de los combates con Sylveon). «Recargar» no está en los datos de movimientos y el plan de dobles lo descartaba; ahora es una opción que no hace nada. Test: `packages/bot/test/recharge.test.ts` (los tres niveles, en los dos modos).

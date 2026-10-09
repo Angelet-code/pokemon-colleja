@@ -61,6 +61,7 @@ export function SetEditor({
   problems,
   onChange,
   onRemove,
+  megaEvolved,
 }: {
   draft: TeamDraft;
   index: number;
@@ -69,6 +70,11 @@ export function SetEditor({
   onChange: (set: PokemonSet) => void;
   /** Without it there is no "Quitar" button (e.g. in the calculator). */
   onRemove?: () => void;
+  /**
+   * Whether the sheet shows the Mega form. By default, whenever the set holds its stone (the
+   * teambuilder); the calculator passes its Mega switch.
+   */
+  megaEvolved?: boolean;
 }) {
   const set = draft.members[index];
   const mode: GameMode = draft.mode;
@@ -78,7 +84,7 @@ export function SetEditor({
   const species = set ? getSpecies(set.species) : undefined;
   if (!set || !species) return null;
 
-  const mega = megaOf(set);
+  const mega = megaEvolved === false ? null : megaOf(set);
   const shown = (mega && getSpecies(mega)) || species;
   const standardSets = getStandardSets(set.species, mode);
   const update = (change: Partial<PokemonSet>) => onChange({ ...set, ...change });
