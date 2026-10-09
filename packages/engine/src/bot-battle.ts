@@ -3,6 +3,7 @@
  * arena (random teams) and the team bench (saved teams): the agents come already built, so
  * the engine only needs the `BattleAgent` interface of core (it cannot depend on the bot).
  */
+import { createHash } from 'node:crypto';
 import type { BattleAgent, BattleOptions, PokemonSet, SideId } from '@colleja/core';
 import type { GameMode } from '@colleja/data';
 import type { ReplayData } from './replay';
@@ -40,6 +41,12 @@ export interface BotBattleResult {
   decisionMs: Record<SideId, number>;
   decisions: Record<SideId, number>;
   error?: string;
+  /**
+   * Hash of the battle's input log (teams, seed and every choice): two runs with the same
+   * fingerprint played exactly the same battle. Used to check that a speed-up of a bot does
+   * not change its decisions.
+   */
+  fingerprint: string;
   /** Kept only for battles that failed or had invalid choices (to reproduce them). */
   replay?: ReplayData;
 }
@@ -102,6 +109,7 @@ export async function playBotBattle(config: BotBattleConfig): Promise<BotBattleR
     unavailableChoices,
     decisionMs: { p1: p1.ms, p2: p2.ms },
     decisions: { p1: p1.decisions, p2: p2.decisions },
+    fingerprint: createHash('sha256').update(session.inputLog.join('\n')).digest('hex'),
   };
   if (error !== undefined) result.error = error;
   if (winner === 'error' || invalidChoices > 0) result.replay = session.exportReplay();

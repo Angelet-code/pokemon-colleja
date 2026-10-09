@@ -39,6 +39,8 @@ export interface BattleRecord {
   /** Time spent deciding, per bot. */
   decisionMs: { a: number; b: number };
   decisions: { a: number; b: number };
+  /** Hash of the input log (`BotBattleResult.fingerprint`). */
+  fingerprint: string;
   error?: string;
   /** Kept only for battles that failed or had invalid choices. */
   replay?: ReplayData;
@@ -115,6 +117,7 @@ export async function playArenaBattle(options: ArenaOptions, index: number): Pro
     unavailableChoices: battle.unavailableChoices,
     decisionMs: { a: battle.decisionMs[aSide], b: battle.decisionMs[bSide] },
     decisions: { a: battle.decisions[aSide], b: battle.decisions[bSide] },
+    fingerprint: battle.fingerprint,
   };
   if (battle.error !== undefined) record.error = battle.error;
   if (battle.replay) record.replay = battle.replay;

@@ -145,11 +145,6 @@ export function simulateDuel(
   // Choice items lock the holder into the first move it uses.
   let mineLock = mine.lockedMove ?? null;
   let foeLock = foe.lockedMove ?? null;
-  const locked = (attacker: Combatant, defender: Combatant, move: MoveId): Attack => ({
-    move,
-    damage: attackDamage(situation, attacker, defender, move),
-    priority: getMove(move)?.priority ?? 0,
-  });
   let turn = 1;
 
   for (; turn <= MAX_TURNS && mineHp > 0 && foeHp > 0; turn++) {
@@ -158,7 +153,7 @@ export function simulateDuel(
     const foeFresh = first && foeStart.fresh === true;
     const mineFresh = opening.switchingIn ? turn === 2 : first && mineStart.fresh === true;
     const foeAttack = foeLock
-      ? locked(foe, mine, foeLock)
+      ? lockedAttack(situation, foe, mine, foeLock)
       : bestAttack(situation, foe, (first && opening.foeAimsAt) || mine, foeFresh);
     let mineAttack: Attack;
     if (first && (opening.move !== undefined || opening.switchingIn || opening.protect)) {
@@ -170,50 +165,48 @@ export function simulateDuel(
       };
     } else {
       mineAttack = mineLock
-        ? locked(mine, foe, mineLock)
+        ? lockedAttack(situation, mine, foe, mineLock)
         : bestAttack(situation, mine, foe, mineFresh);
     }
     const foeActs = foeSleep === 0 && !(first && (opening.flinch || opening.protect));
     const mineActs = mineSleep === 0 && !(first && opening.switchingIn);
 
-    const mineAction = () => {
-      if (first && opening.switchingIn) return;
-      if (mineActs && mineAttack.move) {
-        const dealt = Math.min(mineAttack.damage, Math.max(0, foeHp));
-        foeHp -= dealt;
-        mineHp += afterHit(mineAttack.move, dealt);
-        if (hasChoiceItem(mine)) mineLock = mineAttack.move;
-      }
-      if (first) {
-        if (opening.heal) mineHp = Math.min(mine.maxhp, mineHp + opening.heal * mine.maxhp);
-        if (opening.mineAfter) mine = opening.mineAfter;
-        if (opening.foeAfter) {
-          foe = opening.foeAfter;
-          if (foe.status === 'slp' && foeSleep === 0) foeSleep = SLEEP_TURNS + 1;
-        }
-        if (mine.status === 'slp' && mineSleep === 0) mineSleep = SLEEP_TURNS + 1;
-      }
-    };
-    const foeAction = () => {
-      if (foeActs && foeAttack.move) {
-        const damage = attackDamage(situation, foe, mine, foeAttack.move);
-        const dealt = Math.min(damage, Math.max(0, mineHp));
-        mineHp -= dealt;
-        foeHp += afterHit(foeAttack.move, dealt);
-        if (hasChoiceItem(foe)) foeLock = foeAttack.move;
-      }
-    };
-
     const mineFirst =
       (first && opening.switchingIn) ||
       mineAttack.priority > foeAttack.priority ||
       (mineAttack.priority === foeAttack.priority && situation.movesFirst(mine, foe) >= 0.5);
-    if (mineFirst) {
-      mineAction();
-      if (foeHp > 0) foeAction();
-    } else {
-      foeAction();
-      if (mineHp > 0) mineAction();
+    // The one that moves second only acts if it is still standing. (No closures here: this
+    // loop is hot and tsx names every closure it creates.)
+    for (let step = 0; step < 2; step++) {
+      const mineActsNow = (step === 0) === mineFirst;
+      if (mineActsNow) {
+        if (step === 1 && mineHp <= 0) continue;
+        if (first && opening.switchingIn) continue;
+        if (mineActs && mineAttack.move) {
+          const dealt = Math.min(mineAttack.damage, Math.max(0, foeHp));
+          foeHp -= dealt;
+          mineHp += afterHit(mineAttack.move, dealt);
+          if (hasChoiceItem(mine)) mineLock = mineAttack.move;
+        }
+        if (first) {
+          if (opening.heal) mineHp = Math.min(mine.maxhp, mineHp + opening.heal * mine.maxhp);
+          if (opening.mineAfter) mine = opening.mineAfter;
+          if (opening.foeAfter) {
+            foe = opening.foeAfter;
+            if (foe.status === 'slp' && foeSleep === 0) foeSleep = SLEEP_TURNS + 1;
+          }
+          if (mine.status === 'slp' && mineSleep === 0) mineSleep = SLEEP_TURNS + 1;
+        }
+      } else {
+        if (step === 1 && foeHp <= 0) continue;
+        if (foeActs && foeAttack.move) {
+          const damage = attackDamage(situation, foe, mine, foeAttack.move);
+          const dealt = Math.min(damage, Math.max(0, mineHp));
+          mineHp -= dealt;
+          foeHp += afterHit(foeAttack.move, dealt);
+          if (hasChoiceItem(foe)) foeLock = foeAttack.move;
+        }
+      }
     }
     if (mineHp > 0) mineHp += endOfTurn(mine, mineActs && mineAttack.move !== null);
     if (foeHp > 0) foeHp += endOfTurn(foe, foeActs && foeAttack.move !== null);
@@ -225,6 +218,20 @@ export function simulateDuel(
     if (first && opening.switchingIn && opening.mineAfter) mine = opening.mineAfter;
   }
   return { mineHp: Math.max(0, mineHp), foeHp: Math.max(0, foeHp), mine, foe, turns: turn - 1 };
+}
+
+/** The attack of a Pokémon locked into `move` (Choice items). */
+function lockedAttack(
+  situation: Situation,
+  attacker: Combatant,
+  defender: Combatant,
+  move: MoveId,
+): Attack {
+  return {
+    move,
+    damage: attackDamage(situation, attacker, defender, move),
+    priority: getMove(move)?.priority ?? 0,
+  };
 }
 
 /** HP the attacker gains (drain) or loses (recoil) after dealing `dealt` damage. */

@@ -185,11 +185,22 @@ export function estimateDamage(
 ): DamageEstimate {
   const move = getMove(moveId);
   if (!move || move.category === 'Status' || defender.hp <= 0) return NO_DAMAGE;
-  const key = `${calcKey(attacker)}>${calcKey(defender)}|${moveId}${options.crit ? '!' : ''}|${fieldKey(field, attacker.side, defender.side)}`;
+  const rest = `|${moveId}${options.crit ? '!' : ''}|${fieldKey(field, attacker.side, defender.side)}`;
+  const key = `${calcKey(attacker)}${attacker.hp}>${calcKey(defender)}${defender.hp}${rest}`;
   const cached = estimateCache.get(key);
   if (cached) return cached;
   if (estimateCache.size >= MAX_CACHED_ESTIMATES) estimateCache.clear();
-  const estimate = calculateEstimate(attacker, defender, move, field, options);
+  const exactHp = EXACT_HP_MOVES.has(moveId);
+  const rollsKey = `${calcKey(attacker)}${hpKey(attacker, exactHp)}>${calcKey(defender)}${hpKey(defender, exactHp)}${rest}`;
+  const rolls = rollsCache.get(rollsKey);
+  let estimate: DamageEstimate;
+  if (rolls) {
+    estimate = { ...rolls, koChance: koChance(rolls.rolls, defender.hp) };
+  } else {
+    estimate = calculateEstimate(attacker, defender, move, field, options);
+    if (rollsCache.size >= MAX_CACHED_ESTIMATES) rollsCache.clear();
+    rollsCache.set(rollsKey, estimate);
+  }
   estimateCache.set(key, estimate);
   return estimate;
 }
@@ -199,10 +210,41 @@ export function estimateDamage(
  * meet again (`calculate` dominates its cost). Pure function, so caching is safe.
  */
 const estimateCache = new Map<string, DamageEstimate>();
+/**
+ * The same, by HP class instead of exact HP (`hpKey`): after a simulated turn the HP of the
+ * Pokémon rarely repeats, but the rolls only change at the thresholds the calc checks. Only
+ * `koChance` depends on the exact HP, and it is computed again.
+ */
+const rollsCache = new Map<string, DamageEstimate>();
 const MAX_CACHED_ESTIMATES = 20_000;
 const keyCache = new WeakMap<Combatant, string>();
 
-/** Everything about a combatant that the calc reads. */
+/**
+ * Moves whose damage depends on the exact HP of the attacker or the defender (base power,
+ * fixed damage). `test/damage-cache.test.ts` checks that no other move does.
+ */
+export const EXACT_HP_MOVES: ReadonlySet<string> = new Set<string>([
+  'painsplit',
+  'finalgambit',
+  'eruption',
+  'waterspout',
+  'flail',
+  'reversal',
+  'hardpress',
+]);
+
+/**
+ * HP as the calc sees it besides those moves: full (Multiscale, Gale Wings; the calc reads
+ * 0 HP as full), at most a third (Blaze, Torrent, Overgrow, Swarm) or in between.
+ */
+function hpKey(combatant: Combatant, exact: boolean): string {
+  const { hp, maxhp } = combatant;
+  if (exact) return `${hp}`;
+  if (hp <= 0 || hp >= maxhp) return 'f';
+  return hp <= maxhp / 3 ? 't' : 'm';
+}
+
+/** Everything about a combatant that the calc reads, except its HP. */
 function calcKey(combatant: Combatant): string {
   let key = keyCache.get(combatant);
   if (key === undefined) {
@@ -211,17 +253,31 @@ function calcKey(combatant: Combatant): string {
     const stages = Object.entries(boosts)
       .map(([stat, stage]) => `${stat}${stage}`)
       .join(',');
-    key = `${combatant.species}/${set.nature}/${points}/${stages}/${combatant.hp}/${combatant.ability}/${combatant.item ?? ''}/${combatant.status ?? ''}`;
+    key = `${combatant.species}/${set.nature}/${points}/${stages}/${combatant.ability}/${combatant.item ?? ''}/${combatant.status ?? ''}/`;
     keyCache.set(combatant, key);
   }
   return key;
 }
 
+/** Key parts of each field (field states are not changed once built). */
+const fieldKeys = new WeakMap<FieldState, { base: string } & Record<SideId, string>>();
+
+function sideKey(field: FieldState, side: SideId): string {
+  return [...Object.keys(field.conditions[side]), ...(field.boosts?.[side] ?? [])].join(',');
+}
+
 function fieldKey(field: FieldState, attacker: SideId, defender: SideId): string {
-  const conditions = (side: SideId) =>
-    [...Object.keys(field.conditions[side]), ...(field.boosts?.[side] ?? [])].join(',');
+  let keys = fieldKeys.get(field);
+  if (!keys) {
+    keys = {
+      base: `${field.doubles ? 'd' : 's'}/${field.weather ?? ''}/${field.terrain ?? ''}/${field.pseudoWeather.join(',')}`,
+      p1: sideKey(field, 'p1'),
+      p2: sideKey(field, 'p2'),
+    };
+    fieldKeys.set(field, keys);
+  }
   const spikes = field.conditions[defender].spikes ?? 0;
-  return `${field.doubles ? 'd' : 's'}/${field.weather ?? ''}/${field.terrain ?? ''}/${field.pseudoWeather.join(',')}/${conditions(attacker)}/${conditions(defender)}${spikes}`;
+  return `${keys.base}/${keys[attacker]}/${keys[defender]}${spikes}`;
 }
 
 function calculateEstimate(
@@ -244,11 +300,33 @@ function calculateEstimate(
     const min = Math.min(...rolls);
     const max = Math.max(...rolls);
     const avg = rolls.reduce((sum, roll) => sum + roll, 0) / rolls.length;
-    const koChance = rolls.filter((roll) => roll >= defender.hp).length / rolls.length;
-    return { rolls, min, max, avg, koChance, accuracy };
+    return { rolls, min, max, avg, koChance: koChance(rolls, defender.hp), accuracy };
   } catch {
     return { ...NO_DAMAGE, accuracy };
   }
+}
+
+/** Fraction of `rolls` that knock out a defender with `hp` left. */
+function koChance(rolls: readonly number[], hp: number): number {
+  let knockouts = 0;
+  for (const roll of rolls) if (roll >= hp) knockouts++;
+  return knockouts / rolls.length;
+}
+
+/**
+ * The calc's estimate without any cache, for tests that check the caches of
+ * `estimateDamage`.
+ */
+export function estimateDamageUncached(
+  attacker: Combatant,
+  defender: Combatant,
+  moveId: MoveId,
+  field: FieldState,
+  options: DamageOptions = {},
+): DamageEstimate {
+  const move = getMove(moveId);
+  if (!move || move.category === 'Status' || defender.hp <= 0) return NO_DAMAGE;
+  return calculateEstimate(attacker, defender, move, field, options);
 }
 
 /** Expected share of the defender's max HP removed (0–1), capped at its current HP. */

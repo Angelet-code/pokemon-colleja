@@ -127,8 +127,14 @@ export class DoublesSim {
   }
 
   private decided(): boolean {
-    const alive = (side: 'mine' | 'foe') => this.units.some((u) => u.side === side && u.hp > 0);
-    return !alive('mine') || !alive('foe');
+    let mine = false;
+    let foe = false;
+    for (const unit of this.units) {
+      if (unit.hp <= 0) continue;
+      if (unit.side === 'mine') mine = true;
+      else foe = true;
+    }
+    return !mine || !foe;
   }
 
   // ── One turn ───────────────────────────────────────────────────────────
@@ -181,14 +187,16 @@ export class DoublesSim {
 
   /** Negative when `a` moves first. Ties: rivals first (pessimistic). */
   private speedOrder(a: Unit, b: Unit): number {
-    const speed = (unit: Unit) =>
-      effectiveSpeed(unit.combatant, {
-        tailwind: this.tailwind[unit.side],
-        weather: this.situation.field.weather,
-      });
-    const difference = speed(b) - speed(a);
+    const difference = this.speedOf(b) - this.speedOf(a);
     if (difference !== 0) return this.trickRoom ? -difference : difference;
     return a.side === b.side ? 0 : a.side === 'foe' ? -1 : 1;
+  }
+
+  private speedOf(unit: Unit): number {
+    return effectiveSpeed(unit.combatant, {
+      tailwind: this.tailwind[unit.side],
+      weather: this.situation.field.weather,
+    });
   }
 
   /** Best attack by expected damage value (+ KO bonus), like a damage-maximising player. */
@@ -354,7 +362,6 @@ export class DoublesSim {
    * shares on the field, with a bonus per Pokémon knocked out.
    */
   private value(start: Map<Unit, number>): number {
-    const share = (unit: Unit) => Math.max(0, unit.hp) / Math.max(1, unit.combatant.maxhp);
     const inSim = new Map<OwnMember, number>();
     for (const unit of this.units) {
       if (unit.side === 'mine' && unit.member) inSim.set(unit.member, share(unit));
@@ -377,6 +384,11 @@ export class DoublesSim {
     }
     return (own - foe) * 100 + knockouts * (KO_BONUS / 2);
   }
+}
+
+/** Share of its max HP a unit has left (0–1). */
+function share(unit: Unit): number {
+  return Math.max(0, unit.hp) / Math.max(1, unit.combatant.maxhp);
 }
 
 /** Side of a unit as a Showdown side id (for debugging/tests). */

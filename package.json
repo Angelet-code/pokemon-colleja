@@ -24,6 +24,7 @@
     "smoke": "tsx tools/smoke/src/run.ts",
     "play": "tsx tools/cli/src/play.ts",
     "arena": "tsx tools/arena/src/run.ts",
+    "arena:perf": "tsx tools/arena/src/perf.ts",
     "bench": "tsx tools/bench/src/run.ts",
     "bench:calc": "tsx tools/bench/src/calc.ts",
     "data:build": "tsx tools/data-pipeline/src/build.ts",

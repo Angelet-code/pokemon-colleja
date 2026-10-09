@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { runArena, wilsonInterval } from '../src/arena';
+import { playArenaBattle, runArena, wilsonInterval } from '../src/arena';
 
 describe('arena', () => {
   it('plays the battles, swaps sides and counts the results', async () => {
@@ -29,6 +29,16 @@ describe('arena', () => {
     const second = await runArena(options);
     expect(second.wins).toEqual(first.wins);
     expect(second.avgTurns).toBe(first.avgTurns);
+  });
+
+  it('fingerprints each battle by its input log (same choices, same fingerprint)', async () => {
+    const options = { a: 2, b: 1, mode: 'singles', battles: 1, seed: 'print' } as const;
+    const first = await playArenaBattle(options, 0);
+    const again = await playArenaBattle(options, 0);
+    const other = await playArenaBattle({ ...options, seed: 'print-2' }, 0);
+    expect(first.fingerprint).toMatch(/^[0-9a-f]{64}$/);
+    expect(again.fingerprint).toBe(first.fingerprint);
+    expect(other.fingerprint).not.toBe(first.fingerprint);
   });
 
   it('computes Wilson intervals', () => {
