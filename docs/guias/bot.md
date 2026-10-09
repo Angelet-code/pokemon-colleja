@@ -42,7 +42,7 @@ Todos los bots solo ven su `AgentContext` (su perspectiva). **No conocen los set
 | `inference/explain-beliefs.ts` | Las hipótesis más probables de cada Pokémon rival para la explicación |
 | `search/assumptions.ts` | Nivel 3: suposiciones completas de los sets rivales (vistos y no vistos), repartidas por la probabilidad de las creencias (cuantiles) |
 | `search/lineups.ts` | Nivel 3: alineaciones para la cadena (los tuyos vivos y los del rival según la suposición, en el combate real o en un fork) |
-| `search/lookahead.ts` | Nivel 3: `searchMoves` (búsqueda a un turno con el sandbox), `SEARCH_SETTINGS` (esfuerzo y pesos por modo) y `recentSwitches` |
+| `search/lookahead.ts` | Nivel 3: `searchMoves` (búsqueda a un turno con el sandbox), `SEARCH_SETTINGS` (esfuerzo y pesos por modo), `stillPromising` (poda) y `recentSwitches` |
 
 ### Nivel 3: búsqueda con el simulador real
 
@@ -51,12 +51,12 @@ El motor pone en `AgentContext.sandbox` (solo al elegir movimientos) un `BattleS
 Para cada suposición (`assumptions`), `searchMoves`:
 
 1. obtiene las respuestas probables del rival: el nivel 2 jugando su lado en el fork, sus `rivalReplies` mejores opciones con pesos softmax (`replyTemperature`), ajustadas a su **estilo** (ver más abajo);
-2. juega `turns` turnos por cada opción propia (las `ownOptions` mejores del nivel 2), cada uno contra una respuesta muestreada de forma estratificada por esos pesos. Con la misma semilla para todas las opciones y **suerte común por acción** (cada acción saca sus números de su propio flujo), las opciones se comparan con la misma suerte del rival;
+2. juega `turns` turnos por cada opción propia (las `ownOptions` mejores del nivel 2), cada uno contra una respuesta muestreada de forma estratificada por esos pesos. Con la misma semilla para todas las opciones y **suerte común por acción** (cada acción saca sus números de su propio flujo), las opciones se comparan con la misma suerte del rival. Los turnos se juegan por orden (cada turno, todas las suposiciones) y, tras `pruneAfter` turnos, se dejan de buscar las opciones cuya media queda más de `pruneMargin` puntos por debajo de la mejor (**poda sucesiva**, [ADR-0014](../adr/0014-nivel-3-mas-rapido-con-poda.md)): ≈ 2× más rápido con la misma fuerza;
 3. valora cada posición resultante, tras los relevos forzosos (del nivel 2): balance de PS × 100 más `positionWeight` × el cambio que el nivel 2 espera desde ahí (su mejor puntuación menos la que tendría si no pasara nada: `singlesBaseline`/`doublesBaseline`) y, en individuales, `chainWeight` × lo que la **cadena de equipo completo** (`teamChainValue`, con los banquillos de los dos lados en el fork) cambia ese balance; ±200 si el combate acaba.
 
 Elige la media más alta, restando `loopPenalty` a las opciones con un cambio por cada cambio voluntario propio de los últimos 4 turnos (sin esto, dos bots pueden cambiar de Pokémon en bucle para siempre). En individuales, los **relevos forzosos** son para el Pokémon cuya cadena de equipo completo acaba mejor contra las suposiciones del rival. Sin sandbox (otra perspectiva o la vista previa) juega como el nivel 2. El esfuerzo es fijo, nunca por reloj, para que sea reproducible.
 
-Lo que limita al nivel 3 es, sobre todo, la **información oculta**: con equipo abierto gana al nivel 2 un 70,7 % en individuales. Con equipo cerrado, la deducción de la fase 11 lo sube de ≈ 64,4 % a **67,1 %** ([ADR-0012](../adr/0012-deduccion-de-sets-y-estilo-del-rival.md)). Más muestras (`turns`, `assumptions`) ya no ayudan.
+Lo que limita al nivel 3 es, sobre todo, la **información oculta**: con equipo abierto gana al nivel 2 un 70,7 % en individuales. Con equipo cerrado, la deducción de la fase 11 lo sube de ≈ 64,4 % a **67,1 %** ([ADR-0012](../adr/0012-deduccion-de-sets-y-estilo-del-rival.md)). Más muestras (`turns`, `assumptions`) ya no ayudan. Desde que los equipos aleatorios llevan hasta dos megapiedras (2026-10-09), la referencia es ≈ 64,7 % en individuales y ≈ 80 % en dobles (1 200 combates por modo, fase 13).
 
 ### Nivel 3: qué deduce del rival
 
@@ -108,6 +108,17 @@ Muestra el % de victorias con su intervalo de confianza del 95 % (Wilson), los t
 
 Resultados de referencia (fases 4, 9 y 10): en el [CHANGELOG](../../CHANGELOG.md). El nivel 3 tarda unas décimas de segundo por decisión: para medirlo con cientos de combates conviene lanzar varios arenas en paralelo con semillas distintas. Con 600 combates el ruido es de ±2 puntos (IC 95 % ≈ ±4): compara variantes con la misma semilla y confirma lo prometedor con otra semilla antes de quedártelo.
 
+### Velocidad (`npm run arena:perf`)
+
+```bash
+npm run arena:perf -- --save storage/perf/base.json      # antes del cambio
+npm run arena:perf -- --compare storage/perf/base.json   # después
+```
+
+Juega combates fijos de un nivel contra otro (por defecto el 3 contra el 2, 12 por modo, semilla `perf`) en un solo hilo y da el tiempo por decisión (reloj y CPU del combate). Con `--compare` dice cuánto más rápido va y si **alguna decisión cambió**: cada combate tiene una huella (`fingerprint`, el SHA-256 de su `inputLog`). Una optimización que no deba cambiar decisiones tiene que dejar todas las huellas iguales. Otros programas abiertos mueven el reloj ±10 %: para comparar dos versiones, alterna las ejecuciones (A, B, A, B).
+
+Lo que cuesta el nivel 3 ([ADR-0014](../adr/0014-nivel-3-mas-rapido-con-poda.md)): ≈ 40–50 % el simulador de Showdown jugando los turnos de las hojas, ≈ 15–20 % deserializar cada hoja y el resto, la valoración del nivel 2 y la calculadora. En el código caliente, evita los cierres con nombre (`const f = () => …` dentro de un bucle): tsx los envuelve en `__name` cada vez que se crean.
+
 ## Cómo mejorar un bot
 
 1. Reproduce el problema: un combate concreto del arena (semilla) o un escenario guionizado (`packages/bot/test/helpers.ts`: `scenario(modo, líderes p1, líderes p2)` crea un combate sin vista previa con esos Pokémon en cabeza).
@@ -128,10 +139,11 @@ Cada nivel implementa `explain()` (de `BattleAgent`): devuelve la explicación d
 | `packages/bot/test/levels.test.ts` | Registro de niveles. Escenarios: elige el KO, no golpea al aliado con Terremoto, el nivel 2 cambia a un Pokémon que gana el duelo. Fuzz: 100 combates por modo nivel 1 contra 2 sin elecciones inválidas |
 | `packages/bot/test/expert.test.ts` | Nivel 3: KO evidente, sin sandbox = nivel 2, **misma decisión y explicación aunque cambie lo que oculta el rival**, determinismo, combates contra el nivel 2 sin elecciones inválidas |
 | `packages/bot/test/inference.test.ts` | Observaciones sobre logs reales (golpes en los dos sentidos, PS exactos y en %, orden, KO como cota inferior), creencias (el set estándar que explica daño y velocidad, el set defensivo, variantes de reparto legales solo si nada cuadra, cláusula de objeto, invariancia frente a lo oculto) y estilo (qué hizo el rival, evidente o contrapredicción, olvido tras rebobinar) |
-| `packages/bot/test/team-chain.test.ts` | `teamChainValue` cuenta los banquillos de los dos lados; `recentSwitches` cuenta solo los cambios voluntarios |
+| `packages/bot/test/team-chain.test.ts` | `teamChainValue` cuenta los banquillos de los dos lados; `recentSwitches` cuenta solo los cambios voluntarios; `stillPromising` poda las opciones lejos de la mejor |
+| `packages/bot/test/damage-cache.test.ts` | Las cachés de `estimateDamage` dan lo mismo que la calculadora: ningún movimiento, habilidad u objeto (salvo `EXACT_HP_MOVES`) cambia sus tiradas dentro de una clase de PS |
 | `packages/engine/test/sandbox.test.ts` | El sandbox: solo al elegir movimientos, sustituye los sets vistos y no vistos, PS al % visible, reproducible, no toca el combate real, rechaza posiciones viejas |
 | `packages/bot/test/random-agent.test.ts` | Fuzz del nivel 0 |
 | `packages/teamgen/test/teamgen.test.ts` | Equipos legales (300 semillas por modo), cláusulas, megapiedras, determinismo |
-| `tools/arena/test/arena.test.ts` | `runArena` cuenta bien y es reproducible. Prueba corta de fuerza: el nivel 2 gana ≥ 75 % al 0 en 40 combates por modo |
+| `tools/arena/test/arena.test.ts` | `runArena` cuenta bien y es reproducible; la huella de un combate depende solo de sus elecciones. Prueba corta de fuerza: el nivel 2 gana ≥ 75 % al 0 en 40 combates por modo |
 
 Fuzz más largo: `BOT_FUZZ_BATTLES=1000 npx vitest run packages/bot`.

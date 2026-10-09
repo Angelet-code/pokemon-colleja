@@ -329,7 +329,7 @@ function expectedReplies(
 }
 
 /** The options (indices) whose average is within `margin` points of the best one. */
-function stillPromising(
+export function stillPromising(
   options: readonly number[],
   totals: readonly { sum: number; count: number }[],
   margin: number,

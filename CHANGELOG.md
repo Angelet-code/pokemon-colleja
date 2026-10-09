@@ -24,6 +24,31 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 - Con `npm run dev`, abrir la web en el puerto del servidor (3001) mostraba `apps/web/dist`, una compilación que podía ser vieja (por ejemplo, con los iconos Gen 8 pixelados en lugar de los renders de Champions). Ahora el servidor de desarrollo redirige las páginas a Vite (`WEB_DEV_URL`, que pone `npm run dev`).
 
+### Fase 13 — Nivel 3 el doble de rápido (2026-10-09)
+
+#### Cambiado
+
+- **El nivel 3 decide ≈ 2× más rápido con la misma fuerza** ([ADR-0014](docs/adr/0014-nivel-3-mas-rapido-con-poda.md), [guía](docs/guias/bot.md#velocidad-npm-run-arenaperf)):
+  - **Optimizaciones idénticas** (mismas decisiones, comprobado con huellas): caché de tiradas de daño por clase de PS (lleno, ≤ 1/3, entre medias; los movimientos que dependen de los PS exactos, `EXACT_HP_MOVES`, van aparte), sin cierres con nombre en los bucles calientes del duelo y la simulación de dobles (tsx los envuelve en `__name` cada vez) y claves del campo en caché. 1,25× en individuales y 1,12× en dobles.
+  - **Poda sucesiva** en la búsqueda: los turnos se juegan por orden y, tras `pruneAfter` turnos (2 en individuales, 1 en dobles), se dejan de buscar las opciones cuya media queda más de `pruneMargin` (30) puntos por debajo de la mejor. Decisión del usuario: decisiones distintas, pero con la misma fuerza medida en el arena.
+- Con equipos de hasta dos megapiedras, la referencia del nivel 3 contra el 2 pasa a ≈ 64,7 % en individuales y ≈ 80 % en dobles.
+
+#### Añadido
+
+- Huella de cada combate entre bots (`BotBattleResult.fingerprint`, SHA-256 del `inputLog`) y `npm run arena:perf`: tiempo por decisión de un nivel en combates fijos (reloj y CPU) y, con `--compare`, si alguna decisión cambió.
+- Tests (359 en `npm run check`): las cachés de daño dan lo mismo que la calculadora para todo movimiento, habilidad y objeto; poda (`stillPromising`); huella reproducible.
+
+#### Resultados
+
+| Medida | Antes | Ahora |
+|---|---|---|
+| `npm run arena:perf` (un hilo), ms por decisión | 294 individuales / 390 dobles | **140 / 188** (2,10× / 2,07×) |
+| Nivel 3 contra 2, individuales (1 200 combates, `s1` + `s2`) | 64,6 % (sin poda) | **64,8 %** |
+| Nivel 3 contra 2, dobles (1 200 combates, `d1` + `d2`) | 80,5 % (sin poda) | **79,9 %** |
+| A/B v1 contra v2 del banco (20 rivales, nivel 3 contra 3, ± 5, 15 hilos) | 874 s, v1 mejor (−4,2 ± 4,9) | **416 s**, v1 mejor (−2,5 ± 4,9) |
+
+Probado y descartado: sustituir `getCallback` de Showdown por una versión con caché (≈ 6 400 llamadas por turno simulado, pero sin ganancia) y reutilizar el formato al deserializar cada hoja (ya estaba en caché). Lo que queda caro es el simulador (≈ 40–50 %) y deserializar cada hoja (≈ 15–20 %).
+
 ### Fase 12 — Banco de pruebas de equipos (2026-10-09)
 
 #### Añadido

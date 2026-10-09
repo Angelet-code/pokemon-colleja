@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { makeCombatant, recentSwitches, Situation, teamChainValue } from '../src/index';
+import {
+  makeCombatant,
+  recentSwitches,
+  Situation,
+  stillPromising,
+  teamChainValue,
+} from '../src/index';
 import { scenario, set } from './helpers';
 
 const garchomp = set('garchomp', ['earthquake', 'dragonclaw', 'rockslide', 'protect'], {
@@ -62,5 +68,19 @@ describe('recentSwitches', () => {
     expect(recentSwitches(log, 'p1', 4)).toBe(2);
     expect(recentSwitches(log, 'p1', 1)).toBe(1);
     expect(recentSwitches(log, 'p2', 4)).toBe(1);
+  });
+});
+
+describe('stillPromising (successive pruning of the level 3 search)', () => {
+  it('keeps the options within the margin of the best average', () => {
+    const totals = [
+      { sum: 100, count: 2 }, // 50
+      { sum: 50, count: 2 }, // 25
+      { sum: 80, count: 2 }, // 40
+      { sum: 0, count: 0 }, // never played (its choice was rejected)
+    ];
+    expect(stillPromising([0, 1, 2, 3], totals, 10)).toEqual([0, 2]);
+    expect(stillPromising([0, 1, 2, 3], totals, 30)).toEqual([0, 1, 2]);
+    expect(stillPromising([1, 2], totals, 0)).toEqual([2]);
   });
 });

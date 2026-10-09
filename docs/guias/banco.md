@@ -38,11 +38,11 @@ npm run bench -- --help
 
 ## Flujo recomendado para afinar un equipo
 
-Con el nivel 3 contra el 3, cada decisión cuesta ≈ 1 s (con 15 hilos). Una A/B contra 20 rivales con ± 5 tarda ≈ 14 min. Para ir rápido:
+Con el nivel 3 contra el 3, cada decisión cuesta ≈ 0,5 s (con 15 hilos; ≈ 1 s antes de la [fase 13](../adr/0014-nivel-3-mas-rapido-con-poda.md)). Una A/B contra 20 rivales con ± 5 tarda ≈ 7 min (antes ≈ 14). Para ir más rápido:
 
 1. **`bench:calc`** para descartar sets malos sin combatir: a quién no haces daño y quién te tumba de un golpe.
 2. **Criba con el nivel 2** (`--screen`, ≈ 1 min por variante con 2000 combates): las dos mejores pasan a la A/B. Comprobado en la fase 12: el nivel 2 coloca arriba las mismas dos variantes que el nivel 3.
-3. **A/B con el nivel 3** entre las finalistas. Con ± 10 tarda ≈ 8 min contra 20 rivales (manda el mínimo de 6 combates por rival); con tu bot en 3 contra rivales en 2, ≈ 4 min, pero ojo: con rivales en nivel 2 cambia lo que se mide (en la fase 12, v1 y v2 empataban así y con los dos en 3 ganaba v1), así que la decisión final, con los dos en 3. Con menos rivales, proporcionalmente menos.
+3. **A/B con el nivel 3** entre las finalistas. Con ± 10 tarda ≈ 4 min contra 20 rivales (manda el mínimo de 6 combates por rival; ≈ 8 min antes de la fase 13); con tu bot en 3 contra rivales en 2, menos aún, pero ojo: con rivales en nivel 2 cambia lo que se mide (en la fase 12, v1 y v2 empataban así y con los dos en 3 ganaba v1), así que la decisión final, con los dos en 3. Con menos rivales, proporcionalmente menos.
 4. Si la diferencia queda dentro del ruido, las versiones son equivalentes contra esos rivales: elige por otros motivos.
 
 ## Cómo funciona
