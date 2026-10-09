@@ -30,6 +30,10 @@ export const EXPLANATION_METHODS = {
   duels: 'Balance medio de los duelos del Pokémon que entra contra los tuyos en el campo (×100).',
   teamChain:
     'Balance de PS al final de los duelos de los dos equipos enteros con el Pokémon que entra (×100), en promedio sobre lo que puedes tener.',
+  previewSingles:
+    'Balance de PS al final de los duelos de los dos equipos enteros (×100), con cada líder posible, en promedio sobre los grupos y líderes que espera que elijas.',
+  previewDoubles:
+    'Cobertura de tus Pokémon según lo probable que sea que los traigas: para cada uno, el mejor duelo del grupo (×100), más cómo responden sus dos líderes a los tuyos más probables.',
   lookahead:
     'Balance de PS tras jugar este turno con el simulador contra tus respuestas más probables, más la estimación de cómo sigue (en individuales, con los dos equipos enteros) (×100), en promedio sobre los sets posibles de tus Pokémon.',
 } as const;

@@ -339,7 +339,7 @@ describe('phase 8: calculator, replays and explanations', () => {
     expect(
       ReplayContentSchema.safeParse({
         ...content,
-        explanations: [{ ...explanation, kind: 'team' }],
+        explanations: [{ ...explanation, kind: 'preview' }],
       }).success,
     ).toBe(false);
   });
@@ -389,6 +389,53 @@ describe('phase 8: calculator, replays and explanations', () => {
     expect(TurnExplanationSchema.parse(explanation)).toEqual(explanation);
     const bad = structuredClone(withBeliefs);
     (bad.beliefs[0]?.guesses[0] as { probability: number }).probability = 2;
+    expect(TurnExplanationSchema.safeParse(bad).success).toBe(false);
+  });
+
+  it('carries what the bot read at team preview (phase 14)', () => {
+    const preview = {
+      turn: 0,
+      kind: 'team',
+      method: 'Balance de PS…',
+      options: [
+        {
+          actions: [
+            { kind: 'bring', species: 'garchomp', lead: true },
+            { kind: 'bring', species: 'gyarados' },
+            { kind: 'hidden' },
+          ],
+          score: 12.5,
+          chosen: true,
+        },
+      ],
+      preview: {
+        rivals: [
+          {
+            species: 'incineroar',
+            role: 'support',
+            speed: [80, 95],
+            notable: ['fakeout', 'partingshot'],
+            threat: -4.2,
+            brought: 0.81,
+            lead: 0.4,
+          },
+        ],
+        own: [{ species: 'garchomp', speed: 169 }],
+        matchups: [
+          {
+            own: 'garchomp',
+            rival: 'incineroar',
+            speed: 'faster',
+            dealt: { move: 'earthquake', min: 52.1, max: 61.8, hits: 2, koChance: 0 },
+            taken: { min: 20, max: 24.5, hits: 5, koChance: 0 },
+          },
+        ],
+        hiddenOwn: 5,
+      },
+    };
+    expect(TurnExplanationSchema.parse(preview)).toEqual(preview);
+    const bad = structuredClone(preview);
+    (bad.preview.rivals[0] as { role: string }).role = 'tank';
     expect(TurnExplanationSchema.safeParse(bad).success).toBe(false);
   });
 

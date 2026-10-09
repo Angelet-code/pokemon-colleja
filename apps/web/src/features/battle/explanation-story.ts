@@ -1,13 +1,15 @@
 /**
  * The bot's train of thought in a few plain Spanish sentences: what it expected the player to
  * do, what it ruled out and why it chose what it chose (level 3, from `expected` and each
- * option's `versus`). Pure: the panel only renders the sentences.
+ * option's `versus`; at team preview, from `preview`). Pure: the panel only renders them.
  */
 import type {
   DecisionExplanation,
   ExpectedReply,
   ExplainedAction,
   ExplainedOption,
+  PreviewAnalysis,
+  PreviewRival,
 } from '@colleja/core';
 import type { Locale } from '@colleja/data';
 import { moveName, speciesName } from '@colleja/narration';
@@ -25,6 +27,7 @@ export function explanationStory(
   locale: Locale,
   label: (option: ExplainedOption) => string,
 ): string[] {
+  if (explanation.preview) return previewStory(explanation, explanation.preview, locale);
   const expected = explanation.expected ?? [];
   const chosen = explanation.options.find((option) => option.chosen);
   if (expected.length === 0 || !chosen) return [];
@@ -43,6 +46,62 @@ export function explanationStory(
   }
   story.push('El resto de tus opciones lo descartó: las veía peores para ti.');
   story.push(decisionSentence(explanation.options, chosen, expected, locale, doubles, label));
+  return story;
+}
+
+/**
+ * Team preview: what the bot expected the player to bring and lead with, what it feared the
+ * most and what it brought.
+ */
+function previewStory(
+  explanation: DecisionExplanation,
+  preview: PreviewAnalysis,
+  locale: Locale,
+): string[] {
+  const chosen = explanation.options.find((option) => option.chosen);
+  const size = chosen?.actions.length ?? 0;
+  const leadCount = chosen?.actions.filter(
+    (action) => action.kind === 'bring' && action.lead,
+  ).length;
+  const named = (rivals: readonly PreviewRival[], value: (rival: PreviewRival) => number) =>
+    joinAnd(
+      rivals.map((rival) => `${speciesName(rival.species, locale)} (${percent(value(rival))})`),
+    );
+  const story: string[] = [];
+  const brought = [...preview.rivals].sort((a, b) => b.brought - a.brought).slice(0, size);
+  const leads = [...preview.rivals]
+    .sort((a, b) => b.lead - a.lead)
+    .slice(0, Math.max(1, leadCount ?? 1));
+  if (brought.length > 0) {
+    story.push(
+      `Esperaba que trajeras sobre todo a ${named(brought, (rival) => rival.brought)} y que empezaras con ${named(leads, (rival) => rival.lead)}.`,
+    );
+  }
+  const threats = preview.rivals.filter((rival) => rival.threat >= CLEAR_OUTCOME);
+  story.push(
+    threats.length > 0
+      ? `Lo que más temía de tu equipo: ${joinAnd(threats.map((rival) => speciesName(rival.species, locale)))}.`
+      : 'Ninguno de tus Pokémon le parecía una gran amenaza para su equipo.',
+  );
+  if (chosen) {
+    const actions = chosen.actions;
+    const visible = actions.flatMap((action) =>
+      action.kind === 'bring'
+        ? [{ name: speciesName(action.species, locale), lead: action.lead }]
+        : [],
+    );
+    const leaders = visible.filter((pokemon) => pokemon.lead).map((pokemon) => pokemon.name);
+    const hidden = actions.length - visible.length;
+    const lead =
+      leaders.length > 0
+        ? `, con ${joinAnd(leaders)} de ${leaders.length > 1 ? 'líderes' : 'líder'}`
+        : '';
+    story.push(
+      hidden > 0
+        ? `Eligió el grupo al que mejor le iba${lead}; ${hidden === 1 ? 'otro aún no lo has visto' : `los otros ${hidden} aún no los has visto`}.`
+        : `Eligió a ${joinAnd(visible.map((pokemon) => pokemon.name))}${lead}: el grupo al que mejor le iba contra lo que esperaba.`,
+    );
+  }
   return story;
 }
 
@@ -150,6 +209,8 @@ function actionPhrase(action: ExplainedAction, locale: Locale, withTarget: boole
       return `un cambio a ${speciesName(action.species, locale)}`;
     case 'pass':
       return 'no hacer nada';
+    case 'bring':
+      return speciesName(action.species, locale);
     case 'hidden':
       return 'otra cosa';
   }
@@ -203,4 +264,9 @@ function percent(probability: number): string {
 function joinOr(items: readonly string[]): string {
   if (items.length <= 1) return items.join('');
   return `${items.slice(0, -1).join(', ')} o ${items.at(-1)}`;
+}
+
+export function joinAnd(items: readonly string[]): string {
+  if (items.length <= 1) return items.join('');
+  return `${items.slice(0, -1).join(', ')} y ${items.at(-1)}`;
 }

@@ -23,7 +23,7 @@ export function BattlePage() {
   const battle = useBattle();
   const meta = useMeta();
   const namesLocale = useSettings((state) => state.namesLocale);
-  const [tab, setTab] = useState<'field' | 'log'>('field');
+  const [tab, setTab] = useState<'field' | 'log' | 'bot'>('field');
 
   // Reloading the page: reattach to the battle this tab was playing.
   useEffect(() => {
@@ -114,6 +114,27 @@ export function BattlePage() {
     );
   }
 
+  // On wide screens the side panel has its own tabs; on narrow ones the top tabs do it all.
+  const sideTabs = (
+    <>
+      <div className="hidden lg:block">
+        <Segmented
+          label="Panel"
+          size="sm"
+          value={tab === 'bot' ? 'bot' : 'log'}
+          onChange={setTab}
+          options={[
+            { value: 'log', label: 'Registro' },
+            { value: 'bot', label: 'Pensamiento del bot' },
+          ]}
+        />
+      </div>
+      <h2 className="eyebrow text-muted lg:hidden">
+        {tab === 'bot' ? 'Pensamiento del bot' : 'Registro'}
+      </h2>
+    </>
+  );
+
   return (
     <div className="flex flex-col gap-3">
       <BattleToolbar
@@ -153,20 +174,24 @@ export function BattlePage() {
           options={[
             { value: 'field', label: 'Combate' },
             { value: 'log', label: 'Registro' },
+            { value: 'bot', label: 'Bot' },
           ]}
         />
       </div>
 
       <div className="grid gap-3 lg:h-[calc(100vh-11.5rem)] lg:min-h-[640px] lg:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]">
         <div
-          className={`scroll-thin flex min-h-0 flex-col gap-3 lg:overflow-y-auto lg:pr-1 [&>*]:shrink-0 ${tab === 'log' ? 'hidden lg:flex' : ''}`}
+          className={`scroll-thin flex min-h-0 flex-col gap-3 lg:overflow-y-auto lg:pr-1 [&>*]:shrink-0 ${tab === 'field' ? '' : 'hidden lg:flex'}`}
         >
           {!previewing && <Field view={screen.view} own={ownSide?.pokemon ?? []} />}
           {controls}
-          <BotExplanation explanations={battle.explanations} />
         </div>
         <div className={`min-h-[60vh] lg:min-h-0 ${tab === 'field' ? 'hidden lg:block' : ''}`}>
-          <BattleLog entries={screen.entries} />
+          {tab === 'bot' ? (
+            <BotExplanation explanations={battle.explanations} header={sideTabs} />
+          ) : (
+            <BattleLog entries={screen.entries} header={sideTabs} />
+          )}
         </div>
       </div>
     </div>

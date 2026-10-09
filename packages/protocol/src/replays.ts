@@ -3,7 +3,12 @@
  * player asks for it, once the battle is over: it carries the omniscient log, the player's
  * own log (to watch it "as the player") and the bot's explanation of every turn.
  */
-import type { ExplainedAction, PokemonBeliefs, TurnExplanation } from '@colleja/core';
+import type {
+  ExplainedAction,
+  PokemonBeliefs,
+  PreviewAnalysis,
+  TurnExplanation,
+} from '@colleja/core';
 import { z } from 'zod';
 import { BattleOptionsSchema, BotLevelSchema, GameModeSchema, SideIdSchema } from './common';
 import { PokemonSetSchema, SavedIdSchema } from './teams';
@@ -23,6 +28,7 @@ export const ExplainedActionSchema = z.discriminatedUnion('kind', [
   }),
   z.object({ kind: z.literal('switch'), user: SpeciesSchema.optional(), species: SpeciesSchema }),
   z.object({ kind: z.literal('pass'), user: SpeciesSchema.optional() }),
+  z.object({ kind: z.literal('bring'), species: SpeciesSchema, lead: z.boolean().optional() }),
   z.object({ kind: z.literal('hidden'), user: SpeciesSchema.optional() }),
 ]) satisfies z.ZodType<ExplainedAction>;
 
@@ -52,14 +58,51 @@ export const PokemonBeliefsSchema = z.object({
     .max(8),
 }) satisfies z.ZodType<PokemonBeliefs>;
 
+const PreviewHitSchema = z.object({
+  move: z.string().max(40).optional(),
+  min: z.number().min(0),
+  max: z.number().min(0),
+  hits: z.number().int().min(1).max(5),
+  koChance: z.number().min(0).max(1),
+});
+
+export const PreviewAnalysisSchema = z.object({
+  rivals: z
+    .array(
+      z.object({
+        species: SpeciesSchema,
+        role: z.enum(['physical', 'special', 'mixed', 'support']),
+        speed: z.tuple([z.number(), z.number()]),
+        notable: z.array(z.string().max(40)).max(4),
+        threat: z.number(),
+        brought: z.number().min(0).max(1),
+        lead: z.number().min(0).max(1),
+      }),
+    )
+    .max(6),
+  own: z.array(z.object({ species: SpeciesSchema, speed: z.number() })).max(6),
+  matchups: z
+    .array(
+      z.object({
+        own: SpeciesSchema,
+        rival: SpeciesSchema,
+        speed: z.enum(['faster', 'slower', 'tie', 'depends']),
+        dealt: PreviewHitSchema.optional(),
+        taken: PreviewHitSchema.optional(),
+      }),
+    )
+    .max(36),
+  hiddenOwn: z.number().int().min(0).max(6).optional(),
+}) satisfies z.ZodType<PreviewAnalysis>;
+
 export const TurnExplanationSchema = z.object({
   turn: z.number().int().min(0),
-  kind: z.enum(['moves', 'switch']),
+  kind: z.enum(['moves', 'switch', 'team']),
   method: z.string().max(300),
   options: z
     .array(
       z.object({
-        actions: z.array(ExplainedActionSchema).max(2),
+        actions: z.array(ExplainedActionSchema).max(6),
         score: z.number(),
         chosen: z.boolean(),
         versus: z.array(z.number().nullable()).max(8).optional(),
@@ -77,6 +120,7 @@ export const TurnExplanationSchema = z.object({
     )
     .max(8)
     .optional(),
+  preview: PreviewAnalysisSchema.optional(),
 }) satisfies z.ZodType<TurnExplanation>;
 
 // ── Replays ────────────────────────────────────────────────────────────────

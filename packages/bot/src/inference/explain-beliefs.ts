@@ -8,14 +8,17 @@ const MAX_GUESSES = 3;
 const MIN_PROBABILITY = 0.05;
 
 /**
- * What the bot believes about each rival Pokémon seen in battle (its most likely sets). The
- * rival is the other player: this is their own team, nothing hidden from them.
+ * What the bot believes about each rival Pokémon seen in battle (its most likely sets), or
+ * about every one seen at team preview (`preview`). The rival is the other player: this is
+ * their own team, nothing hidden from them.
  */
-export function explainBeliefs(situation: Situation): PokemonBeliefs[] {
+export function explainBeliefs(situation: Situation, preview = false): PokemonBeliefs[] {
   const { beliefs } = situation;
   if (!beliefs) return [];
-  return situation.view.sides[situation.foe].pokemon.flatMap((pokemon) => {
-    const hypotheses = beliefs.of(pokemon.baseSpecies);
+  const side = situation.view.sides[situation.foe];
+  const species = preview ? side.preview : side.pokemon.map((pokemon) => pokemon.baseSpecies);
+  return species.flatMap((baseSpecies) => {
+    const hypotheses = beliefs.of(baseSpecies);
     if (!hypotheses || hypotheses.length === 0) return [];
     const guesses = hypotheses
       .filter((h, i) => i === 0 || h.probability >= MIN_PROBABILITY)
@@ -29,6 +32,6 @@ export function explainBeliefs(situation: Situation): PokemonBeliefs[] {
         moves: set.moves.slice(0, 4),
         ...(variant ? { variant: true } : {}),
       }));
-    return [{ species: pokemon.baseSpecies, guesses }];
+    return [{ species: baseSpecies, guesses }];
   });
 }

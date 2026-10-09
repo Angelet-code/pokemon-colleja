@@ -26,7 +26,7 @@ En el combate:
 - Los menús salen de la petición del motor: movimientos con tipo y PP, Megaevolucionar, objetivos en dobles (posición por posición, con "← Atrás") y cambios.
 - **Teclado**: 1–4 movimientos (u objetivos al apuntar), 5–9 cambios, Esc atrás.
 - Marcador superior: los dos jugadores, el turno y **Deshacer**, **Rebobinar** a un turno, **Rendirse**, **Replay** y salir. El replay solo se puede descargar o **guardar** ("Guardar replay", para verlo en [Replays](herramientas.md)) al terminar, porque contiene la información oculta del rival.
-- Bajo los controles, **"Por qué jugó así el bot"**: lo que valoró el bot en cada turno ya jugado ([herramientas](herramientas.md)).
+- En la columna derecha, pestañas **Registro** y **Pensamiento del bot**: lo que valoró el bot en la vista previa y en cada turno ya jugado ([herramientas](herramientas.md)). En móvil, las pestañas de arriba son Combate, Registro y Bot.
 - Pantalla final: revancha (misma configuración, otra semilla), replay o volver al inicio.
 - **Nombres ES/EN** en la cabecera: cambia el idioma de los nombres; la interfaz y el log siguen en español. También se puede cambiar el tema (oscuro o claro).
 - Si recargas la página o se corta la conexión, la web vuelve a engancharse al combate mientras el servidor siga arrancado.

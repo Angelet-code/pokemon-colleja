@@ -26,6 +26,29 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 - Con `npm run dev`, abrir la web en el puerto del servidor (3001) mostraba `apps/web/dist`, una compilación que podía ser vieja (por ejemplo, con los iconos Gen 8 pixelados en lugar de los renders de Champions). Ahora el servidor de desarrollo redirige las páginas a Vite (`WEB_DEV_URL`, que pone `npm run dev`).
 
+### Fase 14 — El nivel 3 piensa en la vista previa (2026-10-10)
+
+#### Añadido
+
+- **Vista previa del nivel 3** ([ADR-0015](docs/adr/0015-vista-previa-del-nivel-3.md), [brief](docs/fases/fase-14.md)): predice qué traerás y con quién empezarás (cobertura de sus seis desde tu lado, con incertidumbre) y, en individuales, valora cada grupo propio con cada líder por la cadena de equipo completo contra tus grupos y líderes probables (`planPreview`, `PREVIEW_SETTINGS`). En dobles elige como el nivel 2 (las variantes con la predicción perdían fuerza). ≈ 25 ms por vista previa.
+- **Pensamiento del bot**: pestaña junto al registro (en móvil, «Bot») con la explicación de cada decisión y, desde el turno 1, la de la vista previa: qué esperaba que trajeras y con quién empezaras, lo que más temía y qué eligió; una ficha por cada Pokémon tuyo con su rol (físico, especial, mixto o apoyo), su velocidad según los sets que cree que llevas, movimientos de apoyo, probabilidad de traerlo y de empezar con él, y frente a sus Pokémon quién es más rápido, quién lo tumba de un golpe o en dos y a quién tumba él; y lo que cree de tus seis sets. Con equipo cerrado, sin sus Pokémon que no has visto ni sus movimientos no usados.
+- `DecisionExplanation` gana `kind: 'team'`, la acción `bring` y `preview` (`PreviewAnalysis`, core y protocol). Los replays viejos siguen valiendo.
+
+#### Cambiado
+
+- El desplegable «Por qué jugó así el bot» de debajo de los controles pasa a la pestaña «Pensamiento del bot», con un selector «Antes del combate / Turno N».
+
+#### Medido
+
+Nivel 3 contra nivel 2, mismas semillas (14 × 86 combates por modo y variante):
+
+| | Vista previa de antes | Nueva |
+|---|---|---|
+| Individuales | 62,5 % | **66,2 %** (+3,7; +1,6 y +5,8 en cada mitad de semillas) |
+| Dobles, predicción pura / mezcla 50 % / cobertura igual con líderes por predicción | 81,6 % | 79,7 / 80,3 / 80,1 % |
+
+En dobles se queda la elección del nivel 2 (comprobado: 200 de 200 vistas previas idénticas a antes).
+
 ### Fase 13 — Nivel 3 el doble de rápido (2026-10-09)
 
 #### Cambiado

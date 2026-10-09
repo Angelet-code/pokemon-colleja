@@ -97,6 +97,90 @@ describe('bot train of thought panel', () => {
   });
 });
 
+const PREVIEW_EXPLANATION: TurnExplanation = {
+  turn: 0,
+  kind: 'team',
+  method: 'Balance de PS…',
+  options: [
+    {
+      actions: [
+        { kind: 'bring', species: 'garchomp', lead: true },
+        { kind: 'hidden' },
+        { kind: 'hidden' },
+      ],
+      score: 12.5,
+      chosen: true,
+    },
+  ],
+  preview: {
+    rivals: [
+      {
+        species: 'incineroar',
+        role: 'support',
+        speed: [80, 95],
+        notable: ['fakeout'],
+        threat: 20,
+        brought: 0.8,
+        lead: 0.6,
+      },
+      {
+        species: 'gengar',
+        role: 'special',
+        speed: [178, 178],
+        notable: [],
+        threat: -10,
+        brought: 0.4,
+        lead: 0.1,
+      },
+    ],
+    own: [{ species: 'garchomp', speed: 169 }],
+    matchups: [
+      {
+        own: 'garchomp',
+        rival: 'incineroar',
+        speed: 'faster',
+        dealt: { move: 'earthquake', min: 52, max: 62, hits: 2, koChance: 0 },
+      },
+      {
+        own: 'garchomp',
+        rival: 'gengar',
+        speed: 'slower',
+        dealt: { min: 105, max: 124, hits: 1, koChance: 1 },
+        taken: { move: 'shadowball', min: 40, max: 47, hits: 3, koChance: 0 },
+      },
+    ],
+    hiddenOwn: 5,
+  },
+};
+
+describe('bot thinking at team preview', () => {
+  it('reads each of your Pokémon and says what it expected and brought', () => {
+    render(<BotExplanation explanations={[PREVIEW_EXPLANATION, EXPLANATION]} />);
+    const picker = screen.getByRole('combobox', { name: 'Decisión' });
+    expect(within(picker).getByRole('option', { name: 'Antes del combate' })).toBeTruthy();
+    fireEvent.change(picker, { target: { value: '0' } });
+
+    const story = within(screen.getByRole('list', { name: 'Cómo lo pensó el bot' }));
+    expect(story.getByText(/Esperaba que trajeras sobre todo a Incineroar \(80 %\)/)).toBeTruthy();
+    expect(story.getByText('Lo que más temía de tu equipo: Incineroar.')).toBeTruthy();
+    expect(story.getByText(/con Garchomp de líder; los otros 2 aún no los has visto/)).toBeTruthy();
+
+    const cards = within(screen.getByRole('list', { name: 'Lo que analizó el bot de tu equipo' }));
+    const [incineroar, gengar] = cards.getAllByRole('listitem');
+    expect(incineroar?.textContent).toContain('Apoyo');
+    expect(incineroar?.textContent).toContain('Más rápidos que élGarchomp (169)');
+    expect(incineroar?.textContent).toContain('Lo tumban en dosGarchomp (Terremoto 52–62 %)');
+    expect(incineroar?.textContent).toContain('Destaca por Sorpresa');
+    // A move the player has not seen yet is left out.
+    expect(gengar?.textContent).toContain('Lo tumban de un golpeGarchomp (105–124 %)');
+    expect(gengar?.textContent).not.toContain('Tumba');
+    expect(screen.getByText('Sin 5 de los suyos que aún no has visto')).toBeTruthy();
+    expect(actionText({ kind: 'bring', species: 'garchomp', lead: true }, 'es')).toBe(
+      'Lidera Garchomp',
+    );
+  });
+});
+
 describe('bot beliefs', () => {
   it('shows what the bot believes about your Pokémon', () => {
     render(

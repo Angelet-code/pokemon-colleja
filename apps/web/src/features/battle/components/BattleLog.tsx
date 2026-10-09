@@ -1,9 +1,10 @@
 /** The battle log in Spanish (Showdown templates), grouped by turn, following the last line. */
 import type { NarrationEntry } from '@colleja/narration';
-import { useEffect, useRef } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import { RichText } from '../../../components/ui';
 
-export function BattleLog({ entries }: { entries: NarrationEntry[] }) {
+/** `header` replaces the title (e.g. with tabs). */
+export function BattleLog({ entries, header }: { entries: NarrationEntry[]; header?: ReactNode }) {
   const end = useRef<HTMLDivElement>(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: scroll whenever new entries arrive.
@@ -16,7 +17,11 @@ export function BattleLog({ entries }: { entries: NarrationEntry[] }) {
       aria-label="Registro del combate"
       className="flex h-full min-h-0 flex-col rounded-md border border-line bg-surface"
     >
-      <h2 className="eyebrow border-b border-line px-5 py-4 text-muted">Registro</h2>
+      {header ? (
+        <div className="flex items-center gap-3 border-b border-line px-5 py-3">{header}</div>
+      ) : (
+        <h2 className="eyebrow border-b border-line px-5 py-4 text-muted">Registro</h2>
+      )}
       <div
         className="scroll-thin min-h-0 flex-1 overflow-y-auto px-5 pt-1 pb-4 text-sm leading-relaxed"
         aria-live="polite"

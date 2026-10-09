@@ -1,43 +1,58 @@
-# Fase 14 — Propuesta de ampliaciones (por elegir)
+# Fase 14 — El nivel 3 piensa en la vista previa
 
-> **Propuesta, no plan cerrado.** Escrita el 2026-10-09 al cerrar la fase 13. La siguiente sesión debe **preguntar al usuario** qué opción (o combinación) quiere, con la recomendada primero, y después convertir este fichero en el brief de la fase con el formato de [fase-12.md](fase-12.md).
-> Lee antes [AGENTS.md](../../AGENTS.md), la [guía del banco](../guias/banco.md) y la del [bot](../guias/bot.md).
+> **Brief de la fase.** Escrito el 2026-10-09 a partir de la petición del usuario, que sustituyó a la [propuesta de ampliaciones](fase-15.md) (sus opciones pasan a la fase 15).
+> Lee antes [AGENTS.md](../../AGENTS.md), la [guía del bot](../guias/bot.md), la de [herramientas](../guias/herramientas.md), [ADR-0011](../adr/0011-nivel-3-con-equipo-completo.md) y [ADR-0012](../adr/0012-deduccion-de-sets-y-estilo-del-rival.md).
+
+## Objetivo
+
+Que en la vista previa el nivel 3 **ya esté pensando en tu equipo**: quiénes son atacantes físicos y especiales, quién es más rápido que quién, quién deja KO de un golpe a quién, qué traerás y con quién empezarás. Que **elija mejor** con eso y que se pueda **ver** en una pestaña «Pensamiento del bot», aparte del registro: el «por qué el bot ha hecho esto» desde antes del turno 1.
+
+## Decisión del usuario (2026-10-09)
+
+1. **Enseñar y decidir**: el análisis alimenta la elección del nivel 3, medida con el arena; si no mejora, se queda el análisis visible y la elección de antes.
+2. Se ve **al empezar el combate** (como el resto de explicaciones), ocultando lo no revelado del bot con equipo cerrado.
+3. **Pestaña junto al registro** («Registro | Pensamiento del bot») con la vista previa y la explicación de cada turno.
+4. Contenido: **roles** de tu equipo, **velocidades**, **KOs en los dos sentidos**, **amenazas y plan**, y lo que cree de tus sets.
 
 ## Punto de partida
 
-- El nivel 3 decide ≈ 2× más rápido que en la fase 12 con la misma fuerza ([ADR-0014](../adr/0014-nivel-3-mas-rapido-con-poda.md)): cachés idénticas y **poda sucesiva** de las opciones claramente peores. `npm run arena:perf` mide la velocidad y comprueba con huellas si cambió alguna decisión.
-- El banco de pruebas (`/banco`, `npm run bench`) mide tu equipo contra tus rivales guardados, con A/B en pares y criba con el nivel 2 en la terminal (`--screen`).
-- Lo que queda caro del nivel 3 es el simulador de Showdown (≈ 40–50 %) y deserializar cada hoja (≈ 15–20 %). Bajarlo exige tocar `vendor/` o simular menos.
-- Hay un fallo conocido del bot que arregla otra sesión: en dobles a veces manda `pass` en un hueco que debe actuar (≈ 1 % de los combates). El banco y el arena lo cuentan como error, no como derrota.
+- La vista previa del nivel 3 era la del nivel 2: cobertura por duelos (`selectByCoverage`), sin pensar en qué traería el jugador y sin explicación.
+- La explicación (`DecisionExplanation`) existía desde el turno 1 en un desplegable bajo los controles, con «Cómo lo pensó» y «Lo que cree de tu equipo» (fases 8, 11 y 13).
 
-## Opciones
+## Hechos verificados
 
-### A. Criba y varias versiones en la web (recomendada)
+- En la vista previa no hay sandbox: el nivel 3 decide con los modelos analíticos (duelos y cadena de equipo completo). Son baratos: la vista previa nueva tarda ≈ 25 ms (individuales) y ≈ 15 ms (dobles).
+- `inferBeliefs` sin observaciones da un prior uniforme sobre los sets estándar de cada especie (o el real con equipo abierto): sirve para el intervalo de velocidad y para «Lo que cree de tu equipo» antes de ver nada.
+- La sala solo envía explicaciones de decisiones resueltas: la de la vista previa (turno 0) llega con el turno 1. `redactExplanation` se aplica cada vez con la vista del jugador.
+- Medir: varios arenas a la vez escribiendo con `>>` en el mismo fichero se pisan en Windows (MSYS); cada proceso necesita su fichero. Arrancar 14 `npx tsx` a la vez falla a veces al arrancar: mejor `node --import tsx` y reintentos.
 
-Llevar `--screen` a la página del banco: pegar o elegir 3–6 versiones del equipo, cribarlas con el nivel 2 y comparar las dos mejores con el nivel 3 en una sola prueba, con la tabla de cada fase. Aprovecha que ahora el nivel 3 es el doble de rápido. Es lo que más acerca el «equipo perfecto» que busca el usuario.
+## Diseño aplicado
 
-### B. Tabla de daños en la web
+1. **Predicción** (`search/preview.ts`, `planPreview`): matriz de duelos; tus grupos por cobertura desde tu lado (softmax + reparto uniforme); tus líderes por softmax del duelo medio de cada conjunto de líderes. Pesos en `PREVIEW_SETTINGS`.
+2. **Elección**: individuales, cada grupo propio con cada líder por la cadena de equipo completo contra tus grupos y líderes probables (una Mega por lado en cada alineación). Dobles, como el nivel 2: las tres variantes con la predicción (cobertura ponderada, mezcla, líderes contra tus líderes probables) perdían fuerza.
+3. **Lectura** (`analysis/preview-read.ts`, `readPreview`): roles, velocidades, mejores golpes en los dos sentidos, peligro y probabilidades. Tipos en core (`PreviewAnalysis`, acción `bring`, `kind: 'team'`), censura en `redactExplanation` y esquema en protocol.
+4. **Web**: pestañas en la columna derecha, panel con selector «Antes del combate / Turno N», frases de la vista previa y una ficha por cada Pokémon tuyo.
 
-La matriz de `bench:calc` (`damageMatrix` en `@colleja/bench`) como pantalla: cada Pokémon de tu equipo contra los sets de tus rivales elegidos, hacia los dos lados, con el % de daño y la probabilidad de KO. Una pestaña del banco o del teambuilder, sobre un endpoint nuevo del servidor (la calculadora no va a la web).
+## Tests
 
-### C. Tabla de tipos y de velocidades en el teambuilder
+- `packages/bot/test/preview.test.ts`: grupo válido con sus líderes en los dos modos, probabilidades coherentes, orden por peligro, roles y velocidades con equipo abierto, **sin mirar tus sets con equipo cerrado**, la explicación no cambia la decisión; `roleOf` y `compareSpeed`.
+- `packages/bot/test/explain.test.ts`: el nivel 3 explica su vista previa (los demás no).
+- `apps/server/test/tools.test.ts`: la explicación de la vista previa llega con el turno 1 y sin los Pokémon ni los movimientos del bot que no has visto.
+- `packages/protocol/test/protocol.test.ts`: ida y vuelta de una explicación de vista previa.
+- `apps/web/test/tools.test.tsx`: frases, fichas y selector «Antes del combate».
 
-- **Tipos**: debilidades compartidas y huecos de cobertura del equipo.
-- **Velocidades**: a quién de tus rivales superas y con cuántos Stat Points. Datos de `@colleja/data` y `championsStats` de core.
+## Criterios de «hecho»
 
-### D. Optimizador de Stat Points
-
-Lo mínimo para aguantar un golpe concreto o superar a alguien en velocidad, y el resto al ataque. Se apoya en `estimateDamage` (servidor) y `championsStats`.
-
-### E. Nivel 3 más fuerte con el tiempo ganado
-
-Gastar parte de la velocidad ganada en fuerza: más suposiciones o más opciones propias **solo donde la poda deja pocas**, o una segunda capa de búsqueda en las dos mejores opciones. Medir con el arena (≥ 1 200 combates por modo, dos semillas) contra la referencia actual (≈ 64,7 % en individuales y ≈ 80 % en dobles contra el nivel 2).
-
-## Recomendación
-
-**A**: aprovecha el banco y la velocidad nueva para el objetivo del usuario (montar su equipo). Después **B** o **C**.
-
-## Criterios de «hecho» (los de la opción elegida, más)
-
+- El nivel 3 con la vista previa nueva **no pierde fuerza** contra el nivel 2 (mismas semillas que con la de antes, 1 200 combates por modo) y, si la gana, se queda.
+- La explicación de la vista previa se ve al empezar el combate, sin información oculta.
 - `npm run check` y `npm run e2e` en verde; CI en verde.
-- Docs: CHANGELOG, AGENTS, PLAN, README, guías y ADR si hay decisión de arquitectura, y el brief de la fase 15.
+- Docs: ADR-0015, guías del bot, herramientas y web, CHANGELOG, AGENTS, PLAN, README y el brief de la fase 15.
+
+> **Estado**: ✅ cerrada el 2026-10-10.
+> - Individuales: el nivel 3 contra el 2 pasa de **62,5 % a 66,2 %** (mismas semillas, 1 204 combates por variante; mejora en las dos mitades).
+> - Dobles: con la predicción, 79,7–80,3 % frente a 81,6 %: se queda la elección del nivel 2 (idéntica a antes), y la predicción solo se enseña.
+> - Detalle en [ADR-0015](../adr/0015-vista-previa-del-nivel-3.md) y el [CHANGELOG](../../CHANGELOG.md).
+
+## Fuera de alcance (ampliaciones posibles para después)
+
+Ver la [propuesta de la fase 15](fase-15.md): criba en la web, tabla de daños y velocidades, entrenador en la vista previa, que el nivel 3 aprenda tus vistas previas, vista previa en dobles con la simulación 2 contra 2 y optimizador de Stat Points.

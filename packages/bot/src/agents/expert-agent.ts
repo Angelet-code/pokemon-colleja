@@ -3,8 +3,10 @@
  * (ADR-0010, ADR-0011). When choosing moves it forks the battle under a few assumptions about
  * the rival's hidden sets, plays this turn for real against the rival's likely replies and
  * values each resulting position (`searchMoves`). In singles, forced replacements go to the
- * Pokémon whose whole-team chain ends best. Team preview is level 2's. Without a sandbox (the
- * engine offers one only while choosing moves) it chooses moves as level 2.
+ * Pokémon whose whole-team chain ends best. At team preview it predicts what the player will
+ * bring and values its own groups against that (`planPreview`, ADR-0015), and explains what it
+ * read of both teams. Without a sandbox (the engine offers one only while choosing moves) it
+ * chooses moves as level 2.
  */
 import {
   type AgentContext,
@@ -16,8 +18,11 @@ import {
   type SlotAction,
   type SlotOptions,
   type SwitchRequest,
+  type TeamPreviewRequest,
+  teamChoice,
 } from '@colleja/core';
 import { pickBest } from '../analysis/evaluation';
+import { readPreview } from '../analysis/preview-read';
 import { fightingForm } from '../analysis/singles-plan';
 import { Situation } from '../analysis/situation';
 import { teamChainValue } from '../analysis/team-chain';
@@ -39,12 +44,15 @@ import {
   type StyleAdjustment,
   searchMoves,
 } from '../search/lookahead';
+import { PREVIEW_SETTINGS, type PreviewSettings, planPreview } from '../search/preview';
 import { type BotOptions, explainContext } from './aggressive-agent';
 import { TacticalAgent } from './tactical-agent';
 
 export interface ExpertOptions extends BotOptions {
   /** Search effort (defaults: `SEARCH_SETTINGS` of the mode). */
   settings?: Partial<SearchSettings>;
+  /** Team preview weights (defaults: `PREVIEW_SETTINGS` of the mode). */
+  preview?: Partial<PreviewSettings>;
 }
 
 export class ExpertAgent extends TacticalAgent {
@@ -68,7 +76,8 @@ export class ExpertAgent extends TacticalAgent {
    */
   protected override situation(context: AgentContext): Situation {
     const kind = requestKind(context.request);
-    const infer = kind === 'switch' || (kind === 'move' && context.sandbox !== undefined);
+    const infer =
+      kind === 'team' || kind === 'switch' || (kind === 'move' && context.sandbox !== undefined);
     const situation = new Situation(context, infer ? { beliefs: 'infer' } : {});
     this.lastSituation = situation;
     return situation;
@@ -80,13 +89,45 @@ export class ExpertAgent extends TacticalAgent {
     const situation = this.lastSituation as Situation | null;
     const decided = this.explainLast;
     if (situation?.beliefs && decided) {
-      this.explainLast = () => ({ ...decided(), beliefs: explainBeliefs(situation) });
+      const preview = requestKind(context.request) === 'team';
+      this.explainLast = () => ({ ...decided(), beliefs: explainBeliefs(situation, preview) });
     }
     return choice;
   }
 
   private settings(situation: Situation): SearchSettings {
     return { ...SEARCH_SETTINGS[situation.mode], ...this.options.settings };
+  }
+
+  /**
+   * Team preview: the group (and leads) that fares best against what the player will likely
+   * bring (`planPreview`).
+   */
+  protected override chooseTeam(situation: Situation, request: TeamPreviewRequest): Choice {
+    const picked = request.maxChosenTeamSize ?? request.side.pokemon.length;
+    const settings = { ...PREVIEW_SETTINGS[situation.mode], ...this.options.preview };
+    const plan = planPreview(situation, picked, settings, this.random);
+    if (!plan) return super.chooseTeam(situation, request);
+    const position = (index: number) => situation.own[index]?.position ?? index + 1;
+    this.explainLast = () => ({
+      ...explanation(
+        'team',
+        situation.doubles ? EXPLANATION_METHODS.previewDoubles : EXPLANATION_METHODS.previewSingles,
+        [
+          plan.options.map((option) => ({
+            actions: option.group.map((index, i) => ({
+              kind: 'bring' as const,
+              species: situation.own[index]?.combatant.set.species ?? '',
+              ...(i < option.leads ? { lead: true } : {}),
+            })),
+            score: roundScore(option.score),
+            chosen: option === plan.chosen,
+          })),
+        ],
+      ),
+      preview: readPreview(situation, plan),
+    });
+    return teamChoice(plan.chosen.group.map(position));
   }
 
   /**

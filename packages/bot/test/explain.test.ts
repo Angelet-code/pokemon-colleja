@@ -71,7 +71,9 @@ describe('bot explanations', () => {
 
       for (const { choice, explanation } of explained.decisions) {
         if (choice.type === 'team') {
-          expect(explanation).toBeNull();
+          // Only level 3 explains its team preview (what it read of both teams).
+          if (level === 3) expect(explanation?.preview?.rivals.length).toBe(6);
+          else expect(explanation).toBeNull();
           continue;
         }
         if (!explanation) throw new Error('sin explicación');

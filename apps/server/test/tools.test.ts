@@ -241,6 +241,43 @@ describe('bot explanations', () => {
   });
 });
 
+describe('level 3 team preview explanation', () => {
+  it('arrives with turn 1 and hides the Pokémon the player has not seen', async () => {
+    const client = await TestClient.connect(app);
+    client.send(startMessage('singles', { botLevel: 3, seed: 'explica-preview' }));
+    const player = new SocketPlayer(client, 'explica-preview');
+    for (;;) {
+      const message = await client.receive();
+      await player.handle(message);
+      if (message.type !== 'battle:update' || !message.explanations) continue;
+      const [first] = message.explanations;
+      expect(message.status.turn).toBeGreaterThanOrEqual(1);
+      expect(first).toMatchObject({ kind: 'team', turn: 0 });
+      const view = BattleView.from(player.log);
+      const seen = (species: string) =>
+        view.sides.p2.pokemon.some(
+          (pokemon) => pokemon.species === species || pokemon.baseSpecies === species,
+        );
+      const preview = first?.preview;
+      expect(preview?.rivals).toHaveLength(6);
+      expect(preview?.own.every((pokemon) => seen(pokemon.species))).toBe(true);
+      expect((preview?.own.length ?? 0) + (preview?.hiddenOwn ?? 0)).toBe(6);
+      for (const matchup of preview?.matchups ?? []) {
+        expect(seen(matchup.own)).toBe(true);
+        const move = matchup.dealt?.move;
+        if (move) {
+          const pokemon = view.sides.p2.pokemon.find((p) => p.baseSpecies === matchup.own);
+          expect(pokemon?.moves).toContain(move);
+        }
+      }
+      const chosen = first?.options.find((option) => option.chosen);
+      expect(chosen?.actions.some((action) => action.kind === 'hidden')).toBe(true);
+      break;
+    }
+    client.close();
+  });
+});
+
 describe('saved replays', () => {
   it('saves a finished battle on request, lists, reads, renames and deletes it', async () => {
     const client = await TestClient.connect(app);

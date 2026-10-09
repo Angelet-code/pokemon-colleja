@@ -47,9 +47,10 @@ Se guardan en `storage/replays/<id>.json` (no versionado):
 }
 ```
 
-### "Por qué jugó así el bot" (pantalla de combate)
+### Pensamiento del bot (pantalla de combate)
 
-- Panel plegable bajo los controles. Al resolverse cada turno aparece lo que valoró el bot: el método (qué mide la puntuación) y sus mejores opciones, con la elegida marcada. Puedes elegir cualquier turno ya jugado.
+- Pestaña **«Pensamiento del bot»** junto al registro (en móvil, «Bot» arriba). Al resolverse cada decisión aparece lo que valoró el bot: el método (qué mide la puntuación) y sus mejores opciones, con la elegida marcada. Puedes elegir cualquier decisión ya resuelta: «Antes del combate» (vista previa) o «Turno N».
+- **Vista previa** (nivel 3, [ADR-0015](../adr/0015-vista-previa-del-nivel-3.md)): al empezar el turno 1, qué esperaba que trajeras y con quién empezaras (con su probabilidad), lo que más temía de tu equipo y qué eligió. Una ficha por cada Pokémon tuyo, del más peligroso al menos: rol (físico, especial, mixto o apoyo), velocidad según los sets que cree que llevas, movimientos de apoyo, probabilidad de que lo traigas y de que empieces con él y, frente a sus Pokémon, más rápidos y más lentos que él, quién lo tumba de un golpe o en dos y a quién tumba él. Debajo, lo que cree de tus seis sets. Con equipo cerrado solo salen sus Pokémon que ya has visto en el campo, sin los movimientos que no ha usado.
 - **Nunca antes de tiempo**: la decisión del turno que estás jugando no se envía hasta que se resuelve.
 - **Información oculta**: con equipo cerrado, las opciones con movimientos que aún no has visto (o Pokémon que no han salido) aparecen como "algo que aún no has visto", con su puntuación. Con equipo abierto se ve todo.
 - Cada nivel valora a su manera: el aleatorio no valora nada, el agresivo usa el daño esperado de este turno y el táctico el balance de PS tras simular el intercambio (individuales) o unos turnos 2 contra 2 (dobles).
