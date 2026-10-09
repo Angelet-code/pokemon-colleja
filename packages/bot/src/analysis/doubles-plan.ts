@@ -112,7 +112,18 @@ function slotOptions(situation: Situation, slot: SlotOptions): SlotOption[] {
       if (option.disabled) continue;
       const moveId = option.move.id;
       const data = getMove(moveId);
-      if (!data) continue;
+      if (!data) {
+        // Recharge (after Hyper Beam…) is not a real move: the slot has to choose it and it
+        // does nothing. Skipping it would leave the slot with no option and an invalid "pass".
+        if (!mega) {
+          options.push({
+            action: { type: 'move', move: option.slot },
+            plan: { kind: 'pass' },
+            chance: 1,
+          });
+        }
+        continue;
+      }
       if (FIRST_TURN_MOVES.has(moveId) && view?.movedSinceSwitch) continue;
       // Consecutive Protect usually fails: simulate it as doing nothing.
       const failsProtect =

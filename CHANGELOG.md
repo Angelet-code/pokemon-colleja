@@ -21,6 +21,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 - En «Nuevo combate», los nombres largos de equipos y rivales guardados ensanchaban la lista y se salían del panel; ahora se recortan.
 - Nivel 1 en dobles: con dos Pokémon capaces de megaevolucionar en el campo, la segunda posición pasaba turno (todas sus opciones llevaban mega). Ahora ataca sin megaevolucionar.
+- Niveles 2 y 3 en dobles: en el **turno de recarga** (tras Hiperrayo, Gigaimpacto…) la posición pasaba turno y Showdown rechazaba la elección (combate con error en el banco, ≈ 8 % de los combates con Sylveon). «Recargar» no está en los datos de movimientos y el plan de dobles lo descartaba; ahora es una opción que no hace nada. Test: `packages/bot/test/recharge.test.ts` (los tres niveles, en los dos modos).
 
 - Con `npm run dev`, abrir la web en el puerto del servidor (3001) mostraba `apps/web/dist`, una compilación que podía ser vieja (por ejemplo, con los iconos Gen 8 pixelados en lugar de los renders de Champions). Ahora el servidor de desarrollo redirige las páginas a Vite (`WEB_DEV_URL`, que pone `npm run dev`).
 
