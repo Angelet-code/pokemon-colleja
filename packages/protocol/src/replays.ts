@@ -62,10 +62,21 @@ export const TurnExplanationSchema = z.object({
         actions: z.array(ExplainedActionSchema).max(2),
         score: z.number(),
         chosen: z.boolean(),
+        versus: z.array(z.number().nullable()).max(8).optional(),
       }),
     )
     .max(40),
   beliefs: z.array(PokemonBeliefsSchema).max(6).optional(),
+  expected: z
+    .array(
+      z.object({
+        actions: z.array(ExplainedActionSchema).max(2),
+        probability: z.number().min(0).max(1),
+        counter: z.boolean().optional(),
+      }),
+    )
+    .max(8)
+    .optional(),
 }) satisfies z.ZodType<TurnExplanation>;
 
 // ── Replays ────────────────────────────────────────────────────────────────

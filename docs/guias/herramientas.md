@@ -53,16 +53,17 @@ Se guardan en `storage/replays/<id>.json` (no versionado):
 - **Nunca antes de tiempo**: la decisión del turno que estás jugando no se envía hasta que se resuelve.
 - **Información oculta**: con equipo cerrado, las opciones con movimientos que aún no has visto (o Pokémon que no han salido) aparecen como "algo que aún no has visto", con su puntuación. Con equipo abierto se ve todo.
 - Cada nivel valora a su manera: el aleatorio no valora nada, el agresivo usa el daño esperado de este turno y el táctico el balance de PS tras simular el intercambio (individuales) o unos turnos 2 contra 2 (dobles).
+- **«Cómo lo pensó»** (nivel 3, al elegir movimientos): unas frases con su razonamiento. Qué esperaba que hicieras (tus respuestas contra las que jugó en la búsqueda, con su peso; en dobles, una línea por cada Pokémon tuyo), a cuáles dio más peso porque sueles anticiparte a lo obvio, que el resto lo descartó por verlo peor para ti y por qué eligió su jugada: la mejor contra lo que más esperaba o, si no, la que le cubría ante otra respuesta tuya. Son tus propias jugadas, así que no se censuran.
 
 ## Arquitectura
 
 | Pieza | Qué hace |
 |---|---|
-| `@colleja/core` (`battle/explanation.ts`) | `DecisionExplanation`, `TurnExplanation`, `ExplainedAction`, `topOptions` y `redactExplanation` (oculta lo no revelado desde una perspectiva). `BattleAgent.explain?()` |
+| `@colleja/core` (`battle/explanation.ts`) | `DecisionExplanation` (con `expected`, tus respuestas que esperaba, y `versus` en cada opción, su valor contra cada una), `TurnExplanation`, `ExplainedAction`, `ExpectedReply`, `topOptions` y `redactExplanation` (oculta lo no revelado desde una perspectiva). `BattleAgent.explain?()` |
 | `@colleja/bot` (`explain.ts`) | `describeAction` (de índices de la petición a ids legibles), `explanation`, `EXPLANATION_METHODS`. Cada nivel guarda lo que calculó y construye la explicación bajo demanda. `planDoubles` devuelve también las parejas evaluadas |
 | `@colleja/protocol` | `calc.ts` (`CalcRequestSchema`, `CalcResponse`), `replays.ts` (`ReplayDataSchema`, `ReplayContentSchema`, `TurnExplanationSchema`, `ReplaySummary`). En `battle.ts`: `battle:save-replay` → `battle:replay-saved`, y `explanations` en `battle:update`/`battle:snapshot` |
 | `apps/server` | `routes/calc.ts`, `routes/replays.ts`, `replays/replay-repository.ts` y, en `BattleRoom`, las explicaciones por turno (resueltas y censuradas) y `saveReplay()` |
-| `apps/web` | `features/calc/` (`CalculatorPage`, `calc-store.ts`, `LoadSetDialog`, `from-battle.ts`), `features/replays/` (`ReplaysPage`, `ReplayViewerPage`, `RenameForm`, `replay-steps.ts`), `features/battle/components/BotExplanation.tsx`, `CalcButton.tsx` y el botón de guardar en `EndPanel` |
+| `apps/web` | `features/calc/` (`CalculatorPage`, `calc-store.ts`, `LoadSetDialog`, `from-battle.ts`), `features/replays/` (`ReplaysPage`, `ReplayViewerPage`, `RenameForm`, `replay-steps.ts`), `features/battle/components/BotExplanation.tsx` (con las frases puras de `explanation-story.ts`), `CalcButton.tsx` y el botón de guardar en `EndPanel` |
 | `@colleja/bot/opponent-model` | Entrada aparte de `OpponentModel` para la web: el índice de `@colleja/bot` arrastra `@smogon/calc` y la web nunca lo importa (lo comprueba `apps/web/test/dependencies.test.ts`) |
 | `tools/e2e` | Tests E2E con Playwright (`npm run e2e`) |
 
@@ -96,7 +97,8 @@ Los specs están en `tools/e2e/specs/`. Usa nombres accesibles (`getByRole`, `ge
 
 | Fichero | Qué cubre |
 |---|---|
-| `packages/bot/test/explain.test.ts` | Mismas decisiones con y sin explicaciones (niveles 0–2, los dos modos); la opción elegida coincide con la jugada |
+| `packages/bot/test/explain.test.ts` | Mismas decisiones con y sin explicaciones (niveles 0–3, los dos modos); la opción elegida coincide con la jugada; el nivel 3 dice qué esperaba de ti (probabilidades y `versus` alineados) |
+| `apps/web/test/explanation-story.test.ts` | Frases de «Cómo lo pensó» en individuales y dobles |
 | `packages/protocol/test/protocol.test.ts` | Ida y vuelta de la calculadora (con crítico y efectos), del replay guardado, de renombrar y de los mensajes nuevos |
 | `packages/bot/test/calc.test.ts` | Crítico, Refuerzo y Compiescolta contra `@smogon/calc` directamente; la caché distingue el crítico |
 | `apps/web/test/calc-from-battle.test.ts` | «Calcular»: lo visible del combate, el set supuesto con equipo cerrado y el real con equipo abierto, objeto perdido, campo y parejas en dobles |

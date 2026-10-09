@@ -61,6 +61,14 @@ export interface SearchSettings {
    * 0 turns the rival's style off.
    */
   counterCandidates: number;
+  /**
+   * Turns every own option plays (under every assumption) before the clearly worse ones stop
+   * being searched; 0 searches all of them to the end. Successive pruning: from then on, after
+   * every turn, an option whose average is `pruneMargin` points below the best one is dropped.
+   */
+  pruneAfter: number;
+  /** Score points below the best average at which an option is dropped (see `pruneAfter`). */
+  pruneMargin: number;
 }
 
 export const SEARCH_SETTINGS: Record<'singles' | 'doubles', SearchSettings> = {
@@ -74,6 +82,8 @@ export const SEARCH_SETTINGS: Record<'singles' | 'doubles', SearchSettings> = {
     chainWeight: 0.4,
     loopPenalty: 4,
     counterCandidates: 6,
+    pruneAfter: 2,
+    pruneMargin: 30,
   },
   doubles: {
     assumptions: 2,
@@ -85,6 +95,8 @@ export const SEARCH_SETTINGS: Record<'singles' | 'doubles', SearchSettings> = {
     chainWeight: 0,
     loopPenalty: 4,
     counterCandidates: 6,
+    pruneAfter: 1,
+    pruneMargin: 30,
   },
 };
 
@@ -104,6 +116,21 @@ export interface SearchResult {
   chosen: ScoredOption;
   /** What the search expected from the rival (with `SearchTools.style`). */
   prediction?: StylePrediction;
+  /** The rival's replies it played against, most likely first (to explain the decision). */
+  expected?: ExpectedRivalReply[];
+}
+
+/** A rival reply the search played against (merged over the assumptions). */
+export interface ExpectedRivalReply {
+  /** The rival's request in the first fork where it appeared (its actions index it). */
+  request: MoveRequest;
+  actions: SlotAction[];
+  /** Its average weight over the assumptions (0–1). */
+  probability: number;
+  /** It is the counter to the own obvious option (weighed up by the rival's style). */
+  counter: boolean;
+  /** Average value of each option of `SearchResult.options` against it (`null`: not played). */
+  versus: (number | null)[];
 }
 
 /** How the rival's replies are adapted to its style (`RivalStyle`). */
@@ -158,7 +185,8 @@ export function searchMoves(
   const totals = own.map(() => ({ sum: 0, count: 0 }));
   const assumptions = rivalAssumptions(situation, settings.assumptions, random);
   let prediction: StylePrediction | undefined;
-  assumptions.forEach((assumption, a) => {
+  const tally = new Map<string, ReplyTally>();
+  const forks = assumptions.map((assumption, a) => {
     const root = sandbox.fork(assumption, `${seed}:${a}`);
     const ranked = rankRivalReplies(situation, root, assumption, tools);
     const counter = tools.style
@@ -179,38 +207,149 @@ export function searchMoves(
       };
     }
     const replies = replyWeights(ranked, counter, tools);
-    for (let turn = 0; turn < settings.turns; turn++) {
-      const reply = stratifiedPick(replies, (turn + 0.5) / settings.turns);
-      own.forEach((option, o) => {
+    return { assumption, root, replies, tally: tallyReplies(tally, ranked, replies, own.length) };
+  });
+
+  // Turn by turn, every assumption, every option still searched.
+  let searched = own.map((_, o) => o);
+  for (let turn = 0; turn < settings.turns; turn++) {
+    forks.forEach(({ assumption, root, replies, tally: tallies }, a) => {
+      const pick = stratifiedIndex(replies, (turn + 0.5) / settings.turns);
+      const reply = replies[pick] as Reply;
+      for (const o of searched) {
         // Same seed and reply for every own option: fairer comparisons.
         const leaf = root.clone(`${seed}:${a}:${turn}`);
-        if (!leaf.choose(situation.me, actions(option.actions))) return;
+        if (!leaf.choose(situation.me, actions((own[o] as ScoredOption).actions))) continue;
         if (!reply.choice || !leaf.choose(situation.foe, reply.choice)) {
           leaf.chooseDefault(situation.foe);
         }
+        const value = positionValue(situation, leaf, assumption, tools);
         const total = totals[o] as { sum: number; count: number };
-        total.sum += positionValue(situation, leaf, assumption, tools);
+        total.sum += value;
         total.count++;
-      });
+        const versus = tallies[pick]?.versus[o];
+        if (versus) {
+          versus.sum += value;
+          versus.count++;
+        }
+      }
+    });
+    if (settings.pruneAfter > 0 && turn + 1 >= settings.pruneAfter && turn + 1 < settings.turns) {
+      searched = stillPromising(searched, totals, settings.pruneMargin);
     }
-  });
+  }
 
   const loop = settings.loopPenalty * recentSwitches(situation.context.log, situation.me, 4);
-  const options = own.flatMap((option, o) => {
+  const penalty = own.map((option) =>
+    option.actions.some((action) => action.type === 'switch') ? loop : 0,
+  );
+  const kept = own.flatMap((_, o) => ((totals[o] as { count: number }).count > 0 ? [o] : []));
+  const options = kept.map((o) => {
     const total = totals[o] as { sum: number; count: number };
-    if (total.count === 0) return [];
-    const switches = option.actions.some((action) => action.type === 'switch');
-    return [{ actions: option.actions, score: total.sum / total.count - (switches ? loop : 0) }];
+    return {
+      actions: (own[o] as ScoredOption).actions,
+      score: total.sum / total.count - (penalty[o] as number),
+    };
   });
   const chosen = pickBest(options, random);
-  const result = chosen ? { options, chosen } : { options: own, chosen: own[0] as ScoredOption };
-  return prediction ? { ...result, prediction } : result;
+  if (!chosen) {
+    const fallback = { options: own, chosen: own[0] as ScoredOption };
+    return prediction ? { ...fallback, prediction } : fallback;
+  }
+  const expected = expectedReplies(tally, assumptions.length, kept, penalty);
+  return { options, chosen, ...(prediction ? { prediction } : {}), expected };
+}
+
+/** A rival reply being played, merged over the assumptions by what it does. */
+interface ReplyTally {
+  request: MoveRequest;
+  actions: SlotAction[];
+  weight: number;
+  counter: boolean;
+  /** Its value for each own option (indexed like `own`). */
+  versus: { sum: number; count: number }[];
+}
+
+/**
+ * Adds a fork's replies to `tally` (keyed by what they do, since the assumed sets may order
+ * the same moves differently) and returns each reply's entry, in the order of `replies`.
+ */
+function tallyReplies(
+  tally: Map<string, ReplyTally>,
+  ranked: RankedReplies,
+  replies: readonly Reply[],
+  ownOptions: number,
+): (ReplyTally | undefined)[] {
+  const { request } = ranked;
+  return replies.map((reply) => {
+    if (!request || !reply.option) return undefined;
+    const { actions: list } = reply.option;
+    const keys = actionKeys(request, list);
+    const key = list
+      .map((action, slot) =>
+        action.type === 'move' ? `${keys[slot]}@${action.target ?? ''}` : (keys[slot] ?? 'pass'),
+      )
+      .join('|');
+    let entry = tally.get(key);
+    if (!entry) {
+      entry = {
+        request,
+        actions: list,
+        weight: 0,
+        counter: false,
+        versus: Array.from({ length: ownOptions }, () => ({ sum: 0, count: 0 })),
+      };
+      tally.set(key, entry);
+    }
+    entry.weight += reply.weight;
+    entry.counter ||= reply.counter === true;
+    return entry;
+  });
+}
+
+/** The tallied replies, most likely first, with their values for the kept own options. */
+function expectedReplies(
+  tally: ReadonlyMap<string, ReplyTally>,
+  assumptions: number,
+  kept: readonly number[],
+  penalty: readonly number[],
+): ExpectedRivalReply[] {
+  return [...tally.values()]
+    .map((entry) => ({
+      request: entry.request,
+      actions: entry.actions,
+      probability: entry.weight / Math.max(1, assumptions),
+      counter: entry.counter,
+      versus: kept.map((o) => {
+        const value = entry.versus[o] as { sum: number; count: number };
+        return value.count > 0 ? value.sum / value.count - (penalty[o] as number) : null;
+      }),
+    }))
+    .sort((a, b) => b.probability - a.probability);
+}
+
+/** The options (indices) whose average is within `margin` points of the best one. */
+function stillPromising(
+  options: readonly number[],
+  totals: readonly { sum: number; count: number }[],
+  margin: number,
+): number[] {
+  const mean = (o: number) => {
+    const total = totals[o] as { sum: number; count: number };
+    return total.count > 0 ? total.sum / total.count : -Infinity;
+  };
+  const best = Math.max(...options.map(mean));
+  return options.filter((o) => mean(o) >= best - margin);
 }
 
 interface Reply {
   /** `null`: let the simulator choose (nothing to plan). */
   choice: Choice | null;
   weight: number;
+  /** The rival's option it plays (absent with `choice: null`). */
+  option?: ScoredOption;
+  /** It is the counter to the own obvious option, weighed up by the rival's style. */
+  counter?: boolean;
 }
 
 /** The rival's options in a fork as level 2 ranks them from its side (best first). */
@@ -281,17 +420,26 @@ function replyWeights(
   const raw = options.map((option) => Math.exp((option.score - top.score) / temperature));
   const sum = raw.reduce((total, weight) => total + weight, 0);
   const countered = counter ? (tools.style?.counterWeight ?? 0) : 0;
-  const replies = options.map((option, i) => ({
+  const replies: Reply[] = options.map((option, i) => ({
     choice: actions(option.actions),
     weight: ((raw[i] ?? 0) / sum) * (1 - countered),
     option,
   }));
   if (counter && countered > 0) {
     const same = replies.find((reply) => reply.option === counter);
-    if (same) same.weight += countered;
-    else replies.push({ choice: actions(counter.actions), weight: countered, option: counter });
+    if (same) {
+      same.weight += countered;
+      same.counter = true;
+    } else {
+      replies.push({
+        choice: actions(counter.actions),
+        weight: countered,
+        option: counter,
+        counter: true,
+      });
+    }
   }
-  return replies.map(({ choice, weight }) => ({ choice, weight }));
+  return replies;
 }
 
 /**
@@ -326,14 +474,14 @@ export function recentSwitches(log: readonly string[], side: SideId, turns: numb
   return switches;
 }
 
-/** The reply at cumulative weight `quantile` (0–1). */
-function stratifiedPick(replies: readonly Reply[], quantile: number): Reply {
+/** Index of the reply at cumulative weight `quantile` (0–1). */
+function stratifiedIndex(replies: readonly Reply[], quantile: number): number {
   let cumulative = 0;
-  for (const reply of replies) {
+  for (const [index, reply] of replies.entries()) {
     cumulative += reply.weight;
-    if (quantile < cumulative) return reply;
+    if (quantile < cumulative) return index;
   }
-  return replies.at(-1) as Reply;
+  return replies.length - 1;
 }
 
 /**

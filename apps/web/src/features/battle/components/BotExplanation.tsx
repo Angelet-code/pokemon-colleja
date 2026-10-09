@@ -2,13 +2,20 @@
  * Why the bot played as it did: the options it valued in a resolved turn, the chosen one
  * marked. Used in the battle screen and in the replay viewer.
  */
-import type { ExplainedAction, PokemonBeliefs, SetGuess, TurnExplanation } from '@colleja/core';
+import type {
+  ExplainedAction,
+  ExplainedOption,
+  PokemonBeliefs,
+  SetGuess,
+  TurnExplanation,
+} from '@colleja/core';
 import { type Locale, STAT_IDS } from '@colleja/data';
 import { itemName, moveName, natureName, speciesName, statShort } from '@colleja/narration';
 import { useEffect, useState } from 'react';
 import { IconBolt, IconCheck, IconChevronDown } from '../../../components/icons';
 import { Chip } from '../../../components/ui';
 import { useSettings } from '../../../stores/settings';
+import { explanationStory } from '../explanation-story';
 
 /** One action in Spanish, from the bot's point of view (p2). */
 export function actionText(action: ExplainedAction, locale: Locale): string {
@@ -47,6 +54,25 @@ export function guessText(guess: SetGuess, locale: Locale): string {
   ]
     .filter(Boolean)
     .join(' · ');
+}
+
+/** One option's actions in a line. */
+function optionText(option: ExplainedOption, locale: Locale): string {
+  return option.actions.map((action) => actionText(action, locale)).join(' · ');
+}
+
+/** The bot's train of thought in a few sentences (level 3, when it anticipated the player). */
+function Story({ story }: { story: string[] }) {
+  return (
+    <section className="flex flex-col gap-1.5">
+      <h4 className="eyebrow text-faint">Cómo lo pensó</h4>
+      <ol className="flex flex-col gap-1 text-sm" aria-label="Cómo lo pensó el bot">
+        {story.map((sentence) => (
+          <li key={sentence}>{sentence}</li>
+        ))}
+      </ol>
+    </section>
+  );
 }
 
 /** What the bot believed about the player's Pokémon (level 3). */
@@ -98,48 +124,53 @@ export function ExplanationList({ explanations }: { explanations: TurnExplanatio
         const scores = explanation.options.map((option) => option.score);
         const top = Math.max(...scores);
         const bottom = Math.min(0, ...scores);
+        const story = explanationStory(explanation, locale, (option) => optionText(option, locale));
         return (
           // biome-ignore lint/suspicious/noArrayIndexKey: explanations of a turn keep their order.
-          <section key={index} className="flex flex-col gap-1.5">
-            <h4 className="eyebrow flex gap-2 text-faint">
-              <span>{explanation.kind === 'switch' ? 'Qué saca' : 'Acciones'}</span>
-              <span className="tracking-normal normal-case">{explanation.method}</span>
-            </h4>
-            <ol className="flex flex-col gap-1" aria-label="Opciones valoradas por el bot">
-              {explanation.options.map((option, optionIndex) => {
-                const width = top > bottom ? ((option.score - bottom) / (top - bottom)) * 100 : 100;
-                return (
-                  <li
-                    // biome-ignore lint/suspicious/noArrayIndexKey: options keep their order.
-                    key={optionIndex}
-                    className={`relative overflow-hidden rounded-xs px-2.5 py-1.5 text-sm ${
-                      option.chosen ? 'bg-rival/10 text-text' : 'text-muted'
-                    }`}
-                  >
-                    <span
-                      aria-hidden="true"
-                      className={`absolute inset-y-0 left-0 ${option.chosen ? 'bg-rival/20' : 'bg-surface-3'}`}
-                      style={{ width: `${Math.max(2, width)}%` }}
-                    />
-                    <span className="relative flex items-center justify-between gap-3">
-                      <span className="min-w-0">
-                        {option.chosen && (
-                          <strong className="mr-1.5 inline-flex items-center gap-1 font-display tracking-[0.08em] text-rival uppercase">
-                            <IconCheck size={13} />
-                            Elegida
-                          </strong>
-                        )}
-                        {option.actions.map((action) => actionText(action, locale)).join(' · ')}
+          <div key={index} className="flex flex-col gap-4">
+            {story.length > 0 && <Story story={story} />}
+            <section className="flex flex-col gap-1.5">
+              <h4 className="eyebrow flex gap-2 text-faint">
+                <span>{explanation.kind === 'switch' ? 'Qué saca' : 'Acciones'}</span>
+                <span className="tracking-normal normal-case">{explanation.method}</span>
+              </h4>
+              <ol className="flex flex-col gap-1" aria-label="Opciones valoradas por el bot">
+                {explanation.options.map((option, optionIndex) => {
+                  const width =
+                    top > bottom ? ((option.score - bottom) / (top - bottom)) * 100 : 100;
+                  return (
+                    <li
+                      // biome-ignore lint/suspicious/noArrayIndexKey: options keep their order.
+                      key={optionIndex}
+                      className={`relative overflow-hidden rounded-xs px-2.5 py-1.5 text-sm ${
+                        option.chosen ? 'bg-rival/10 text-text' : 'text-muted'
+                      }`}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={`absolute inset-y-0 left-0 ${option.chosen ? 'bg-rival/20' : 'bg-surface-3'}`}
+                        style={{ width: `${Math.max(2, width)}%` }}
+                      />
+                      <span className="relative flex items-center justify-between gap-3">
+                        <span className="min-w-0">
+                          {option.chosen && (
+                            <strong className="mr-1.5 inline-flex items-center gap-1 font-display tracking-[0.08em] text-rival uppercase">
+                              <IconCheck size={13} />
+                              Elegida
+                            </strong>
+                          )}
+                          {optionText(option, locale)}
+                        </span>
+                        <span className="shrink-0 font-display text-sm font-semibold tabular-nums">
+                          {option.score.toFixed(1)}
+                        </span>
                       </span>
-                      <span className="shrink-0 font-display text-sm font-semibold tabular-nums">
-                        {option.score.toFixed(1)}
-                      </span>
-                    </span>
-                  </li>
-                );
-              })}
-            </ol>
-          </section>
+                    </li>
+                  );
+                })}
+              </ol>
+            </section>
+          </div>
         );
       })}
       {beliefs && <BeliefList beliefs={beliefs} locale={locale} />}

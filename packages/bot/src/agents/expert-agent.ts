@@ -9,16 +9,25 @@
 import {
   type AgentContext,
   type Choice,
+  type ExplainedAction,
   getSlotOptions,
   type MoveRequest,
   requestKind,
+  type SlotAction,
+  type SlotOptions,
   type SwitchRequest,
 } from '@colleja/core';
 import { pickBest } from '../analysis/evaluation';
 import { fightingForm } from '../analysis/singles-plan';
 import { Situation } from '../analysis/situation';
 import { teamChainValue } from '../analysis/team-chain';
-import { describeAction, EXPLANATION_METHODS, explanation, roundScore } from '../explain';
+import {
+  describeAction,
+  EXPLANATION_METHODS,
+  type ExplainContext,
+  explanation,
+  roundScore,
+} from '../explain';
 import { explainBeliefs } from '../inference/explain-beliefs';
 import { COUNTER_CHANCE, RivalStyle, type StyleSummary } from '../inference/style';
 import type { BotLevel } from '../levels';
@@ -135,19 +144,61 @@ export class ExpertAgent extends TacticalAgent {
     if (result.prediction) this.style.record(situation.view.turn, result.prediction);
     const context = explainContext(situation);
     const slots = getSlotOptions(request);
-    this.explainLast = () =>
-      explanation('moves', EXPLANATION_METHODS.lookahead, [
-        result.options.map((option) => ({
-          actions: option.actions.flatMap((action, index) => {
-            const slot = slots[index];
-            return slot && action.type !== 'pass' ? [describeAction(context, slot, action)] : [];
-          }),
+    this.explainLast = () => {
+      const expected = (result.expected ?? [])
+        .filter((reply, index) => index === 0 || reply.probability >= MIN_EXPECTED_PROBABILITY)
+        .slice(0, MAX_EXPECTED_REPLIES);
+      const decided = explanation('moves', EXPLANATION_METHODS.lookahead, [
+        result.options.map((option, o) => ({
+          actions: describeActions(context, slots, option.actions),
           score: roundScore(option.score),
           chosen: option === result.chosen,
+          ...(expected.length > 0
+            ? {
+                versus: expected.map((reply) => {
+                  const value = reply.versus[o];
+                  return value === null || value === undefined ? null : roundScore(value);
+                }),
+              }
+            : {}),
         })),
       ]);
+      if (expected.length === 0) return decided;
+      return {
+        ...decided,
+        expected: expected.map((reply) => {
+          const rival: ExplainContext = {
+            request: reply.request,
+            view: situation.view,
+            side: situation.foe,
+          };
+          return {
+            actions: describeActions(rival, getSlotOptions(reply.request), reply.actions),
+            probability: Math.round(reply.probability * 100) / 100,
+            ...(reply.counter ? { counter: true } : {}),
+          };
+        }),
+      };
+    };
     return { type: 'actions', actions: result.chosen.actions };
   }
+}
+
+/** Rival replies shown in an explanation (the likeliest ones). */
+const MAX_EXPECTED_REPLIES = 4;
+/** Rival replies less likely than this are not shown (the likeliest always is). */
+const MIN_EXPECTED_PROBABILITY = 0.05;
+
+/** A side's actions of one option, readable (passes left out). */
+function describeActions(
+  context: ExplainContext,
+  slots: readonly SlotOptions[],
+  list: readonly SlotAction[],
+): ExplainedAction[] {
+  return list.flatMap((action, index) => {
+    const slot = slots[index];
+    return slot && action.type !== 'pass' ? [describeAction(context, slot, action)] : [];
+  });
 }
 
 /** Most a counter can weigh among the rival's replies. */

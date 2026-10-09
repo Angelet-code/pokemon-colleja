@@ -6,6 +6,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ### Añadido
 
+- **«Cómo lo pensó»** en «Por qué jugó así el bot» (nivel 3): unas frases sencillas con lo que **esperaba que hicieras** (con su probabilidad; en dobles, por Pokémon), a qué dio más peso porque sueles anticiparte, que **descartó el resto** de tus opciones por verlas peores para ti y **por qué eligió** su jugada (la mejor contra lo que más esperaba o la que le cubría ante otra respuesta tuya). La búsqueda ya jugaba contra tus respuestas probables: ahora las devuelve (`SearchResult.expected`) con el valor de cada opción contra cada una, sin cambiar ninguna decisión. `DecisionExplanation` gana `expected` y `ExplainedOption` gana `versus` (opcionales: los replays viejos siguen valiendo).
+
 - En combate, cada movimiento muestra sus **datos** (tipo, categoría, potencia, precisión, PP y efecto) y **cómo afecta a cada rival**: eficacia, daño estimado en % y golpes para KO, con la calculadora del servidor y solo lo que ve el jugador ([guía](docs/guias/herramientas.md#datos-y-efecto-de-los-movimientos-pantalla-de-combate)). El tipo es el final (Piel Feérica convierte Vozarrón en Hada): `POST /api/calc` devuelve `moveType` (`finalMoveType` del bot, fuera de `estimateDamage`).
 - En el teambuilder, cada movimiento elegido muestra su tipo, categoría, potencia, precisión, PP y efecto sin abrir el desplegable.
 - En combate, cada tarjeta de PS muestra los **tipos** del Pokémon. Siguen los cambios de tipo (Protean, Libero, Empapar, Bosque Maldito, Clonatipo…) hasta que se retira, y los de la Mega Evolución. `BattleView` guarda `typeChange` y `currentTypes` (core) da los tipos actuales.

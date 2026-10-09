@@ -69,6 +69,34 @@ describe('bot explanation', () => {
   });
 });
 
+describe('bot train of thought panel', () => {
+  it('tells how the bot thought before listing its options', () => {
+    render(
+      <BotExplanation
+        explanations={[
+          {
+            ...EXPLANATION,
+            options: EXPLANATION.options.map((option) => ({ ...option, versus: [option.score] })),
+            expected: [
+              {
+                actions: [{ kind: 'move', user: 'incineroar', move: 'fakeout' }],
+                probability: 0.7,
+              },
+            ],
+          },
+        ]}
+      />,
+    );
+    const story = within(screen.getByRole('list', { name: 'Cómo lo pensó el bot' }));
+    expect(story.getByText('Esperaba sobre todo Sorpresa de tu Incineroar (70 %).')).toBeTruthy();
+    expect(
+      story.getByText(
+        'Contra lo que más esperaba, «Garchomp: Terremoto → tu Incineroar» era lo mejor: salía ganando.',
+      ),
+    ).toBeTruthy();
+  });
+});
+
 describe('bot beliefs', () => {
   it('shows what the bot believes about your Pokémon', () => {
     render(

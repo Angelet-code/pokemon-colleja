@@ -31,6 +31,21 @@ export interface ExplainedOption {
   /** Value the bot gave it (higher is better; the unit is described by `method`). */
   score: number;
   chosen: boolean;
+  /**
+   * Its value against each reply of `DecisionExplanation.expected` (same order); `null` when
+   * the search did not play it against that reply.
+   */
+  versus?: (number | null)[];
+}
+
+/** A reply of the other player the bot expected (level 3). It is about the player's own team. */
+export interface ExpectedReply {
+  /** The other player's actions (one per slot). */
+  actions: ExplainedAction[];
+  /** 0–1, as the bot weighed it. */
+  probability: number;
+  /** It is the counter to the bot's obvious play, weighed up because the player counters. */
+  counter?: boolean;
 }
 
 /** One guess of the bot about a set of the other player (level 3). */
@@ -65,6 +80,11 @@ export interface DecisionExplanation {
    * about the player's own team, so it reveals nothing hidden from them.
    */
   beliefs?: PokemonBeliefs[];
+  /**
+   * The other player's replies the bot expected, most likely first (level 3, when choosing
+   * moves). The rest of their options it thought worse for them and did not consider.
+   */
+  expected?: ExpectedReply[];
 }
 
 /** An explanation tied to the turn it was made for. */

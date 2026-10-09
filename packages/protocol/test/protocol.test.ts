@@ -372,6 +372,19 @@ describe('phase 8: calculator, replays and explanations', () => {
       ],
     };
     expect(TurnExplanationSchema.parse(withBeliefs)).toEqual(withBeliefs);
+    const withExpected = {
+      ...explanation,
+      options: explanation.options.map((option) => ({ ...option, versus: [12.5, null] })),
+      expected: [
+        { actions: [{ kind: 'move', user: 'garchomp', move: 'earthquake' }], probability: 0.6 },
+        {
+          actions: [{ kind: 'switch', user: 'garchomp', species: 'gyarados' }],
+          probability: 0.3,
+          counter: true,
+        },
+      ],
+    };
+    expect(TurnExplanationSchema.parse(withExpected)).toEqual(withExpected);
     // Old explanations (and replays) have none.
     expect(TurnExplanationSchema.parse(explanation)).toEqual(explanation);
     const bad = structuredClone(withBeliefs);

@@ -67,6 +67,7 @@ describe('bot explanations', () => {
       const plain = await play(level, mode, seed, false);
       const explained = await play(level, mode, seed, true);
       expect(explained.inputLog).toEqual(plain.inputLog);
+      let anticipated = 0;
 
       for (const { choice, explanation } of explained.decisions) {
         if (choice.type === 'team') {
@@ -88,7 +89,21 @@ describe('bot explanations', () => {
         for (const action of shownMoves) {
           if (action.kind === 'move') expect(action.move).toMatch(/^[a-z0-9]+$/);
         }
+        const expected = explanation.expected ?? [];
+        if (level !== 3 || explanation.kind !== 'moves') expect(expected).toEqual([]);
+        if (expected.length > 0) anticipated++;
+        const total = expected.reduce((sum, reply) => sum + reply.probability, 0);
+        expect(total).toBeLessThanOrEqual(1.01);
+        for (const reply of expected) {
+          expect(reply.actions.length).toBeGreaterThan(0);
+          for (const action of reply.actions) expect(action.user).toBeTruthy();
+        }
+        for (const option of explanation.options) {
+          expect(option.versus?.length ?? 0).toBe(expected.length);
+        }
       }
+      // Level 3 says what it expected from the player whenever it searched.
+      if (level === 3) expect(anticipated).toBeGreaterThan(0);
     },
   );
 });
