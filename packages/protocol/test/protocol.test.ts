@@ -439,6 +439,46 @@ describe('phase 8: calculator, replays and explanations', () => {
     expect(TurnExplanationSchema.safeParse(bad).success).toBe(false);
   });
 
+  it('carries why the bot expected your leads and chose its own (phase 16)', () => {
+    const preview = {
+      turn: 0,
+      kind: 'team',
+      method: 'Balance de PS…',
+      options: [],
+      preview: {
+        rivals: [],
+        own: [],
+        matchups: [],
+        leads: {
+          expected: {
+            pair: ['slowking', 'sylveon'],
+            probability: 0.5,
+            versus: ['camerupt', 'kingambit'],
+            reasons: [
+              {
+                kind: 'combo',
+                archetype: 'trickroom',
+                setters: ['slowking'],
+                abusers: ['camerupt'],
+                outspeed: ['kingambit'],
+              },
+              { kind: 'ko', by: ['sylveon'], target: 'kingambit', turn: 2 },
+              { kind: 'pressure', by: ['slowking'], target: 'camerupt', damage: 64 },
+              { kind: 'fakeout', user: 'sylveon', target: 'camerupt' },
+              { kind: 'redirect', user: 'slowking', protects: 'sylveon' },
+              { kind: 'avoid', species: 'conkeldurr', threat: 'camerupt' },
+            ],
+          },
+          own: { pair: ['camerupt', 'kingambit'], versus: ['slowking', 'sylveon'], reasons: [] },
+        },
+      },
+    };
+    expect(TurnExplanationSchema.parse(preview)).toEqual(preview);
+    const bad = structuredClone(preview);
+    (bad.preview.leads.expected.reasons[1] as { turn: number }).turn = 0;
+    expect(TurnExplanationSchema.safeParse(bad).success).toBe(false);
+  });
+
   it('carries how the bot read both teams as a whole (phase 15)', () => {
     const preview = {
       turn: 0,

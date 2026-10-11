@@ -1,6 +1,6 @@
 import type { DecisionExplanation, ExpectedReply, ExplainedOption } from '@colleja/core';
 import { describe, expect, it } from 'vitest';
-import { explanationStory, teamStory } from '../src/features/battle/explanation-story';
+import { explanationStory, leadStory, teamStory } from '../src/features/battle/explanation-story';
 
 const label = (option: ExplainedOption): string =>
   option.actions.map((action) => (action.kind === 'move' ? action.move : action.kind)).join(' · ');
@@ -142,6 +142,69 @@ describe('team reading (fase 15)', () => {
     ]);
     expect(teamStory({ archetypes: [] }, 'su', 'es')).toEqual([
       'Su equipo no va montado alrededor de un plan concreto.',
+    ]);
+  });
+});
+
+describe('lead pairs (fase 16)', () => {
+  it('says in game terms why it expected your leads', () => {
+    const story = leadStory(
+      {
+        pair: ['indeedeef', 'camerupt'],
+        probability: 0.36,
+        versus: ['kingambit', 'hatterene'],
+        reasons: [
+          {
+            kind: 'combo',
+            archetype: 'trickroom',
+            setters: ['indeedeef'],
+            abusers: ['camerupt', 'conkeldurr'],
+            outspeed: ['hatterene'],
+          },
+          { kind: 'ko', by: ['camerupt'], target: 'kingambit', turn: 1 },
+          { kind: 'pressure', by: ['indeedeef', 'camerupt'], target: 'hatterene', damage: 64 },
+          { kind: 'redirect', user: 'indeedeef', protects: 'camerupt' },
+          { kind: 'avoid', species: 'slowking', threat: 'kingambit' },
+        ],
+      },
+      'tu',
+      'es',
+    );
+    expect(story).toEqual([
+      'Por qué esperaba que salieras con Indeedee (Hembra) y Camerupt (36 %) contra sus Kingambit y Hatterene:',
+      'Para montar Espacio Raro: tu Indeedee (Hembra) lo pone y tus Camerupt y Conkeldurr se mueven antes que su Hatterene.',
+      'Tu Camerupt puede tumbar a su Kingambit en el primer turno.',
+      'Tus Indeedee (Hembra) y Camerupt presionan a su Hatterene: le quitan un 64 % en los primeros turnos.',
+      'Tu Indeedee (Hembra) atrae los ataques para cubrir a tu Camerupt.',
+      'Dejarías atrás a tu Slowking porque su Kingambit lo tumba de un golpe.',
+    ]);
+  });
+
+  it("tells the bot's own leads from its side", () => {
+    const story = leadStory(
+      {
+        pair: ['pelipper', 'swampert'],
+        versus: ['sylveon', 'gengar'],
+        reasons: [
+          {
+            kind: 'combo',
+            archetype: 'rain',
+            setters: ['pelipper'],
+            abusers: ['swampert'],
+            outspeed: [],
+          },
+          { kind: 'ko', by: ['pelipper', 'swampert'], target: 'gengar', turn: 2 },
+          { kind: 'fakeout', user: 'pelipper', target: 'sylveon' },
+        ],
+      },
+      'su',
+      'es',
+    );
+    expect(story).toEqual([
+      'Por qué salió con Pelipper y Swampert contra tus Sylveon y Gengar:',
+      'Para jugar con lluvia: su Pelipper la pone y su Swampert la aprovecha.',
+      'Entre sus Pelipper y Swampert pueden tumbar a tu Gengar en el segundo turno.',
+      'Sorpresa de su Pelipper a tu Sylveon para que el otro actúe sin riesgo.',
     ]);
   });
 });

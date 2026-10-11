@@ -38,6 +38,7 @@ import { explainBeliefs } from '../inference/explain-beliefs';
 import { COUNTER_CHANCE, RivalStyle, type StyleSummary } from '../inference/style';
 import type { BotLevel } from '../levels';
 import { rivalAssumptions } from '../search/assumptions';
+import { previewLeads } from '../search/lead-reasons';
 import { foeLineup } from '../search/lineups';
 import {
   SEARCH_SETTINGS,
@@ -45,7 +46,12 @@ import {
   type StyleAdjustment,
   searchMoves,
 } from '../search/lookahead';
-import { PREVIEW_SETTINGS, type PreviewSettings, planPreview } from '../search/preview';
+import {
+  PREVIEW_SETTINGS,
+  type PreviewPlan,
+  type PreviewSettings,
+  planPreview,
+} from '../search/preview';
 import { type BotOptions, explainContext } from './aggressive-agent';
 import { TacticalAgent } from './tactical-agent';
 
@@ -126,7 +132,11 @@ export class ExpertAgent extends TacticalAgent {
           })),
         ],
       ),
-      preview: readPreview(situation, plan),
+      preview: {
+        // The 2 vs 2 prediction of the player's leads replaces the duel-based one.
+        ...readPreview(situation, { ...plan, lead: plan.leads?.().lead ?? plan.lead }),
+        ...withLeads(plan),
+      },
     });
     return teamChoice(plan.chosen.group.map(position));
   }
@@ -226,6 +236,12 @@ export class ExpertAgent extends TacticalAgent {
     };
     return { type: 'actions', actions: result.chosen.actions };
   }
+}
+
+/** The lead pairs of a doubles preview with their reasons, if it simulated them. */
+function withLeads(plan: PreviewPlan): { leads?: NonNullable<ReturnType<typeof previewLeads>> } {
+  const leads = previewLeads(plan);
+  return leads ? { leads } : {};
 }
 
 /** Rival replies shown in an explanation (the likeliest ones). */

@@ -8,6 +8,8 @@ import type {
   ExpectedReply,
   ExplainedAction,
   ExplainedOption,
+  LeadReading,
+  LeadReason,
   PreviewAnalysis,
   PreviewRival,
   TeamArchetype,
@@ -106,8 +108,86 @@ function previewStory(
         : `Eligió a ${joinAnd(visible.map((pokemon) => pokemon.name))}${lead}: el grupo al que mejor le iba contra lo que esperaba.`,
     );
   }
+  if (preview.leads?.expected) story.push(...leadStory(preview.leads.expected, 'tu', locale));
+  if (preview.leads?.own) story.push(...leadStory(preview.leads.own, 'su', locale));
   if (preview.teams?.own) story.push(...teamStory(preview.teams.own, 'su', locale));
   return story;
+}
+
+const TURN_NAMES = ['', 'el primer turno', 'el segundo turno', 'el tercer turno'];
+
+/**
+ * Why a pair of leads, in game terms: the plan it starts, Fake Out and redirection, who it
+ * can knock out or pressure and who stays behind. `whose`: the player's pair (expected) or
+ * the bot's.
+ */
+export function leadStory(reading: LeadReading, whose: 'tu' | 'su', locale: Locale): string[] {
+  const theirs = whose === 'tu' ? 'su' : 'tu';
+  /** "tu Gengar" / "tus Gengar y Sylveon". */
+  const of = (owner: 'tu' | 'su', species: readonly string[]) =>
+    `${species.length > 1 ? `${owner}s` : owner} ${joinAnd(species.map((name) => speciesName(name, locale)))}`;
+  const pair = joinAnd(reading.pair.map((name) => speciesName(name, locale)));
+  const chance = reading.probability !== undefined ? ` (${percent(reading.probability)})` : '';
+  const head =
+    whose === 'tu'
+      ? `Por qué esperaba que salieras con ${pair}${chance} contra ${of('su', reading.versus)}:`
+      : `Por qué salió con ${pair} contra ${of('tu', reading.versus)}:`;
+  if (reading.reasons.length === 0) {
+    return [`${head} era la pareja a la que mejor le iba en los primeros turnos.`];
+  }
+  return [head, ...reading.reasons.map((reason) => leadReason(reason, whose, theirs, of, locale))];
+}
+
+function leadReason(
+  reason: LeadReason,
+  mine: 'tu' | 'su',
+  theirs: 'tu' | 'su',
+  of: (owner: 'tu' | 'su', species: readonly string[]) => string,
+  locale: Locale,
+): string {
+  const capital = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+  const plural = (species: readonly string[], one: string, many: string) =>
+    species.length > 1 ? many : one;
+  switch (reason.kind) {
+    case 'combo': {
+      const setters = of(mine, reason.setters);
+      const abusers = of(mine, reason.abusers);
+      const outspeed = reason.outspeed.length > 0 ? of(theirs, reason.outspeed) : '';
+      switch (reason.archetype) {
+        case 'trickroom':
+        case 'tailwind': {
+          const move = moveName(reason.archetype, locale);
+          const puts = plural(reason.setters, 'lo pone', 'lo ponen');
+          const then = outspeed
+            ? `${abusers} ${plural(reason.abusers, 'se mueve', 'se mueven')} antes que ${outspeed}`
+            : `${abusers} ${plural(reason.abusers, 'lo aprovecha', 'lo aprovechan')}`;
+          return `Para montar ${move}: ${setters} ${puts} y ${then}.`;
+        }
+        case 'setup':
+          return `Para potenciarse con apoyo: ${setters} ${plural(reason.setters, 'cubre', 'cubren')} y ${abusers} ${plural(reason.abusers, 'se potencia', 'se potencian')}.`;
+        default: {
+          // "el sol" / "la lluvia, la tormenta de arena, la nieve".
+          const it = reason.archetype === 'sun' ? 'lo' : 'la';
+          return `Para jugar con ${archetypeName(reason.archetype, locale)}: ${setters} ${it} ${plural(reason.setters, 'pone', 'ponen')} y ${abusers} ${it} ${plural(reason.abusers, 'aprovecha', 'aprovechan')}.`;
+        }
+      }
+    }
+    case 'ko': {
+      const by =
+        reason.by.length > 1
+          ? `Entre ${of(mine, reason.by)} pueden`
+          : `${capital(of(mine, reason.by))} puede`;
+      return `${by} tumbar a ${of(theirs, [reason.target])} en ${TURN_NAMES[reason.turn] ?? 'los primeros turnos'}.`;
+    }
+    case 'pressure':
+      return `${capital(of(mine, reason.by))} ${plural(reason.by, 'presiona', 'presionan')} a ${of(theirs, [reason.target])}: le ${plural(reason.by, 'quita', 'quitan')} un ${reason.damage} % en los primeros turnos.`;
+    case 'fakeout':
+      return `Sorpresa de ${of(mine, [reason.user])} a ${of(theirs, [reason.target])} para que el otro actúe sin riesgo.`;
+    case 'redirect':
+      return `${capital(of(mine, [reason.user]))} atrae los ataques para cubrir a ${of(mine, [reason.protects])}.`;
+    case 'avoid':
+      return `${mine === 'tu' ? 'Dejarías' : 'Deja'} atrás a ${of(mine, [reason.species])} porque ${of(theirs, [reason.threat])} lo tumba de un golpe.`;
+  }
 }
 
 /** From this strength the bot is fairly sure of an archetype ("parece"; below, "podría"). */

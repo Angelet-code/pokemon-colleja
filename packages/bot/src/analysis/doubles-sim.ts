@@ -5,6 +5,8 @@
  * is the material balance (HP shares) — a principled way to value focus fire, Protect,
  * Fake Out, Helping Hand, redirection, speed control, screens, spread moves that hit the
  * ally, status moves and switches.
+ * It also plays a lineup that is not on the field (`evaluateLineup`: two leads against two at
+ * team preview) and can record what happened (`SimTrace`) to explain it.
  */
 import type { BoostId, SideId } from '@colleja/core';
 import { getMove, type MoveId } from '@colleja/data';
@@ -59,6 +61,28 @@ interface Action {
   plan: SlotPlan | null;
 }
 
+/** A lineup played outside the battle (team preview): the Pokémon of each side, slot order. */
+export interface SimLineup {
+  mine: readonly Combatant[];
+  foe: readonly Combatant[];
+}
+
+/** Something that happened in a simulation, for explanations (`turn` 1 = the planned one). */
+export type SimEvent =
+  /** `target` fainted; `by`: the Pokémon of the other side that damaged it. */
+  | { turn: number; kind: 'ko'; side: 'mine' | 'foe'; target: string; by: string[] }
+  /** A status move that changes the field or a Pokémon (Trick Room, Tailwind, Follow Me…). */
+  | { turn: number; kind: 'effect'; side: 'mine' | 'foe'; user: string; move: MoveId }
+  /** Fake Out made `target` flinch. */
+  | { turn: number; kind: 'flinch'; side: 'mine' | 'foe'; user: string; target: string };
+
+/** What a simulation did: its events and the damage each Pokémon dealt to each rival. */
+export interface SimTrace {
+  events: SimEvent[];
+  /** Share of `target`'s max HP (0–1) that `attacker` took away, by side of the attacker. */
+  damage: { side: 'mine' | 'foe'; attacker: string; target: string; share: number }[];
+}
+
 /** Turns simulated after turn 1. */
 const FOLLOW_UP_TURNS = 2;
 const SLEEP_TURNS = 2;
@@ -72,8 +96,14 @@ export class DoublesSim {
   private trickRoom: boolean;
   private readonly screens: Record<'mine' | 'foe', Set<string>>;
   private followMe: Record<'mine' | 'foe', Unit | null> = { mine: null, foe: null };
+  /** Turn being played (1 = the planned one). */
+  private turnNumber = 0;
 
-  constructor(private readonly situation: Situation) {
+  constructor(
+    private readonly situation: Situation,
+    private readonly lineup: SimLineup | null = null,
+    private readonly trace: SimTrace | null = null,
+  ) {
     const { field, me, foe } = situation;
     this.tailwind = {
       mine: 'tailwind' in field.conditions[me],
@@ -82,6 +112,15 @@ export class DoublesSim {
     this.trickRoom = situation.trickRoom;
     this.screens = { mine: new Set(), foe: new Set() };
     this.units = [];
+    if (lineup) {
+      lineup.mine.forEach((combatant, position) => {
+        this.units.push(this.unit('mine', position, combatant, null));
+      });
+      lineup.foe.forEach((combatant, position) => {
+        this.units.push(this.unit('foe', position, combatant, null));
+      });
+      return;
+    }
     for (let position = 0; position < 2; position++) {
       const member = situation.ownActive(position);
       if (member && !member.fainted) {
@@ -119,10 +158,27 @@ export class DoublesSim {
     return sim.run(plans);
   }
 
+  /**
+   * Balance after playing `plans` with `lineup` on the field (own HP shares of the lineup minus
+   * the rivals', with the KO bonus), recording into `trace` if given.
+   */
+  static evaluateLineup(
+    situation: Situation,
+    lineup: SimLineup,
+    plans: readonly SlotPlan[],
+    trace: SimTrace | null = null,
+  ): number {
+    return new DoublesSim(situation, lineup, trace).run(plans);
+  }
+
   private run(plans: readonly SlotPlan[]): number {
     const start = new Map(this.units.map((unit) => [unit, unit.hp] as const));
+    this.turnNumber = 1;
     this.turn(plans);
-    for (let turn = 0; turn < FOLLOW_UP_TURNS && !this.decided(); turn++) this.turn(null);
+    for (let turn = 0; turn < FOLLOW_UP_TURNS && !this.decided(); turn++) {
+      this.turnNumber++;
+      this.turn(null);
+    }
     return this.value(start);
   }
 
@@ -276,6 +332,7 @@ export class DoublesSim {
       if (screens.has(screen) || screens.has('auroraveil')) damage *= SCREEN_FACTOR;
       const dealt = Math.min(damage, Math.max(0, defender.hp));
       defender.hp -= dealt;
+      if (this.trace && dealt > 0) this.record(unit, defender, dealt);
       if (data.drain) unit.hp += (dealt * data.drain[0]) / data.drain[1];
       if (data.recoil) unit.hp -= (dealt * data.recoil[0]) / data.recoil[1];
       if (
@@ -285,6 +342,13 @@ export class DoublesSim {
         damage > 0
       ) {
         defender.flinch = true;
+        this.trace?.events.push({
+          turn: this.turnNumber,
+          kind: 'flinch',
+          side: unit.side,
+          user: unit.combatant.species,
+          target: defender.combatant.species,
+        });
       }
       const status = STATUS_MOVES[move];
       if (status && plan?.effectLands !== false && !defender.combatant.status) {
@@ -299,6 +363,13 @@ export class DoublesSim {
   /** Effects of own status moves on turn 1 (rivals' status moves are not modelled). */
   private statusEffect(unit: Unit, move: MoveId, target: number | undefined, plan: SlotPlan): void {
     const side = unit.side;
+    this.trace?.events.push({
+      turn: this.turnNumber,
+      kind: 'effect',
+      side,
+      user: unit.combatant.species,
+      move,
+    });
     const boosts: Partial<Record<BoostId, number>> | undefined = SETUP_MOVES[move];
     const status = STATUS_MOVES[move];
     if (boosts && !(move === 'curse' && typesOf(unit.combatant).includes('Ghost'))) {
@@ -355,6 +426,38 @@ export class DoublesSim {
     this.followMe = { mine: null, foe: null };
   }
 
+  /** Records `dealt` HP from `attacker` to `defender` and, if it fainted, who knocked it out. */
+  private record(attacker: Unit, defender: Unit, dealt: number): void {
+    const trace = this.trace as SimTrace;
+    const entry = trace.damage.find(
+      (item) =>
+        item.side === attacker.side &&
+        item.attacker === attacker.combatant.species &&
+        item.target === defender.combatant.species,
+    );
+    const share = dealt / Math.max(1, defender.combatant.maxhp);
+    if (entry) entry.share += share;
+    else {
+      trace.damage.push({
+        side: attacker.side,
+        attacker: attacker.combatant.species,
+        target: defender.combatant.species,
+        share,
+      });
+    }
+    if (defender.hp > 0) return;
+    const by = trace.damage
+      .filter((item) => item.side === attacker.side && item.target === defender.combatant.species)
+      .map((item) => item.attacker);
+    trace.events.push({
+      turn: this.turnNumber,
+      kind: 'ko',
+      side: defender.side,
+      target: defender.combatant.species,
+      by,
+    });
+  }
+
   // ── Evaluation ─────────────────────────────────────────────────────────
 
   /**
@@ -362,6 +465,7 @@ export class DoublesSim {
    * shares on the field, with a bonus per Pokémon knocked out.
    */
   private value(start: Map<Unit, number>): number {
+    if (this.lineup) return this.lineupValue(start);
     const inSim = new Map<OwnMember, number>();
     for (const unit of this.units) {
       if (unit.side === 'mine' && unit.member) inSim.set(unit.member, share(unit));
@@ -383,6 +487,18 @@ export class DoublesSim {
       }
     }
     return (own - foe) * 100 + knockouts * (KO_BONUS / 2);
+  }
+
+  /** `value` for a lineup: the HP shares of the Pokémon on each side, with the KO bonus. */
+  private lineupValue(start: Map<Unit, number>): number {
+    let balance = 0;
+    let knockouts = 0;
+    for (const unit of this.units) {
+      const sign = unit.side === 'mine' ? 1 : -1;
+      balance += sign * share(unit);
+      if (unit.hp <= 0 && (start.get(unit) ?? 0) > 0) knockouts -= sign;
+    }
+    return balance * 100 + knockouts * (KO_BONUS / 2);
   }
 }
 

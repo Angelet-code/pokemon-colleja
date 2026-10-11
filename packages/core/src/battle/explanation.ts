@@ -159,6 +159,41 @@ export interface TeamReading {
   leads?: string[];
 }
 
+/**
+ * Why a pair of leads, in game terms, from that pair's side (`by`, `setters`… are its
+ * Pokémon; `target`, `threat`… the other side's).
+ */
+export type LeadReason =
+  /** It starts a plan: `setters` set it up, `abusers` profit, outspeeding `outspeed` with it. */
+  | {
+      kind: 'combo';
+      archetype: TeamArchetype;
+      setters: string[];
+      abusers: string[];
+      outspeed: string[];
+    }
+  /** Between `by` they can knock out `target` on `turn` (1 = the first). */
+  | { kind: 'ko'; by: string[]; target: string; turn: number }
+  /** They pressure `target`: `damage` % of its HP in the first turns, without a KO. */
+  | { kind: 'pressure'; by: string[]; target: string; damage: number }
+  /** Fake Out from `user` on `target` on turn 1. */
+  | { kind: 'fakeout'; user: string; target: string }
+  /** `user` draws the attacks (Follow Me, Rage Powder) to cover `protects`. */
+  | { kind: 'redirect'; user: string; protects: string }
+  /** `species` stays behind: `threat`, a lead of the other side, knocks it out in one hit. */
+  | { kind: 'avoid'; species: string; threat: string };
+
+/** A pair of leads and why (doubles, level 3). */
+export interface LeadReading {
+  /** The two leads. */
+  pair: string[];
+  /** 0–1: how likely the bot thought it (the player's expected leads). */
+  probability?: number;
+  /** The other side's leads it was played against. */
+  versus: string[];
+  reasons: LeadReason[];
+}
+
 /** What the bot thought of both teams at team preview (level 3). */
 export interface PreviewAnalysis {
   /** The other player's six, most dangerous first. */
@@ -173,6 +208,12 @@ export interface PreviewAnalysis {
    * (it stays with open team sheets and in the replay).
    */
   teams?: { rival: TeamReading; own?: TeamReading };
+  /**
+   * Doubles: the leads it expected from the player (`expected`) and its own (`own`), each with
+   * its reasons. With closed team sheets the redaction leaves out of `own` what reveals the
+   * bot's unused moves or its Pokémon not seen yet.
+   */
+  leads?: { expected?: LeadReading; own?: LeadReading };
 }
 
 export interface DecisionExplanation {
@@ -280,7 +321,12 @@ function redactPreview(
     const { move: _move, ...dealt } = matchup.dealt;
     return [{ ...matchup, dealt }];
   });
-  const { teams, ...rest } = preview;
+  const { teams, leads, ...rest } = preview;
+  const ownLeads = leads?.own && redactLeads(leads.own, find);
+  const redactedLeads = {
+    ...(leads?.expected ? { expected: leads.expected } : {}),
+    ...(ownLeads ? { own: ownLeads } : {}),
+  };
   return {
     ...rest,
     own,
@@ -288,5 +334,47 @@ function redactPreview(
     ...(hidden > 0 ? { hiddenOwn: hidden } : {}),
     // The bot's own reading names its moves and abilities: only the player's team stays.
     ...(teams ? { teams: { rival: teams.rival } } : {}),
+    ...(leads ? { leads: redactedLeads } : {}),
   };
+}
+
+/** The move each kind of plan needs (a plan the bot has not shown yet stays hidden). */
+const ARCHETYPE_MOVES: Partial<Record<TeamArchetype, readonly string[]>> = {
+  trickroom: ['trickroom'],
+  tailwind: ['tailwind'],
+  setup: ['followme', 'ragepowder', 'fakeout'],
+};
+
+/**
+ * The bot's own leads without what the player has not seen: its Pokémon not seen in battle
+ * and the plans that need a move it has not used yet (weather abilities show on entry).
+ */
+function redactLeads(
+  reading: LeadReading,
+  find: (species: string) => ViewPokemon | undefined,
+): LeadReading | undefined {
+  if (!reading.pair.every((species) => find(species))) return undefined;
+  const used = (species: string, moves: readonly string[]) =>
+    moves.some((move) => find(species)?.moves.includes(move));
+  const reasons = reading.reasons.flatMap((reason): LeadReason[] => {
+    switch (reason.kind) {
+      case 'combo': {
+        const moves = ARCHETYPE_MOVES[reason.archetype];
+        const setters = reason.setters.filter(
+          (species) => find(species) && (!moves || used(species, moves)),
+        );
+        if (setters.length === 0) return [];
+        return [{ ...reason, setters, abusers: reason.abusers.filter((species) => find(species)) }];
+      }
+      case 'fakeout':
+        return used(reason.user, ['fakeout']) ? [reason] : [];
+      case 'redirect':
+        return used(reason.user, ['followme', 'ragepowder']) ? [reason] : [];
+      case 'avoid':
+        return find(reason.species) ? [reason] : [];
+      default:
+        return [reason];
+    }
+  });
+  return { ...reading, reasons };
 }

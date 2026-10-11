@@ -5,6 +5,8 @@
  */
 import type {
   ExplainedAction,
+  LeadReading,
+  LeadReason,
   PokemonBeliefs,
   PreviewAnalysis,
   TeamReading,
@@ -67,11 +69,13 @@ const PreviewHitSchema = z.object({
   koChance: z.number().min(0).max(1),
 });
 
+const ArchetypeSchema = z.enum(['trickroom', 'tailwind', 'rain', 'sun', 'sand', 'snow', 'setup']);
+
 const TeamReadingSchema = z.object({
   archetypes: z
     .array(
       z.object({
-        kind: z.enum(['trickroom', 'tailwind', 'rain', 'sun', 'sand', 'snow', 'setup']),
+        kind: ArchetypeSchema,
         strength: z.number().min(0).max(1),
         setters: z.array(SpeciesSchema).max(6),
         abusers: z.array(SpeciesSchema).max(6),
@@ -81,6 +85,40 @@ const TeamReadingSchema = z.object({
   group: z.array(SpeciesSchema).max(6).optional(),
   leads: z.array(SpeciesSchema).max(2).optional(),
 }) satisfies z.ZodType<TeamReading>;
+
+const SpeciesListSchema = z.array(SpeciesSchema).max(6);
+
+const LeadReasonSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('combo'),
+    archetype: ArchetypeSchema,
+    setters: SpeciesListSchema,
+    abusers: SpeciesListSchema,
+    outspeed: SpeciesListSchema,
+  }),
+  z.object({
+    kind: z.literal('ko'),
+    by: SpeciesListSchema,
+    target: SpeciesSchema,
+    turn: z.number().int().min(1).max(5),
+  }),
+  z.object({
+    kind: z.literal('pressure'),
+    by: SpeciesListSchema,
+    target: SpeciesSchema,
+    damage: z.number().min(0),
+  }),
+  z.object({ kind: z.literal('fakeout'), user: SpeciesSchema, target: SpeciesSchema }),
+  z.object({ kind: z.literal('redirect'), user: SpeciesSchema, protects: SpeciesSchema }),
+  z.object({ kind: z.literal('avoid'), species: SpeciesSchema, threat: SpeciesSchema }),
+]) satisfies z.ZodType<LeadReason>;
+
+const LeadReadingSchema = z.object({
+  pair: z.array(SpeciesSchema).max(2),
+  probability: z.number().min(0).max(1).optional(),
+  versus: z.array(SpeciesSchema).max(2),
+  reasons: z.array(LeadReasonSchema).max(12),
+}) satisfies z.ZodType<LeadReading>;
 
 export const PreviewAnalysisSchema = z.object({
   rivals: z
@@ -110,6 +148,9 @@ export const PreviewAnalysisSchema = z.object({
     .max(36),
   hiddenOwn: z.number().int().min(0).max(6).optional(),
   teams: z.object({ rival: TeamReadingSchema, own: TeamReadingSchema.optional() }).optional(),
+  leads: z
+    .object({ expected: LeadReadingSchema.optional(), own: LeadReadingSchema.optional() })
+    .optional(),
 }) satisfies z.ZodType<PreviewAnalysis>;
 
 export const TurnExplanationSchema = z.object({

@@ -281,6 +281,36 @@ describe('level 3 team preview explanation', () => {
   });
 });
 
+describe('level 3 lead pairs explanation (doubles)', () => {
+  it('explains your expected leads and its own, without revealing unused moves', async () => {
+    const client = await TestClient.connect(app);
+    client.send(startMessage('doubles', { botLevel: 3, seed: 'explica-salida' }));
+    const player = new SocketPlayer(client, 'explica-salida');
+    for (;;) {
+      const message = await client.receive();
+      await player.handle(message);
+      if (message.type !== 'battle:update' || !message.explanations) continue;
+      const leads = message.explanations[0]?.preview?.leads;
+      expect(leads?.expected?.pair).toHaveLength(2);
+      const view = BattleView.from(player.log);
+      const seen = (species: string) =>
+        view.sides.p2.pokemon.some(
+          (pokemon) => pokemon.species === species || pokemon.baseSpecies === species,
+        );
+      for (const species of leads?.own?.pair ?? []) expect(seen(species)).toBe(true);
+      // On turn 1 the bot has used no move yet: no plan that needs one is told.
+      for (const reason of leads?.own?.reasons ?? []) {
+        expect(['fakeout', 'redirect']).not.toContain(reason.kind);
+        if (reason.kind === 'combo') {
+          expect(['trickroom', 'tailwind', 'setup']).not.toContain(reason.archetype);
+        }
+      }
+      break;
+    }
+    client.close();
+  });
+});
+
 describe('saved replays', () => {
   it('saves a finished battle on request, lists, reads, renames and deletes it', async () => {
     const client = await TestClient.connect(app);

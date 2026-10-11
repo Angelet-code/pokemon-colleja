@@ -9,7 +9,9 @@
  *   the coverage by the prediction and choosing the leads against the player's likely leads
  *   lost strength in the arena (ADR-0015): the duel model misses what makes a good lead pair.
  *   A group's duels blend with the same duels under the Trick Room or Tailwind it sets up
- *   (`fieldShare`, ADR-0017), so its slow or fast attackers count with their setter.
+ *   (`fieldShare`, ADR-0017), so its slow or fast attackers count with their setter. For the
+ *   explanation, the player's lead pairs are played 2 vs 2 against the bot's likely leads
+ *   (`LeadPlanner`, ADR-0018); choosing the bot's leads that way lost strength.
  * One Mega Evolution per side: in a lineup only the first holder fights as a Mega.
  * Weather setters (Drizzle…) bring their weather: each duel is fought in the weather of the
  * setters involved (the slowest one's), and an own group is valued in the weather its setters
@@ -30,6 +32,7 @@ import { battleForm, type FoeMember, type Situation } from '../analysis/situatio
 import { teamChainValue } from '../analysis/team-chain';
 import { archetypeStrength, type MemberRead, readMembers, readTeam } from '../analysis/team-read';
 import { combinations } from '../analysis/team-selection';
+import { type LeadMatchup, leadMatchup } from './lead-plan';
 
 export interface PreviewSettings {
   /** The player's likeliest groups played against in singles. */
@@ -49,7 +52,25 @@ export interface PreviewSettings {
    * complete that archetype is): its duels blend with the same duels under that field.
    */
   fieldShare: SpeedControlShares;
+  /** Doubles lead pairs played 2 vs 2. */
+  leads: LeadSettings;
 }
+
+export interface LeadSettings {
+  /**
+   * Turn-1 options kept per slot when playing lead pairs 2 vs 2 for the explanation (0 = no
+   * simulation: the player's leads predicted by average duel and no lead reasons).
+   */
+  kept: number;
+  /** The bot's likely lead pairs (its best groups') the player's pairs are played against. */
+  botPairs: number;
+  /** The player's likeliest lead pairs kept (the expected one is the first). */
+  playerPairs: number;
+  /** Softmax temperature of the player's lead pair inside a group (simulation points). */
+  temperature: number;
+}
+
+const NO_LEADS: LeadSettings = { kept: 0, botPairs: 0, playerPairs: 0, temperature: 1 };
 
 export const PREVIEW_SETTINGS: Record<'singles' | 'doubles', PreviewSettings> = {
   singles: {
@@ -61,6 +82,7 @@ export const PREVIEW_SETTINGS: Record<'singles' | 'doubles', PreviewSettings> = 
     noise: 1,
     // Singles keeps its choice (fase 15): the archetypes are only read.
     fieldShare: { trickRoom: 0, tailwind: 0 },
+    leads: NO_LEADS,
   },
   // Doubles chooses as level 2 (same weight and noise); the rest is only for the prediction.
   doubles: {
@@ -72,6 +94,8 @@ export const PREVIEW_SETTINGS: Record<'singles' | 'doubles', PreviewSettings> = 
     noise: 2,
     // Measured with the saved rivals and random teams (ADR-0017).
     fieldShare: { trickRoom: 0.5, tailwind: 0.5 },
+    // Only for the explanation: choosing the leads with it lost strength (ADR-0018).
+    leads: { kept: 4, botPairs: 3, playerPairs: 6, temperature: 20 },
   },
 };
 
@@ -95,6 +119,32 @@ export interface PreviewPlan {
   lead: number[];
   /** Both teams as a whole. */
   teams: { rival: TeamReading; own: TeamReading };
+  /** Each member's part in each archetype, per side. */
+  reads: { own: MemberRead[]; foe: MemberRead[] };
+  /**
+   * Doubles: the player's leads predicted by playing pairs 2 vs 2 (computed on demand, for the
+   * explanation only: it never changes the decision).
+   */
+  leads?: () => LeadPrediction;
+}
+
+/** A pair of leads (indexes into `own` or `foes`) and how likely it is. */
+export interface LeadPair {
+  members: number[];
+  probability: number;
+  /** The likeliest group it leads (the player's pairs over all their groups). */
+  group?: number[];
+}
+
+/** The player's likeliest lead pairs and the 2 vs 2 matchups the bot played. */
+export interface LeadPrediction {
+  /** The player's lead pairs, likeliest first (the ones the bot played against). */
+  foePairs: LeadPair[];
+  /** The bot's likely lead pairs the player's pairs were played against. */
+  botPairs: number[][];
+  planner: LeadPlanner;
+  /** 0–1 per foe: chance that the player leads with it (replaces the duel-based one). */
+  lead: number[];
 }
 
 /** A group of the player's and how likely the bot thinks it is. */
@@ -103,6 +153,8 @@ interface FoeGroup {
   probability: number;
   /** Chance of each member leading (same order as `members`). */
   leads: number[];
+  /** Each set of leads (indexes into `foes`) and its chance inside the group. */
+  pairs: LeadPair[];
 }
 
 export function planPreview(
@@ -146,12 +198,7 @@ export function planPreview(
   const brought = foes.map((_, f) =>
     foeGroups.reduce((sum, group) => sum + (group.members.includes(f) ? group.probability : 0), 0),
   );
-  const lead = foes.map((_, f) =>
-    foeGroups.reduce((sum, group) => {
-      const index = group.members.indexOf(f);
-      return sum + (index < 0 ? 0 : group.probability * (group.leads[index] ?? 0));
-    }, 0),
-  );
+  const lead = leadShares(foes.length, foeGroups);
   const size = Math.min(picked, own.length);
   const options = situation.doubles
     ? doublesOptions(situation, own, foes, duel, ownRead, size, settings)
@@ -172,7 +219,148 @@ export function planPreview(
   options.sort((a, b) => b.score - a.score);
   const chosen = options[0];
   if (!chosen) return null;
-  return { options, chosen, own, foes, duels, brought, lead, teams };
+  let leads: LeadPrediction | undefined;
+  const predictLeads = () => {
+    leads ??= predictLeadPairs(situation, own, foes, options, settings, (pairValue) =>
+      predictGroups(duels, theirRows, foeRead, picked, leadsPerSide, settings, pairValue),
+    );
+    return leads;
+  };
+  return {
+    options,
+    chosen,
+    own,
+    foes,
+    duels,
+    brought,
+    lead,
+    teams,
+    reads: { own: ownRead, foe: foeRead },
+    ...(situation.doubles && settings.leads.kept > 0 ? { leads: predictLeads } : {}),
+  };
+}
+
+/** 0–1 per foe: chance that the player leads with it, over their groups. */
+function leadShares(count: number, groups: readonly FoeGroup[]): number[] {
+  return Array.from({ length: count }, (_, f) =>
+    groups.reduce((sum, group) => {
+      const index = group.members.indexOf(f);
+      return sum + (index < 0 ? 0 : group.probability * (group.leads[index] ?? 0));
+    }, 0),
+  );
+}
+
+/**
+ * The player's leads predicted by playing each of their pairs 2 vs 2 against the bot's likely
+ * leads (those of its best groups, the chosen one first), and their likeliest pairs.
+ */
+function predictLeadPairs(
+  situation: Situation,
+  own: readonly Combatant[],
+  foes: readonly FoeMember[],
+  options: readonly PreviewOption[],
+  settings: PreviewSettings,
+  predict: (pairValue: (pair: readonly number[]) => number) => FoeGroup[],
+): LeadPrediction {
+  const planner = new LeadPlanner(situation, own, foes, settings.leads.kept);
+  const botPairs = likelyPairs(options, settings.leads.botPairs);
+  const groups = predict(
+    (pair) =>
+      botPairs.reduce((sum, versus) => sum + planner.matchup('foe', pair, versus).value, 0) /
+      Math.max(1, botPairs.length),
+  );
+  return {
+    foePairs: likeliestFoePairs(groups, settings.leads.playerPairs),
+    botPairs,
+    planner,
+    lead: leadShares(foes.length, groups),
+  };
+}
+
+/**
+ * Lead pairs played 2 vs 2 (`leadMatchup`), each matchup once. A pair is two indexes into
+ * `own` or `foes`; in a lineup only the first Mega Stone holder fights as a Mega.
+ */
+export class LeadPlanner {
+  private readonly cache = new Map<string, LeadMatchup>();
+  private readonly ownBase: Combatant[];
+  private readonly foeForms: Combatant[];
+  private readonly foeBase: Combatant[];
+
+  constructor(
+    readonly situation: Situation,
+    private readonly own: readonly Combatant[],
+    foes: readonly FoeMember[],
+    private readonly kept: number,
+  ) {
+    this.ownBase = situation.own.map((member) => member.combatant);
+    this.foeForms = foes.map((foe) => foe.combatant);
+    this.foeBase = foes.map((foe) => baseOf(situation, foe.combatant));
+  }
+
+  /**
+   * `pair` of `side` against `versus` of the other side, from `pair`'s point of view (its
+   * turn-1 options, the other side attacking).
+   */
+  matchup(side: 'own' | 'foe', pair: readonly number[], versus: readonly number[]): LeadMatchup {
+    const key = `${side}:${pair.join(',')}:${versus.join(',')}`;
+    let result = this.cache.get(key);
+    if (!result) {
+      const [mine, foe] = this.lineups(side, pair, versus);
+      result = leadMatchup(this.situation, mine, foe, this.kept);
+      this.cache.set(key, result);
+    }
+    return result;
+  }
+
+  /** A Pokémon of `side` in its battle form (the one its lineups use when it is the Mega). */
+  form(side: 'own' | 'foe', index: number): Combatant | undefined {
+    return side === 'own' ? this.own[index] : this.foeForms[index];
+  }
+
+  /** The two lineups of a matchup, `pair`'s side first. */
+  lineups(
+    side: 'own' | 'foe',
+    pair: readonly number[],
+    versus: readonly number[],
+  ): [Combatant[], Combatant[]] {
+    const own = (members: readonly number[]) => lineup(members, this.ownBase, this.own);
+    const foe = (members: readonly number[]) => lineup(members, this.foeBase, this.foeForms);
+    return side === 'own' ? [own(pair), foe(versus)] : [foe(pair), own(versus)];
+  }
+}
+
+/** The leads of the bot's best `count` groups (best first), each pair once. */
+function likelyPairs(options: readonly PreviewOption[], count: number): number[][] {
+  const pairs: number[][] = [];
+  for (const option of [...options].sort((a, b) => b.score - a.score)) {
+    if (pairs.length >= count) break;
+    const pair = option.group.slice(0, 2).sort((a, b) => a - b);
+    if (!pairs.some((other) => other.join() === pair.join())) pairs.push(pair);
+  }
+  return pairs;
+}
+
+/** The player's `count` likeliest lead pairs over all their groups, renormalised. */
+function likeliestFoePairs(groups: readonly FoeGroup[], count: number): LeadPair[] {
+  const total = new Map<string, LeadPair & { best: number }>();
+  for (const group of groups) {
+    for (const pair of group.pairs) {
+      const members = [...pair.members].sort((a, b) => a - b);
+      const key = members.join();
+      const entry = total.get(key) ?? { members, probability: 0, best: -1 };
+      const chance = group.probability * pair.probability;
+      entry.probability += chance;
+      if (chance > entry.best) {
+        entry.best = chance;
+        entry.group = group.members;
+      }
+      total.set(key, entry);
+    }
+  }
+  const top = [...total.values()].sort((a, b) => b.probability - a.probability).slice(0, count);
+  const sum = top.reduce((acc, pair) => acc + pair.probability, 0) || 1;
+  return top.map(({ best: _, ...pair }) => ({ ...pair, probability: pair.probability / sum }));
 }
 
 /**
@@ -186,6 +374,7 @@ function predictGroups(
   picked: number,
   leadsPerSide: number,
   settings: PreviewSettings,
+  pairValue?: (pair: readonly number[]) => number,
 ): FoeGroup[] {
   const foeCount = foeRead.length;
   // The player's side of each duel.
@@ -201,16 +390,21 @@ function predictGroups(
   const even = 1 / groups.length;
   return groups
     .map((group, i) => {
-      const leads = leadChances(
+      const { chances, sets } = leadChances(
         group.members.map((f) => average[f] ?? 0),
         leadsPerSide,
         settings,
+        pairValue && ((set) => pairValue(set.map((member) => group.members[member] as number))),
       );
       return {
         members: group.members,
         probability:
           (1 - settings.pickUniform) * ((exp[i] ?? 0) / sum) + settings.pickUniform * even,
-        leads,
+        leads: chances,
+        pairs: sets.map((set) => ({
+          members: set.members.map((member) => group.members[member] as number),
+          probability: set.probability,
+        })),
       };
     })
     .sort((a, b) => b.probability - a.probability);
@@ -238,28 +432,36 @@ export function coverage(
 
 /**
  * Chance of each member to start on the field: every set of leads is a softmax of its
- * members' average duel, and a member's chance adds up the sets it is in.
+ * members' average duel (or, with `simulated`, of its 2 vs 2 value), and a member's chance
+ * adds up the sets it is in. Indexes are inside the group.
  */
 function leadChances(
   averages: readonly number[],
   leadsPerSide: number,
   settings: PreviewSettings,
-): number[] {
+  simulated?: (set: readonly number[]) => number,
+): { chances: number[]; sets: LeadPair[] } {
   const sets = combinations(averages.length, Math.min(leadsPerSide, averages.length)).map(
     (leads) => ({
       leads,
-      value: leads.reduce((sum, member) => sum + (averages[member] ?? 0), 0) / leads.length,
+      value: simulated
+        ? simulated(leads)
+        : leads.reduce((sum, member) => sum + (averages[member] ?? 0), 0) / leads.length,
     }),
   );
+  const temperature = simulated ? settings.leads.temperature : settings.leadTemperature;
   const top = Math.max(...sets.map((entry) => entry.value));
-  const exp = sets.map((entry) => Math.exp((entry.value - top) / settings.leadTemperature));
+  const exp = sets.map((entry) => Math.exp((entry.value - top) / temperature));
   const sum = exp.reduce((a, b) => a + b, 0) || 1;
   const chances = averages.map(() => 0);
   sets.forEach((entry, i) => {
     for (const member of entry.leads)
       chances[member] = (chances[member] ?? 0) + (exp[i] ?? 0) / sum;
   });
-  return chances;
+  return {
+    chances,
+    sets: sets.map((entry, i) => ({ members: entry.leads, probability: (exp[i] ?? 0) / sum })),
+  };
 }
 
 /** Singles: every own group of three with every lead, against the player's likeliest groups. */

@@ -78,7 +78,7 @@ const NEEDED_ABUSERS: Record<TeamArchetype, number> = {
  * In a lead pair, what must start on the field: speed control is set on turn 1 and the rest
  * profit from the back; weather and setup need both pieces together.
  */
-const LEAD_SCOPE: Record<TeamArchetype, 'setter' | 'both'> = {
+export const LEAD_SCOPE: Record<TeamArchetype, 'setter' | 'both'> = {
   trickroom: 'setter',
   tailwind: 'setter',
   rain: 'both',
