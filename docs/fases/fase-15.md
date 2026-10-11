@@ -28,9 +28,19 @@ Mientras eliges tu equipo, ver **lo tuyo** de la lectura del bot (tus amenazas, 
 
 Guardar qué Pokémon traes y con cuál empiezas contra cada tipo de equipo, y ajustar la predicción (`pickTemperature`, preferencias por Pokémon) con tu historial. Medible: acierto de la predicción en tus combates guardados.
 
-### E. Vista previa del nivel 3 en dobles
+### E. Vista previa del nivel 3 en dobles: arquetipos y combos (ampliada el 2026-10-11)
 
-En dobles, la predicción de tu vista previa no mejoró la elección (fase 14): el modelo de duelos no ve lo que hace buena a una pareja de salida. Valorar las parejas propias contra tus parejas probables con la simulación 2 contra 2 (`doubles-sim`) y medirlo con el arena (≥ 1 200 combates, mismas semillas que la referencia de 81,6 %).
+Hoy la vista previa suma **duelos 1 contra 1**: cada Pokémon se valora solo, sin compañero. No ve combos (Espacio Raro + lentos, Viento Afín + rápidos, Sorpresa + potenciador, Señuelo/Polvo Ira + potenciador, Intimidación, ataques a varios objetivos con un aliado inmune, debilidades cubiertas). Solo el clima cuenta como efecto de equipo ([ADR-0016](../adr/0016-clima-en-la-vista-previa.md)). Así puede dejar fuera a un inductor de Espacio Raro y su atacante lento, y tampoco prevé que el jugador traiga una pareja pensada para ir junta. En el combate sí juega esos combos (`doubles-sim` en el nivel 2, el motor real en el 3), pero no elige el equipo para montarlos. En la fase 14, la predicción con duelos perdía fuerza en dobles.
+
+El usuario pidió hacerlo **en dos pasos**, el primero como aproximación:
+
+**E1. Valoración general del equipo (primero).** Leer cada equipo de 6 en su conjunto, sin simular:
+- **Qué pinta tiene**: arquetipo probable (Espacio Raro, Viento Afín, lluvia/sol/arena/nieve, ofensivo puro, equilibrado, Sorpresa + potenciador, redirección + potenciador…) con su confianza, a partir de movimientos, habilidades, objetos y velocidades (de los sets supuestos con equipo cerrado; `move-knowledge.ts` ya tiene parte de las listas).
+- **Qué 4 encajan entre sí**: puntuación de sinergia de cada grupo de 4 (piezas del arquetipo juntas, inductor con sus beneficiados, debilidades cubiertas, inmunidades a los ataques en área del aliado) y las **parejas de salida** que montan el plan.
+- Usos: (1) predecir tu grupo y tus líderes mezclando la sinergia con la cobertura actual; (2) elegir su propio grupo y sus líderes igual; (3) enseñarlo en «Pensamiento del bot» («tu equipo parece Espacio Raro: Pokémon X lo pone, Y y Z lo aprovechan»). Reutilizable en el teambuilder o el banco para tu propio equipo (enlaza con **B** y **C**).
+- Funciones puras con tests por arquetipo (equipos fixture de cada uno). Los pesos, en `PREVIEW_SETTINGS`. Medir con el arena (≥ 1 200 combates en dobles, mismas semillas que la referencia de 81,6 %) que no pierde fuerza; y la predicción, por acierto en combates guardados si hay datos.
+
+**E2. Parejas simuladas (después).** Valorar sus parejas de salida contra tus parejas probables con la simulación 2 contra 2 (`doubles-sim`) o el sandbox, partiendo de los candidatos que dé E1 (para no simular las 15 × 6 combinaciones). Medir con el arena igual.
 
 ### F. Optimizador de Stat Points
 
