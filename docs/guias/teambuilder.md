@@ -33,6 +33,29 @@ Los equipos se guardan en `storage/teams/<id>.json` (no versionado), legibles y 
 
 `team` manda; `export` se reescribe al guardar. Si editas un fichero a mano y deja de cumplir el esquema, la lista lo ignora y el servidor lo avisa en su log.
 
+## PC de Bill
+
+En **PC de Bill** (cabecera, http://127.0.0.1:5173/pc) apuntas las especies que tienes en el juego, solo para saberlo:
+
+- **Añadir Pokémon**: el mismo buscador de especies (sin las que ya tienes). **Quitar**: la ✕ de cada tarjeta.
+- Se ven en orden de Pokédex, con sus tipos. Las formas cuentan por separado (Stunfisk y Stunfisk de Galar).
+- En el editor de equipos y rivales, el interruptor **«Solo PC de Bill»** (cabecera del panel de Pokémon) limita «Añadir Pokémon» y la especie de la ficha a las tuyas. Solo aparece si el PC tiene algo, se recuerda en el navegador y la especie actual de la ficha se sigue viendo aunque no la tengas.
+
+Se guarda en `storage/collection/pc.json`, con los nombres en `export`:
+
+```json
+{ "version": 1, "updatedAt": "…", "collection": { "id": "pc", "species": ["gyarados", "golurk"] }, "export": "Gyarados\nGolurk" }
+```
+
+Piezas: `CollectionContentSchema` (`@colleja/protocol`, `collection.ts`), `FileCollectionRepository` (`apps/server/src/collection/`, una sola colección con id fijo `pc` sobre el repositorio genérico), `routes/collection.ts` y, en la web, `features/collection/` (`CollectionPage` y `collection-store.ts`, que comparten la página y el editor) y `ownedSpeciesOptions` (`features/teams/options.tsx`).
+
+| Petición | Respuesta |
+|---|---|
+| `GET /api/collection` | `{ collection: { species }, updatedAt }` (`updatedAt: null` si aún no se guardó nada) |
+| `PUT /api/collection` `{ collection: { species } }` | Lo mismo, en orden de Pokédex. 400 si hay especies repetidas o que no se pueden elegir (Megas, inexistentes), con ellas en `details` |
+
+Tests: `apps/server/test/collection.test.ts` y `apps/web/test/collection.test.tsx`.
+
 ## Arquitectura
 
 | Pieza | Qué hace |

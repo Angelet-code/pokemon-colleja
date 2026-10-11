@@ -1,4 +1,7 @@
-/** Per-browser preferences: theme and language of the names (remembered in localStorage). */
+/**
+ * Per-browser preferences: theme, language of the names and the «PC de Bill» filter of the
+ * teambuilder (remembered in localStorage).
+ */
 import type { Locale } from '@colleja/data';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
@@ -9,8 +12,11 @@ interface SettingsState {
   theme: Theme;
   /** Language of Pokémon, move, item and ability names. The UI and the log stay in Spanish. */
   namesLocale: Locale;
+  /** The teambuilder only offers the species of the «PC de Bill» (when it has any). */
+  onlyCollection: boolean;
   toggleTheme(): void;
   setNamesLocale(locale: Locale): void;
+  setOnlyCollection(onlyCollection: boolean): void;
 }
 
 export const useSettings = create<SettingsState>()(
@@ -18,8 +24,10 @@ export const useSettings = create<SettingsState>()(
     (set) => ({
       theme: 'dark',
       namesLocale: 'es',
+      onlyCollection: false,
       toggleTheme: () => set((state) => ({ theme: state.theme === 'dark' ? 'light' : 'dark' })),
       setNamesLocale: (namesLocale) => set({ namesLocale }),
+      setOnlyCollection: (onlyCollection) => set({ onlyCollection }),
     }),
     { name: 'colleja:settings', storage: createJSONStorage(() => safeStorage()) },
   ),

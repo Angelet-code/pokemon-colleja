@@ -47,18 +47,25 @@ export function tempBenchDir(): string {
   return mkdtempSync(join(tmpdir(), 'colleja-bench-'));
 }
 
+/** A temporary folder for the collection. */
+export function tempCollectionDir(): string {
+  return mkdtempSync(join(tmpdir(), 'colleja-collection-'));
+}
+
 /** A server without sprites, web or timers, saving into temporary folders. */
 export function testServer({
   teamsDir = tempTeamsDir(),
   opponentsDir = tempOpponentsDir(),
   replaysDir = tempReplaysDir(),
   benchDir = tempBenchDir(),
+  collectionDir = tempCollectionDir(),
   benchThreads = 0,
 }: {
   teamsDir?: string;
   opponentsDir?: string;
   replaysDir?: string;
   benchDir?: string;
+  collectionDir?: string;
   /** Worker threads of the bench (default 0: inline, with the fast bot levels of the tests). */
   benchThreads?: number;
 } = {}): Promise<FastifyInstance> {
@@ -70,6 +77,7 @@ export function testServer({
     opponentsDir,
     replaysDir,
     benchDir,
+    collectionDir,
     benchThreads,
     benchProgressMs: 0,
   });

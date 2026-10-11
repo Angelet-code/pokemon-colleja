@@ -10,8 +10,10 @@ import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastif
 import { BattleManager, type BattleManagerOptions } from './battles/battle-manager';
 import { BenchManager, type BenchManagerOptions } from './bench/bench-manager';
 import { FileBenchRepository } from './bench/bench-repository';
+import { FileCollectionRepository } from './collection/collection-repository';
 import {
   BENCH_DIR,
+  COLLECTION_DIR,
   OPPONENTS_DIR,
   REPLAYS_DIR,
   SPRITES_DIR,
@@ -48,6 +50,8 @@ export interface ServerOptions extends BattleManagerOptions, BenchManagerOptions
   replaysDir?: string;
   /** Folder of the saved benches (default `storage/bench/`; tests use a temporary one). */
   benchDir?: string;
+  /** Folder of the collection (default `storage/collection/`; tests use a temporary one). */
+  collectionDir?: string;
 }
 
 export async function buildServer(options: ServerOptions = {}): Promise<FastifyInstance> {
@@ -59,6 +63,9 @@ export async function buildServer(options: ServerOptions = {}): Promise<FastifyI
     opponents: new FileOpponentRepository(options.opponentsDir ?? OPPONENTS_DIR, { onInvalid }),
     replays: new FileReplayRepository(options.replaysDir ?? REPLAYS_DIR, { onInvalid }),
     bench: new FileBenchRepository(options.benchDir ?? BENCH_DIR, { onInvalid }),
+    collection: new FileCollectionRepository(options.collectionDir ?? COLLECTION_DIR, {
+      onInvalid,
+    }),
   };
   const battles = new BattleManager(repositories, options);
   const bench = new BenchManager(repositories, options);

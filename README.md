@@ -28,6 +28,8 @@ Arranca el servidor local y la web: abre **http://127.0.0.1:5173**, elige uno de
 
 En **Equipos** (http://127.0.0.1:5173/equipos) creas equipos desde cero o importados de Showdown: especie, habilidad, objeto, naturaleza, **Stat Points con los stats en vivo**, movimientos filtrados por lo que aprende cada Pokémon en Champions, sets sugeridos y validación en vivo. Se guardan en `storage/teams/` y se usan en combate desde el inicio ([guía del teambuilder](docs/guias/teambuilder.md)).
 
+En **PC de Bill** (http://127.0.0.1:5173/pc) apuntas los Pokémon que tienes en el juego; en el teambuilder, «Solo PC de Bill» limita las especies a esos ([guía](docs/guias/teambuilder.md#pc-de-bill)).
+
 En **Rivales** (http://127.0.0.1:5173/rivales) preparas equipos para el bot con su dificultad: genera uno aleatorio, cópialo de tus equipos, impórtalo o créalo, edítalo con el mismo editor y guárdalo. En el inicio eliges ese rival guardado y practicas contra él ([guía de rivales](docs/guias/rivales.md)).
 
 En **Banco** (http://127.0.0.1:5173/banco) el bot juega tu equipo guardado contra tus rivales guardados y te da el **% de victorias por rival y en total**, con su margen de error, mientras la tabla se llena en vivo. También compara **dos versiones** de tu equipo (o una pegada como texto) en los mismos combates, guarda cada prueba en el historial del equipo y te lleva a jugar contra el rival donde flojeas ([guía del banco](docs/guias/banco.md)).

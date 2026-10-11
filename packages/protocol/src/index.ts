@@ -5,6 +5,7 @@
 export * from './battle';
 export * from './bench';
 export * from './calc';
+export * from './collection';
 export * from './common';
 export * from './opponents';
 export * from './replays';

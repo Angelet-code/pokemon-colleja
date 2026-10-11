@@ -56,6 +56,20 @@ export function speciesOptions(locale: Locale): ComboOption[] {
     .sort((a, b) => a.label.localeCompare(b.label, locale));
 }
 
+/**
+ * Only the species of the «PC de Bill», plus `keep` (the current species of a sheet, so the
+ * picker still shows it even if it is not owned).
+ */
+export function ownedSpeciesOptions(
+  options: ComboOption[],
+  owned: readonly string[],
+  keep?: string,
+): ComboOption[] {
+  const wanted = new Set(owned);
+  if (keep) wanted.add(keep);
+  return options.filter((option) => wanted.has(option.value));
+}
+
 export function abilityOptions(species: SpeciesId, locale: Locale): ComboOption[] {
   return (getSpecies(species)?.abilities ?? []).map((id) => {
     const { label, search } = names('abilities', id, locale);

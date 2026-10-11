@@ -68,6 +68,7 @@ El proyecto avanza **por fases** (PLAN §8). Cuando te pidan *"continúa con la 
   - Fase 12 (2026-10-08): el **banco de pruebas de equipos** (para ayudarle a montar su equipo perfecto), después de cerrar la 11. Otras ideas para más adelante: tablas de tipos, velocidades y daños, y optimizador de Stat Points.
   - Banco (2026-10-09): en la **web y en la terminal**; en la web, el nivel de cada lado se elige **entre los dos más altos**; **margen con parada temprana**; resultados **guardados** (historial por equipo); **A/B en pares**. Le importa que medir variantes sea **rápido sin perder calidad**. La A/B con el nivel 3 tarda ≈ 14 min con ± 5 (objetivo 5 min): **aceptado**, con el flujo rápido documentado (criba con el nivel 2, ± 10); acelerar el nivel 3 queda propuesto.
   - Fase 13 (2026-10-09): **acelerar el nivel 3**. Con decisiones idénticas el techo era ≈ 1,4× (Showdown y deserializar ≈ 60 %): el usuario aceptó **decisiones distintas con la misma fuerza** medida en el arena (poda sucesiva). Resultado ≈ 2×; la A/B de la fase 12 baja a ≈ 7 min.
+  - PC de Bill (2026-10-11): sección `/pc` con las **especies** que tiene en el juego (solo especies, solo para saberlo) e interruptor **«Solo PC de Bill»** en el teambuilder.
   - Fase 14 (2026-10-09): el nivel 3 **piensa en la vista previa** (en lugar de la propuesta de ampliaciones, que pasa a la fase 15): el análisis de tu equipo **se enseña y decide** (medido con el arena); se ve **al empezar el combate**, ocultando lo no revelado; en una **pestaña junto al registro** («Pensamiento del bot»); contenido: roles, velocidades, KOs en los dos sentidos, amenazas y plan, y lo que cree de tus sets.
 
 ## Puesta en marcha
@@ -89,7 +90,7 @@ npm run dev          # servidor + web: http://127.0.0.1:5173
 |---|---|
 | `npm install` | Instala dependencias y prepara Showdown (postinstall → `npm run setup`) |
 | `npm run setup` / `setup:force` | Sincroniza el submódulo, instala sus dependencias y compila `dist/` con tipos (idempotente) |
-| `npm run dev` | Servidor (127.0.0.1:3001, con recarga) + web con Vite (http://127.0.0.1:5173) a la vez ([guía](docs/guias/web.md)). Los equipos guardados van a `storage/teams/` ([guía](docs/guias/teambuilder.md)) y los rivales a `storage/opponents/` ([guía](docs/guias/rivales.md)). Calculadora, replays y explicación del bot: [guía](docs/guias/herramientas.md) |
+| `npm run dev` | Servidor (127.0.0.1:3001, con recarga) + web con Vite (http://127.0.0.1:5173) a la vez ([guía](docs/guias/web.md)). Los equipos guardados van a `storage/teams/` ([guía](docs/guias/teambuilder.md)), los rivales a `storage/opponents/` ([guía](docs/guias/rivales.md)) y el PC de Bill a `storage/collection/` ([guía](docs/guias/teambuilder.md#pc-de-bill)). Calculadora, replays y explicación del bot: [guía](docs/guias/herramientas.md) |
 | `npm run build` / `npm start` | Compila la web (`apps/web/dist`) / la compila y la sirve desde el servidor en http://127.0.0.1:3001 |
 | `npm run play` | Combate en la terminal contra el bot. Admite `-- --mode doubles --bot 0\|1\|2\|3 --team <fichero> --opponent-team <fichero>\|random --seed X --no-preview --open-team-sheets --auto` ([guía](docs/guias/combate.md)) |
 | `npm run bench` | Banco de pruebas: tu equipo guardado (o un fichero) contra tus rivales guardados, bot contra bot en hilos de trabajo. Admite `-- --team <id\|nombre\|fichero> --versus <…> --opponents all\|<ids> --mode --level --rival-level --margin 5 --battles N --screen <ficheros> --seed --threads --json <fichero>` ([guía](docs/guias/banco.md)). `npm run bench:calc -- --team …` da la matriz de daño sin combatir |
@@ -112,7 +113,7 @@ packages/   → librerías: showdown (puente al motor), data (datos del juego), 
 tools/      → scripts: setup, smoke, data-pipeline, cli, arena, bench, dev, e2e (Playwright)
 vendor/pokemon-showdown → submódulo git fijado a un commit (NO editar)
 docs/       → PLAN, research/, adr/, guias/, fases/ (briefs de cada fase)
-storage/    → datos del usuario (teams/, opponents/, replays/ y bench/: equipos, rivales, replays y bancos guardados): local, no versionado
+storage/    → datos del usuario (teams/, opponents/, replays/, bench/ y collection/: equipos, rivales, replays, bancos guardados y el PC de Bill): local, no versionado
 assets/     → sprites descargados: local, no versionado
 ```
 
@@ -175,7 +176,7 @@ assets/     → sprites descargados: local, no versionado
 - El estado del combate en la web sale de `BattleView` (core) y el log de `@colleja/narration` (port de `BattleTextParser` de Showdown). **No uses `@pkmn/client`/`@pkmn/dex`**: sus datos no son los de Champions ([ADR-0005](docs/adr/0005-servidor-web-y-narracion.md)). Las cifras que se muestran salen de la petición o de `@colleja/data`.
 - El store de la web solo cambia con mensajes del servidor; nunca adivines el resultado de una elección en el cliente.
 - Para los bots en el servidor (o en cualquier bucle humano contra bot), usa `decideFor` de `engine`: reintenta tras `[Unavailable choice]`.
-- El servidor escucha en `127.0.0.1` y usa `SERVER_PORT`/`SERVER_HOST` (no `PORT`, que las herramientas de desarrollo suelen fijar para la web). La web usa `WEB_PORT`. `STORAGE_DIR` lleva equipos, rivales, replays y bancos a otra carpeta (los E2E usan una temporal). Con `npm run dev`, el servidor recibe `WEB_DEV_URL` y redirige las páginas a Vite en lugar de servir `apps/web/dist` (que puede ser una compilación vieja).
+- El servidor escucha en `127.0.0.1` y usa `SERVER_PORT`/`SERVER_HOST` (no `PORT`, que las herramientas de desarrollo suelen fijar para la web). La web usa `WEB_PORT`. `STORAGE_DIR` lleva equipos, rivales, replays, bancos y el PC de Bill a otra carpeta (los E2E usan una temporal). Con `npm run dev`, el servidor recibe `WEB_DEV_URL` y redirige las páginas a Vite en lugar de servir `apps/web/dist` (que puede ser una compilación vieja).
 - Champions añade el color de la barra de PS al 20 % y al 50 % justos (`50/100y`): usa siempre `parseCondition` de `core` para leer condiciones.
 
 ## Particularidades del diseño de la web
@@ -187,8 +188,8 @@ assets/     → sprites descargados: local, no versionado
 
 ## Particularidades de los equipos y rivales guardados y el teambuilder
 
-- **Lo guardado pasa por un repositorio**: `TeamRepository` (`apps/server/src/teams/team-repository.ts`) y `OpponentRepository` (`apps/server/src/opponents/opponent-repository.ts`), ambos sobre `FileJsonRepository` (`apps/server/src/storage/json-repository.ts`). Nunca escribas ficheros a mano desde otra parte. Un fichero por elemento en `storage/<colección>/<id>.json`; el nombre del fichero es el id y solo admite letras, números y guiones (`SavedIdSchema`). Una colección nueva es un `JsonFileFormat` y una subclase.
-- **Los tests nunca escriben en `storage/`**: usa `testServer()`, `tempTeamsDir()`, `tempOpponentsDir()`, `tempReplaysDir()` y `tempBenchDir()` de `apps/server/test/helpers.ts` (carpetas temporales).
+- **Lo guardado pasa por un repositorio**: `TeamRepository` (`apps/server/src/teams/team-repository.ts`), `OpponentRepository` (`apps/server/src/opponents/opponent-repository.ts`) y `CollectionRepository` (`apps/server/src/collection/collection-repository.ts`: el PC de Bill, una sola colección con id fijo `pc`), todos sobre `FileJsonRepository` (`apps/server/src/storage/json-repository.ts`). Nunca escribas ficheros a mano desde otra parte. Un fichero por elemento en `storage/<colección>/<id>.json`; el nombre del fichero es el id y solo admite letras, números y guiones (`SavedIdSchema`). Una colección nueva es un `JsonFileFormat` y una subclase.
+- **Los tests nunca escriben en `storage/`**: usa `testServer()`, `tempTeamsDir()`, `tempOpponentsDir()`, `tempReplaysDir()`, `tempBenchDir()` y `tempCollectionDir()` de `apps/server/test/helpers.ts` (carpetas temporales).
 - **Legalidad informada, no impuesta**: se guarda cualquier equipo que cumpla los límites estructurales de `TeamSchema` (6 miembros, 4 movimientos, 0–32 SP por stat). Los `problems` (core y después el validador de Showdown, con `teamProblems`) van en cada respuesta, y la legalidad solo se exige al empezar un combate.
 - El texto importado pasa por `fitTeamToLimits` (core), que recorta lo que no cabe y devuelve cada ajuste para enseñárselo al usuario.
 - Para mostrar un problema junto a su campo usa `checkTeamIssues`/`checkSetIssues` (core). No partas los textos de `checkTeam`.

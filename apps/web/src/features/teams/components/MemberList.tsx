@@ -3,7 +3,7 @@ import type { PokemonSet } from '@colleja/core';
 import type { Locale } from '@colleja/data';
 import { itemName, speciesName } from '@colleja/narration';
 import { useMemo } from 'react';
-import { Combobox } from '../../../components/Combobox';
+import { Combobox, type ComboOption } from '../../../components/Combobox';
 import { ItemIcon } from '../../../components/ItemIcon';
 import { IconChevronDown, IconChevronUp } from '../../../components/icons';
 import { PokemonIcon } from '../../../components/PokemonIcon';
@@ -19,6 +19,7 @@ export function MemberList({
   onSelect,
   onAdd,
   onMove,
+  speciesChoices,
 }: {
   members: PokemonSet[];
   size: number;
@@ -28,8 +29,11 @@ export function MemberList({
   onSelect: (index: number) => void;
   onAdd: (species: string) => void;
   onMove: (from: number, to: number) => void;
+  /** Species offered to add (default: every one). */
+  speciesChoices?: ComboOption[];
 }) {
-  const options = useMemo(() => speciesOptions(locale), [locale]);
+  const allSpecies = useMemo(() => speciesOptions(locale), [locale]);
+  const options = speciesChoices ?? allSpecies;
   const free = Math.max(0, size - members.length);
   return (
     <div className="flex flex-col gap-1">

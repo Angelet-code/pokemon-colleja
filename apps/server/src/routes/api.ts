@@ -1,10 +1,11 @@
-/** REST API (`/api/*`): metadata here; teams, opponents, replays and the calculator in their files. */
+/** REST API (`/api/*`): metadata here; teams, opponents, replays, the calculator and the collection in their files. */
 import { BOT_LEVELS, DEFAULT_BOT_LEVEL } from '@colleja/bot';
 import { meta } from '@colleja/data';
 import { API_PREFIX, type MetaResponse } from '@colleja/protocol';
 import type { FastifyInstance } from 'fastify';
 import type { Repositories } from '../storage/repositories';
 import { registerCalcRoutes } from './calc';
+import { registerCollectionRoutes } from './collection';
 import { registerOpponentRoutes } from './opponents';
 import { registerReplayRoutes } from './replays';
 import { registerTeamRoutes } from './teams';
@@ -25,4 +26,5 @@ export function registerApi(app: FastifyInstance, repositories: Repositories): v
   registerOpponentRoutes(app, repositories.opponents);
   registerReplayRoutes(app, repositories.replays);
   registerCalcRoutes(app);
+  registerCollectionRoutes(app, repositories.collection);
 }

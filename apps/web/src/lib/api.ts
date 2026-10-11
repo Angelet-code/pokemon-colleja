@@ -5,6 +5,8 @@ import {
   type BenchResponse,
   type CalcRequest,
   type CalcResponse,
+  type CollectionContent,
+  type CollectionResponse,
   type GameModeValue,
   type ImportOpponentRequest,
   type ImportTeamRequest,
@@ -91,6 +93,11 @@ export const api = {
     request<OpponentResponse>(`/opponents/${encodeURIComponent(id)}`, json('PUT', { opponent })),
   deleteOpponent: (id: string) =>
     request<void>(`/opponents/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+
+  // The player's collection («PC de Bill»)
+  getCollection: () => request<CollectionResponse>('/collection'),
+  saveCollection: (collection: CollectionContent) =>
+    request<CollectionResponse>('/collection', json('PUT', { collection })),
 
   // Practice tools
   calc: (body: CalcRequest) => request<CalcResponse>('/calc', json('POST', body)),

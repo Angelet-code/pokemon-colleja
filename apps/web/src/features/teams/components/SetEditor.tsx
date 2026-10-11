@@ -15,7 +15,7 @@ import {
   type StatId,
 } from '@colleja/data';
 import { useMemo, useState } from 'react';
-import { Combobox } from '../../../components/Combobox';
+import { Combobox, type ComboOption } from '../../../components/Combobox';
 import { IconDownload, IconTrash, IconUpload } from '../../../components/icons';
 import { PokemonSprite } from '../../../components/PokemonIcon';
 import { TypeBadge } from '../../../components/TypeBadge';
@@ -35,6 +35,7 @@ import {
   itemOptions,
   moveOptions,
   natureOptions,
+  ownedSpeciesOptions,
   speciesOptions,
   standardSetLabel,
 } from '../options';
@@ -62,6 +63,7 @@ export function SetEditor({
   onChange,
   onRemove,
   megaEvolved,
+  ownedSpecies,
 }: {
   draft: TeamDraft;
   index: number;
@@ -75,11 +77,19 @@ export function SetEditor({
    * teambuilder); the calculator passes its Mega switch.
    */
   megaEvolved?: boolean;
+  /** When given, the species picker only offers these (the «PC de Bill» filter). */
+  ownedSpecies?: readonly string[];
 }) {
   const set = draft.members[index];
   const mode: GameMode = draft.mode;
   const [dialog, setDialog] = useState<'export' | 'import' | null>(null);
   const allSpecies = useMemo(() => speciesOptions(locale), [locale]);
+  const currentSpecies = draft.members[index]?.species;
+  const speciesChoices: ComboOption[] = useMemo(
+    () =>
+      ownedSpecies ? ownedSpeciesOptions(allSpecies, ownedSpecies, currentSpecies) : allSpecies,
+    [allSpecies, ownedSpecies, currentSpecies],
+  );
   const natures = useMemo(() => natureOptions(locale), [locale]);
   const species = set ? getSpecies(set.species) : undefined;
   if (!set || !species) return null;
@@ -108,7 +118,7 @@ export function SetEditor({
               <Combobox
                 label="Especie"
                 value={set.species}
-                options={allSpecies}
+                options={speciesChoices}
                 onChange={(id) => id && onChange(changeSpecies(set, id))}
                 invalid={Boolean(problems.species)}
               />

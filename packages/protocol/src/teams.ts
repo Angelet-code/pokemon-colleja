@@ -24,7 +24,7 @@ export const SavedIdSchema = z.string().regex(/^[A-Za-z0-9-]{1,64}$/, 'Id no vá
 export const TeamIdSchema = SavedIdSchema;
 
 /** Showdown-style id (`garchomp`, `lifeorb`): lowercase letters and digits. */
-const DataIdSchema = z.string().regex(/^[a-z0-9]{1,40}$/, 'Id no válido.');
+export const DataIdSchema = z.string().regex(/^[a-z0-9]{1,40}$/, 'Id no válido.');
 
 const statPoint = z.number().int().min(0).max(TEAM_LIMITS.statPointsPerStat);
 

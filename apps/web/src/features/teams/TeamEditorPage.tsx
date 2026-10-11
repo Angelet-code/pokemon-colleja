@@ -21,6 +21,7 @@ import { IconArrowLeft, IconDownload, IconSave, IconUpload } from '../../compone
 import {
   Button,
   buttonClass,
+  Checkbox,
   Chip,
   Loading,
   Notice,
@@ -29,12 +30,14 @@ import {
   textareaClass,
 } from '../../components/ui';
 import { useSettings } from '../../stores/settings';
+import { useCollection } from '../collection/collection-store';
 import { useSetup } from '../setup/setup-store';
 import { BotLevelSelect } from './components/BotLevelSelect';
 import { MemberList } from './components/MemberList';
 import { SetEditor } from './components/SetEditor';
 import { ExportDialog, ImportDialog } from './components/TextDialogs';
 import type { EditorDestination } from './editor-destination';
+import { ownedSpeciesOptions, speciesOptions } from './options';
 import {
   addMember,
   DEFAULT_OPPONENT_LEVEL,
@@ -75,6 +78,22 @@ export function TeamEditorPage({ destination }: { destination: EditorDestination
   const [notes, setNotes] = useState<string[]>([]);
   const [mobileSheet, setMobileSheet] = useState(false);
   const routeState = (location.state ?? NO_STATE) as EditorLocationState;
+
+  // «PC de Bill» filter: only offered once the collection has something.
+  const collection = useCollection((state) => state.species);
+  const loadCollection = useCollection((state) => state.load);
+  const onlyCollection = useSettings((state) => state.onlyCollection);
+  const setOnlyCollection = useSettings((state) => state.setOnlyCollection);
+  useEffect(() => {
+    void loadCollection();
+  }, [loadCollection]);
+  const owned = collection && collection.length > 0 ? collection : null;
+  const ownedSpecies = owned && onlyCollection ? owned : undefined;
+  const allSpecies = useMemo(() => speciesOptions(locale), [locale]);
+  const addChoices = useMemo(
+    () => (ownedSpecies ? ownedSpeciesOptions(allSpecies, ownedSpecies) : undefined),
+    [allSpecies, ownedSpecies],
+  );
 
   // Load (or start) the draft of the route. After creating one the store already has it.
   useEffect(() => {
@@ -265,6 +284,15 @@ export function TeamEditorPage({ destination }: { destination: EditorDestination
         <Panel
           title={`Pokémon ${draft.members.length}/${size}`}
           className={mobileSheet ? 'max-lg:hidden' : ''}
+          actions={
+            owned && (
+              <Checkbox
+                label="Solo PC de Bill"
+                checked={onlyCollection}
+                onChange={setOnlyCollection}
+              />
+            )
+          }
         >
           <div className="p-2">
             <MemberList
@@ -273,6 +301,7 @@ export function TeamEditorPage({ destination }: { destination: EditorDestination
               selected={selected}
               issueCounts={draft.members.map((_, index) => memberIssueCount(issues, index))}
               locale={locale}
+              speciesChoices={addChoices}
               onSelect={(index) => {
                 editor.select(index);
                 setMobileSheet(true);
@@ -319,6 +348,7 @@ export function TeamEditorPage({ destination }: { destination: EditorDestination
                 index={selected}
                 locale={locale}
                 problems={issues.members.get(selected) ?? {}}
+                ownedSpecies={ownedSpecies}
                 onChange={(set) =>
                   editor.edit((current) => updateMember(current, selected, () => set))
                 }
