@@ -6,13 +6,18 @@ import { Situation } from '../src/analysis/situation';
 import { ExpertAgent } from '../src/index';
 import { set, teamWith } from './helpers';
 
+// Without Drizzle it also loses Tailwind (fase 15 values it): only the weather is compared.
 const pelipper = (ability: string) =>
-  set('pelipper', ['hurricane', 'weatherball', 'tailwind', 'protect'], {
-    ability,
-    item: 'focussash',
-    nature: 'modest',
-    spread: { hp: 32, atk: 0, spa: 2, spe: 32 },
-  });
+  set(
+    'pelipper',
+    ['hurricane', 'weatherball', ability === 'drizzle' ? 'tailwind' : 'roost', 'protect'],
+    {
+      ability,
+      item: 'focussash',
+      nature: 'modest',
+      spread: { hp: 32, atk: 0, spa: 2, spe: 32 },
+    },
+  );
 
 /** The saved rival of the bug (2026-10-11): rain with Mega Swampert (Swift Swim). */
 const rain = (ability = 'drizzle'): PokemonSet[] => [

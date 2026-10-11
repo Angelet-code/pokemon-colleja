@@ -1,10 +1,12 @@
 import { championsStats, emptyStatTable, formatChoice, type PokemonSet } from '@colleja/core';
-import type { GameMode } from '@colleja/data';
+import { type GameMode, getStandardSets } from '@colleja/data';
 import { BattleSession } from '@colleja/engine';
+import { standardToSet } from '@colleja/teamgen';
 import { describe, expect, it } from 'vitest';
 import { makeCombatant } from '../src/analysis/combatant';
 import { compareSpeed, roleOf } from '../src/analysis/preview-read';
 import { ExpertAgent } from '../src/index';
+import { PREVIEW_SETTINGS } from '../src/search/preview';
 import { set, teamWith } from './helpers';
 
 const garchomp = set('garchomp', ['earthquake', 'dragonclaw', 'rockslide', 'protect'], {
@@ -111,6 +113,56 @@ describe('level 3 team preview', () => {
     expect(explained.choose(context)).toEqual(silent.choose(context));
     explained.explain();
     expect(explained.choose(context)).toEqual(silent.choose(context));
+  });
+});
+
+/** A standard doubles set of a species, with another item (Item Clause). */
+function standard(species: string, item: string): PokemonSet {
+  const [entry] = getStandardSets(species, 'doubles');
+  if (!entry) throw new Error(`sin set estándar: ${species}`);
+  return { ...standardToSet(entry), item };
+}
+
+const trickRoomTeam = () => [
+  standard('farigiraf', 'lifeorb'),
+  standard('torkoal', 'charcoal'),
+  standard('conkeldurr', 'blackbelt'),
+  standard('kingambit', 'sitrusberry'),
+  standard('whimsicott', 'focussash'),
+  standard('basculegion', 'choicescarf'),
+];
+
+describe('level 3 team preview: archetypes (fase 15)', () => {
+  it("reads the player's team as a whole, and its own", () => {
+    const session = preview('doubles', teamWith('doubles', [], 'own'), trickRoomTeam());
+    const teams = decide(session).explanation?.preview?.teams;
+    const trickRoom = teams?.rival.archetypes.find((archetype) => archetype.kind === 'trickroom');
+    expect(trickRoom?.setters).toContain('farigiraf');
+    expect(trickRoom?.abusers).toEqual(expect.arrayContaining(['torkoal', 'kingambit']));
+    expect(teams?.rival.group).toContain('farigiraf');
+    expect(teams?.own).toBeDefined();
+  });
+
+  it('brings its Trick Room setter with its slow attackers (doubles)', () => {
+    const team = trickRoomTeam();
+    const brought = (fieldShare: { trickRoom: number; tailwind: number }) => {
+      const session = preview('doubles', team, teamWith('doubles', [], 'rival'));
+      const context = session.getAgentContext('p1');
+      if (!context) throw new Error('p1 no tiene que elegir');
+      const bot = new ExpertAgent({ seed: 's', preview: { fieldShare } });
+      bot.choose(context);
+      const chosen = bot.explain()?.options.find((option) => option.chosen);
+      return chosen?.actions.flatMap((action) => (action.kind === 'bring' ? [action.species] : []));
+    };
+    // Without Trick Room in its duels it left Farigiraf out (its slow attackers look slow).
+    expect(brought({ trickRoom: 0, tailwind: 0 })).not.toContain('farigiraf');
+    expect(brought(PREVIEW_SETTINGS.doubles.fieldShare)).toEqual(
+      expect.arrayContaining(['farigiraf', 'torkoal', 'kingambit']),
+    );
+  });
+
+  it('keeps singles as it was: the archetypes are only read', () => {
+    expect(PREVIEW_SETTINGS.singles.fieldShare).toEqual({ trickRoom: 0, tailwind: 0 });
   });
 });
 

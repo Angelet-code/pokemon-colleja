@@ -132,6 +132,33 @@ export interface PreviewMatchup {
   taken?: PreviewHit;
 }
 
+/**
+ * A plan a team can be built around: speed control (Trick Room, Tailwind), a weather, or setup
+ * behind Fake Out or redirection.
+ */
+export type TeamArchetype = 'trickroom' | 'tailwind' | 'rain' | 'sun' | 'sand' | 'snow' | 'setup';
+
+/** One archetype the bot sees in a team. */
+export interface ArchetypeReading {
+  kind: TeamArchetype;
+  /** 0–1: how complete it is (and, with hidden sets, how sure the bot is). */
+  strength: number;
+  /** Members that set it up (Trick Room, Tailwind, the weather, Fake Out or redirection). */
+  setters: string[];
+  /** Members that profit from it. */
+  abusers: string[];
+}
+
+/** What a team looks like as a whole, as the bot read it at team preview (level 3). */
+export interface TeamReading {
+  /** Its archetypes, strongest first (none when it is not built around a plan). */
+  archetypes: ArchetypeReading[];
+  /** The members that keep those archetypes together best (a full group; with archetypes). */
+  group?: string[];
+  /** Doubles: the lead pair that starts that plan best (when one does). */
+  leads?: string[];
+}
+
 /** What the bot thought of both teams at team preview (level 3). */
 export interface PreviewAnalysis {
   /** The other player's six, most dangerous first. */
@@ -141,6 +168,11 @@ export interface PreviewAnalysis {
   matchups: PreviewMatchup[];
   /** Own Pokémon left out by the redaction (not seen in battle yet). */
   hiddenOwn?: number;
+  /**
+   * Both teams as a whole. The bot's own reading reveals its sets: the redaction removes it
+   * (it stays with open team sheets and in the replay).
+   */
+  teams?: { rival: TeamReading; own?: TeamReading };
 }
 
 export interface DecisionExplanation {
@@ -248,5 +280,13 @@ function redactPreview(
     const { move: _move, ...dealt } = matchup.dealt;
     return [{ ...matchup, dealt }];
   });
-  return { ...preview, own, matchups, ...(hidden > 0 ? { hiddenOwn: hidden } : {}) };
+  const { teams, ...rest } = preview;
+  return {
+    ...rest,
+    own,
+    matchups,
+    ...(hidden > 0 ? { hiddenOwn: hidden } : {}),
+    // The bot's own reading names its moves and abilities: only the player's team stays.
+    ...(teams ? { teams: { rival: teams.rival } } : {}),
+  };
 }

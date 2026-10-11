@@ -1,6 +1,6 @@
 import type { DecisionExplanation, ExpectedReply, ExplainedOption } from '@colleja/core';
 import { describe, expect, it } from 'vitest';
-import { explanationStory } from '../src/features/battle/explanation-story';
+import { explanationStory, teamStory } from '../src/features/battle/explanation-story';
 
 const label = (option: ExplainedOption): string =>
   option.actions.map((action) => (action.kind === 'move' ? action.move : action.kind)).join(' · ');
@@ -107,5 +107,41 @@ describe('bot train of thought', () => {
 
   it('says nothing when the bot did not anticipate the player', () => {
     expect(explanationStory({ ...SINGLES, expected: undefined }, 'es', label)).toEqual([]);
+  });
+});
+
+describe('team reading (fase 15)', () => {
+  it('names the archetypes, who sets them up and who profits, and the group that fits', () => {
+    const story = teamStory(
+      {
+        archetypes: [
+          {
+            kind: 'trickroom',
+            strength: 1,
+            setters: ['farigiraf'],
+            abusers: ['torkoal', 'kingambit'],
+          },
+          { kind: 'setup', strength: 0.5, setters: ['indeedeef', 'incineroar'], abusers: [] },
+        ],
+        group: ['farigiraf', 'torkoal', 'kingambit', 'incineroar'],
+        leads: ['farigiraf', 'incineroar'],
+      },
+      'tu',
+      'es',
+    );
+    expect(story).toEqual([
+      'Tu equipo parece de Espacio Raro: lo pone Farigiraf y lo aprovechan Torkoal y Kingambit.',
+      'También podría ser de potenciarse con apoyo (Sorpresa o redirección): lo apoyan Indeedee (Hembra) e Incineroar.',
+      'Los que mejor encajan para ese plan: Farigiraf, Torkoal, Kingambit e Incineroar, con Farigiraf e Incineroar de salida.',
+    ]);
+  });
+
+  it('says when a team has no plan', () => {
+    expect(teamStory({ archetypes: [] }, 'tu', 'es')).toEqual([
+      'No le vio a tu equipo un plan concreto (Espacio Raro, Viento Afín, clima…).',
+    ]);
+    expect(teamStory({ archetypes: [] }, 'su', 'es')).toEqual([
+      'Su equipo no va montado alrededor de un plan concreto.',
+    ]);
   });
 });

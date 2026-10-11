@@ -262,6 +262,9 @@ describe('level 3 team preview explanation', () => {
       expect(preview?.rivals).toHaveLength(6);
       expect(preview?.own.every((pokemon) => seen(pokemon.species))).toBe(true);
       expect((preview?.own.length ?? 0) + (preview?.hiddenOwn ?? 0)).toBe(6);
+      // The reading of the player's team arrives; the bot's own (its sets) does not.
+      expect(preview?.teams?.rival.archetypes).toBeDefined();
+      expect(preview?.teams?.own).toBeUndefined();
       for (const matchup of preview?.matchups ?? []) {
         expect(seen(matchup.own)).toBe(true);
         const move = matchup.dealt?.move;

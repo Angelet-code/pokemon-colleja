@@ -10,6 +10,8 @@ import type {
   ExplainedOption,
   PreviewAnalysis,
   PreviewRival,
+  TeamArchetype,
+  TeamReading,
 } from '@colleja/core';
 import type { Locale } from '@colleja/data';
 import { moveName, speciesName } from '@colleja/narration';
@@ -50,8 +52,9 @@ export function explanationStory(
 }
 
 /**
- * Team preview: what the bot expected the player to bring and lead with, what it feared the
- * most and what it brought.
+ * Team preview: what the player's team looks like as a whole, what the bot expected the
+ * player to bring and lead with, what it feared the most and what it brought (and, when the
+ * bot's sets are public, what its own team looks like).
  */
 function previewStory(
   explanation: DecisionExplanation,
@@ -68,6 +71,7 @@ function previewStory(
       rivals.map((rival) => `${speciesName(rival.species, locale)} (${percent(value(rival))})`),
     );
   const story: string[] = [];
+  if (preview.teams) story.push(...teamStory(preview.teams.rival, 'tu', locale));
   const brought = [...preview.rivals].sort((a, b) => b.brought - a.brought).slice(0, size);
   const leads = [...preview.rivals]
     .sort((a, b) => b.lead - a.lead)
@@ -101,6 +105,64 @@ function previewStory(
         ? `Eligió el grupo al que mejor le iba${lead}; ${hidden === 1 ? 'otro aún no lo has visto' : `los otros ${hidden} aún no los has visto`}.`
         : `Eligió a ${joinAnd(visible.map((pokemon) => pokemon.name))}${lead}: el grupo al que mejor le iba contra lo que esperaba.`,
     );
+  }
+  if (preview.teams?.own) story.push(...teamStory(preview.teams.own, 'su', locale));
+  return story;
+}
+
+/** From this strength the bot is fairly sure of an archetype ("parece"; below, "podría"). */
+const SURE_ARCHETYPE = 0.7;
+
+/** An archetype as the complement of "un equipo de…". */
+function archetypeName(kind: TeamArchetype, locale: Locale): string {
+  switch (kind) {
+    case 'trickroom':
+      return moveName('trickroom', locale);
+    case 'tailwind':
+      return moveName('tailwind', locale);
+    case 'rain':
+      return 'lluvia';
+    case 'sun':
+      return 'sol';
+    case 'sand':
+      return 'tormenta de arena';
+    case 'snow':
+      return 'nieve';
+    case 'setup':
+      return 'potenciarse con apoyo (Sorpresa o redirección)';
+  }
+}
+
+/**
+ * A team as a whole: its archetypes with who sets them up and who profits, and the members
+ * that keep them together (with the lead pair in doubles). `whose`: the player's or the bot's.
+ */
+export function teamStory(team: TeamReading, whose: 'tu' | 'su', locale: Locale): string[] {
+  const subject = whose === 'tu' ? 'Tu equipo' : 'Su equipo';
+  const names = (species: readonly string[]) =>
+    joinAnd(species.map((name) => speciesName(name, locale)));
+  if (team.archetypes.length === 0) {
+    return [
+      whose === 'tu'
+        ? 'No le vio a tu equipo un plan concreto (Espacio Raro, Viento Afín, clima…).'
+        : 'Su equipo no va montado alrededor de un plan concreto.',
+    ];
+  }
+  const story = team.archetypes.map((archetype, index) => {
+    const phrase = (verb: string, species: readonly string[]) =>
+      species.length > 0 ? `${verb}${species.length > 1 ? 'n' : ''} ${names(species)}` : '';
+    const pieces = [
+      phrase(archetype.kind === 'setup' ? 'lo apoya' : 'lo pone', archetype.setters),
+      phrase('lo aprovecha', archetype.abusers),
+    ].filter(Boolean);
+    const verb = archetype.strength >= SURE_ARCHETYPE ? 'parece' : 'podría ser';
+    const start = index === 0 ? `${subject} ${verb}` : `También ${verb}`;
+    const detail = pieces.length > 0 ? `: ${pieces.join(' y ')}` : '';
+    return `${start} de ${archetypeName(archetype.kind, locale)}${detail}.`;
+  });
+  if (team.group) {
+    const leads = team.leads ? `, con ${names(team.leads)} de salida` : '';
+    story.push(`Los que mejor encajan para ese plan: ${names(team.group)}${leads}.`);
   }
   return story;
 }
@@ -268,5 +330,8 @@ function joinOr(items: readonly string[]): string {
 
 export function joinAnd(items: readonly string[]): string {
   if (items.length <= 1) return items.join('');
-  return `${items.slice(0, -1).join(', ')} y ${items.at(-1)}`;
+  const last = items.at(-1) ?? '';
+  // "y" becomes "e" before an "i" sound ("Kingambit e Incineroar"), but not before "hie…".
+  const and = /^h?i(?![aeiouáéíóú])/i.test(last) ? 'e' : 'y';
+  return `${items.slice(0, -1).join(', ')} ${and} ${last}`;
 }

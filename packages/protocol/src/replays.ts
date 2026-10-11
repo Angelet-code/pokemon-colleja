@@ -7,6 +7,7 @@ import type {
   ExplainedAction,
   PokemonBeliefs,
   PreviewAnalysis,
+  TeamReading,
   TurnExplanation,
 } from '@colleja/core';
 import { z } from 'zod';
@@ -66,6 +67,21 @@ const PreviewHitSchema = z.object({
   koChance: z.number().min(0).max(1),
 });
 
+const TeamReadingSchema = z.object({
+  archetypes: z
+    .array(
+      z.object({
+        kind: z.enum(['trickroom', 'tailwind', 'rain', 'sun', 'sand', 'snow', 'setup']),
+        strength: z.number().min(0).max(1),
+        setters: z.array(SpeciesSchema).max(6),
+        abusers: z.array(SpeciesSchema).max(6),
+      }),
+    )
+    .max(7),
+  group: z.array(SpeciesSchema).max(6).optional(),
+  leads: z.array(SpeciesSchema).max(2).optional(),
+}) satisfies z.ZodType<TeamReading>;
+
 export const PreviewAnalysisSchema = z.object({
   rivals: z
     .array(
@@ -93,6 +109,7 @@ export const PreviewAnalysisSchema = z.object({
     )
     .max(36),
   hiddenOwn: z.number().int().min(0).max(6).optional(),
+  teams: z.object({ rival: TeamReadingSchema, own: TeamReadingSchema.optional() }).optional(),
 }) satisfies z.ZodType<PreviewAnalysis>;
 
 export const TurnExplanationSchema = z.object({

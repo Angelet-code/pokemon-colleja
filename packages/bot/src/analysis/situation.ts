@@ -85,8 +85,8 @@ export class Situation {
     Combatant,
     WeakMap<Combatant, Map<MoveId, DamageEstimate>>
   >();
-  /** This situation under each weather (`withWeather`), shared by all of them. */
-  private weatherViews: Map<string | null, Situation> | undefined;
+  /** This situation under other fields (`withWeather`, `withSpeedControl`), shared by all. */
+  private fieldViews: Map<string, Situation> | undefined;
 
   constructor(
     readonly context: AgentContext,
@@ -109,16 +109,36 @@ export class Situation {
    * bring when it enters. Views are shared, so asking twice gives the same one.
    */
   withWeather(weather: string | null): Situation {
-    if (weather === this.field.weather) return this;
-    if (!this.weatherViews) this.weatherViews = new Map([[this.field.weather, this]]);
-    let view = this.weatherViews.get(weather);
+    return weather === this.field.weather ? this : this.withField({ ...this.field, weather });
+  }
+
+  /**
+   * The same situation with exactly this speed control: Trick Room on or off and Tailwind on
+   * `tailwind`'s side only (e.g. a team that sets them up, at team preview). Shared views, as
+   * `withWeather`.
+   */
+  withSpeedControl(control: { trickRoom: boolean; tailwind: SideId | null }): Situation {
+    const pseudoWeather = this.field.pseudoWeather.filter((name) => name !== 'trickroom');
+    if (control.trickRoom) pseudoWeather.push('trickroom');
+    const side = (id: SideId) => {
+      const { tailwind: _, ...rest } = this.field.conditions[id];
+      return control.tailwind === id ? { ...rest, tailwind: 1 } : rest;
+    };
+    return this.withField({
+      ...this.field,
+      pseudoWeather,
+      conditions: { p1: side('p1'), p2: side('p2') },
+    });
+  }
+
+  private withField(field: FieldState): Situation {
+    if (!this.fieldViews) this.fieldViews = new Map([[fieldKey(this.field), this]]);
+    const key = fieldKey(field);
+    let view = this.fieldViews.get(key);
     if (!view) {
       view = Object.create(Situation.prototype) as Situation;
-      Object.assign(view, this, {
-        field: { ...this.field, weather },
-        damageCache: new WeakMap(),
-      });
-      this.weatherViews.set(weather, view);
+      Object.assign(view, this, { field, damageCache: new WeakMap() });
+      this.fieldViews.set(key, view);
     }
     return view;
   }
@@ -295,6 +315,16 @@ export class Situation {
 }
 
 /** The combatant as it will fight: its Mega form if it holds its stone and has not evolved. */
+/** What tells two fields apart for the bots (weather, Trick Room, side conditions). */
+function fieldKey(field: FieldState): string {
+  const sides = (['p1', 'p2'] as const).map((side) =>
+    Object.keys(field.conditions[side]).sort().join(','),
+  );
+  return [field.weather, field.terrain, [...field.pseudoWeather].sort().join(','), ...sides].join(
+    '|',
+  );
+}
+
 export function battleForm(combatant: Combatant): Combatant {
   const mega = megaSpeciesOf({ species: combatant.set.species, item: combatant.item });
   return mega && combatant.species === combatant.set.species ? megaEvolved(combatant) : combatant;

@@ -150,6 +150,13 @@ const PREVIEW_EXPLANATION: TurnExplanation = {
       },
     ],
     hiddenOwn: 5,
+    teams: {
+      rival: {
+        archetypes: [
+          { kind: 'tailwind', strength: 0.9, setters: ['incineroar'], abusers: ['gengar'] },
+        ],
+      },
+    },
   },
 };
 
@@ -163,6 +170,9 @@ describe('bot thinking at team preview', () => {
     const story = within(screen.getByRole('list', { name: 'Cómo lo pensó el bot' }));
     expect(story.getByText(/Esperaba que trajeras sobre todo a Incineroar \(80 %\)/)).toBeTruthy();
     expect(story.getByText('Lo que más temía de tu equipo: Incineroar.')).toBeTruthy();
+    expect(
+      story.getByText('Tu equipo parece de Viento Afín: lo pone Incineroar y lo aprovecha Gengar.'),
+    ).toBeTruthy();
     expect(story.getByText(/con Garchomp de líder; los otros 2 aún no los has visto/)).toBeTruthy();
 
     const cards = within(screen.getByRole('list', { name: 'Lo que analizó el bot de tu equipo' }));

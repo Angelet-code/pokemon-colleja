@@ -439,6 +439,39 @@ describe('phase 8: calculator, replays and explanations', () => {
     expect(TurnExplanationSchema.safeParse(bad).success).toBe(false);
   });
 
+  it('carries how the bot read both teams as a whole (phase 15)', () => {
+    const preview = {
+      turn: 0,
+      kind: 'team',
+      method: 'Balance de PS…',
+      options: [],
+      preview: {
+        rivals: [],
+        own: [],
+        matchups: [],
+        teams: {
+          rival: {
+            archetypes: [
+              {
+                kind: 'trickroom',
+                strength: 0.8,
+                setters: ['farigiraf'],
+                abusers: ['torkoal', 'kingambit'],
+              },
+            ],
+            group: ['farigiraf', 'torkoal', 'kingambit', 'incineroar'],
+            leads: ['farigiraf', 'incineroar'],
+          },
+          own: { archetypes: [] },
+        },
+      },
+    };
+    expect(TurnExplanationSchema.parse(preview)).toEqual(preview);
+    const bad = structuredClone(preview);
+    (bad.preview.teams.rival.archetypes[0] as { kind: string }).kind = 'hail';
+    expect(TurnExplanationSchema.safeParse(bad).success).toBe(false);
+  });
+
   it('carries explanations in updates and the save-replay messages', () => {
     const update: ServerMessage = {
       type: 'battle:update',

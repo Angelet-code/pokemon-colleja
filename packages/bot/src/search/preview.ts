@@ -8,12 +8,16 @@
  * - Doubles: as level 2 (coverage of the player's six, the best two on average lead). Weighing
  *   the coverage by the prediction and choosing the leads against the player's likely leads
  *   lost strength in the arena (ADR-0015): the duel model misses what makes a good lead pair.
+ *   A group's duels blend with the same duels under the Trick Room or Tailwind it sets up
+ *   (`fieldShare`, ADR-0017), so its slow or fast attackers count with their setter.
  * One Mega Evolution per side: in a lineup only the first holder fights as a Mega.
  * Weather setters (Drizzle…) bring their weather: each duel is fought in the weather of the
  * setters involved (the slowest one's), and an own group is valued in the weather its setters
  * bring (ADR-0016), so a rain team's Swift Swim and Water moves count only with Pelipper.
+ * Both teams are also read as a whole for the explanation (`readTeam`, ADR-0017): their
+ * archetypes, the group that keeps them together and the lead pair that starts the plan.
  */
-import type { SeededRandom } from '@colleja/core';
+import type { SeededRandom, SideId, TeamReading } from '@colleja/core';
 import {
   type Combatant,
   makeCombatant,
@@ -24,6 +28,7 @@ import {
 import { duelScore } from '../analysis/singles-plan';
 import { battleForm, type FoeMember, type Situation } from '../analysis/situation';
 import { teamChainValue } from '../analysis/team-chain';
+import { archetypeStrength, type MemberRead, readMembers, readTeam } from '../analysis/team-read';
 import { combinations } from '../analysis/team-selection';
 
 export interface PreviewSettings {
@@ -39,6 +44,11 @@ export interface PreviewSettings {
   averageWeight: number;
   /** Random points added to each option, for variety (ties and near ties). */
   noise: number;
+  /**
+   * Share of the battle a group plays under the Trick Room or Tailwind it sets up (times how
+   * complete that archetype is): its duels blend with the same duels under that field.
+   */
+  fieldShare: SpeedControlShares;
 }
 
 export const PREVIEW_SETTINGS: Record<'singles' | 'doubles', PreviewSettings> = {
@@ -49,6 +59,8 @@ export const PREVIEW_SETTINGS: Record<'singles' | 'doubles', PreviewSettings> = 
     leadTemperature: 15,
     averageWeight: 0.3,
     noise: 1,
+    // Singles keeps its choice (fase 15): the archetypes are only read.
+    fieldShare: { trickRoom: 0, tailwind: 0 },
   },
   // Doubles chooses as level 2 (same weight and noise); the rest is only for the prediction.
   doubles: {
@@ -58,6 +70,8 @@ export const PREVIEW_SETTINGS: Record<'singles' | 'doubles', PreviewSettings> = 
     leadTemperature: 15,
     averageWeight: 0.3,
     noise: 2,
+    // Measured with the saved rivals and random teams (ADR-0017).
+    fieldShare: { trickRoom: 0.5, tailwind: 0.5 },
   },
 };
 
@@ -79,6 +93,8 @@ export interface PreviewPlan {
   duels: number[][];
   brought: number[];
   lead: number[];
+  /** Both teams as a whole. */
+  teams: { rival: TeamReading; own: TeamReading };
 }
 
 /** A group of the player's and how likely the bot thinks it is. */
@@ -102,7 +118,31 @@ export function planPreview(
   // Each pair in its own weather (the setters among the two).
   const duels = own.map((mine, i) => foes.map((foe, f) => duel(i, f, [mine, foe.combatant])));
   const leadsPerSide = situation.doubles ? 2 : 1;
-  const foeGroups = predictGroups(duels, foes.length, picked, leadsPerSide, settings);
+  const ownRead = readMembers(
+    situation.me,
+    situation.own.map((member) => [{ set: member.combatant.set, weight: 1 }]),
+  );
+  const foeRead = readMembers(
+    situation.foe,
+    foes.map((foe) =>
+      foe.candidates.map((set, i) => ({
+        set,
+        weight: foe.weights ? (foe.weights[i] ?? 0) : 1,
+      })),
+    ),
+  );
+  // The player's side of each duel, with the speed control their group brings.
+  const theirRows = (members: readonly number[]) => {
+    const shares = speedControlShares(foeRead, members, settings);
+    return foes.map((foe, f) =>
+      members.includes(f)
+        ? own.map(
+            (mine, i) => -blendedDuel(duel, i, f, [mine, foe.combatant], shares, situation.foe),
+          )
+        : own.map((_, i) => -(duels[i]?.[f] ?? 0)),
+    );
+  };
+  const foeGroups = predictGroups(duels, theirRows, foeRead, picked, leadsPerSide, settings);
   const brought = foes.map((_, f) =>
     foeGroups.reduce((sum, group) => sum + (group.members.includes(f) ? group.probability : 0), 0),
   );
@@ -114,13 +154,25 @@ export function planPreview(
   );
   const size = Math.min(picked, own.length);
   const options = situation.doubles
-    ? doublesOptions(own, foes, duel, size, settings)
+    ? doublesOptions(situation, own, foes, duel, ownRead, size, settings)
     : singlesOptions(situation, own, foes, foeGroups, size, settings);
+  const ownRows = (members: readonly number[]) => {
+    const shares = speedControlShares(ownRead, members, settings);
+    return own.map((mine, i) =>
+      members.includes(i)
+        ? foes.map((foe, f) => blendedDuel(duel, i, f, [mine, foe.combatant], shares, situation.me))
+        : (duels[i] ?? []),
+    );
+  };
+  const teams = {
+    rival: readSide(foeRead, theirRows, size, leadsPerSide, settings),
+    own: readSide(ownRead, ownRows, size, leadsPerSide, settings),
+  };
   for (const option of options) option.score += random.next() * settings.noise;
   options.sort((a, b) => b.score - a.score);
   const chosen = options[0];
   if (!chosen) return null;
-  return { options, chosen, own, foes, duels, brought, lead };
+  return { options, chosen, own, foes, duels, brought, lead, teams };
 }
 
 /**
@@ -129,17 +181,19 @@ export function planPreview(
  */
 function predictGroups(
   duels: readonly (readonly number[])[],
-  foeCount: number,
+  theirRows: (members: readonly number[]) => number[][],
+  foeRead: readonly MemberRead[],
   picked: number,
   leadsPerSide: number,
   settings: PreviewSettings,
 ): FoeGroup[] {
+  const foeCount = foeRead.length;
   // The player's side of each duel.
   const theirs = Array.from({ length: foeCount }, (_, f) => duels.map((row) => -(row[f] ?? 0)));
   const average = theirs.map((row) => row.reduce((a, b) => a + b, 0) / Math.max(1, row.length));
   const groups = combinations(foeCount, Math.min(picked, foeCount)).map((members) => ({
     members,
-    score: coverage(theirs, members, settings.averageWeight),
+    score: coverage(theirRows(members), members, settings.averageWeight),
   }));
   const top = Math.max(...groups.map((group) => group.score));
   const exp = groups.map((group) => Math.exp((group.score - top) / settings.pickTemperature));
@@ -246,47 +300,118 @@ function singlesOptions(
   );
 }
 
-/** Duel score of `own[mine]` against `foes[foe]` in the weather `setters` bring. */
-type DuelTable = (mine: number, foe: number, setters: readonly Combatant[]) => number;
+/** Trick Room on, or Tailwind on one side, for a duel. */
+interface SpeedControl {
+  trickRoom: boolean;
+  tailwind: SideId | null;
+}
 
-/** Duel scores by weather, each one computed once. */
+/**
+ * Duel score of `own[mine]` against `foes[foe]` in the weather `setters` bring (and with
+ * `control`, if given).
+ */
+type DuelTable = (
+  mine: number,
+  foe: number,
+  setters: readonly Combatant[],
+  control?: SpeedControl,
+) => number;
+
+/** Duel scores by field, each one computed once. */
 function duelTable(
   situation: Situation,
   own: readonly Combatant[],
   foes: readonly FoeMember[],
 ): DuelTable {
   const cache = new Map<string, number>();
-  return (mine, foe, setters) => {
+  return (mine, foe, setters, control) => {
     const weather = weatherAfter(setters, situation.field.weather);
-    const key = `${mine}:${foe}:${weather}`;
+    const key = `${mine}:${foe}:${weather}:${control?.trickRoom ?? ''}:${control?.tailwind ?? ''}`;
     let score = cache.get(key);
     if (score === undefined) {
       const attacker = own[mine] as Combatant;
       const defender = (foes[foe] as FoeMember).combatant;
-      score = duelScore(situation.withWeather(weather), attacker, defender);
+      const field = situation.withWeather(weather);
+      score = duelScore(control ? field.withSpeedControl(control) : field, attacker, defender);
       cache.set(key, score);
     }
     return score;
   };
 }
 
+/** Share of the battle a group plays under its own Trick Room and Tailwind. */
+export interface SpeedControlShares {
+  trickRoom: number;
+  tailwind: number;
+}
+
+/**
+ * How much of the battle a group plays under the speed control it sets up: `fieldShare` times
+ * how complete that archetype is in the group (a setter with the attackers that profit).
+ */
+function speedControlShares(
+  read: readonly MemberRead[],
+  members: readonly number[],
+  settings: PreviewSettings,
+): SpeedControlShares {
+  const { trickRoom, tailwind } = settings.fieldShare;
+  return {
+    trickRoom: trickRoom && trickRoom * archetypeStrength(read, 'trickroom', members, members),
+    tailwind: tailwind && tailwind * archetypeStrength(read, 'tailwind', members, members),
+  };
+}
+
+/**
+ * A duel blended with the same duel under the group's speed control (Trick Room, or Tailwind
+ * on `side`), each weighed by its share of the battle.
+ */
+function blendedDuel(
+  duel: DuelTable,
+  mine: number,
+  foe: number,
+  setters: readonly Combatant[],
+  shares: SpeedControlShares,
+  side: SideId,
+): number {
+  const base = duel(mine, foe, setters);
+  let value = base;
+  if (shares.trickRoom > 0) {
+    value += shares.trickRoom * (duel(mine, foe, setters, TRICK_ROOM) - base);
+  }
+  if (shares.tailwind > 0) {
+    const tailwind = side === 'p1' ? TAILWIND_P1 : TAILWIND_P2;
+    value += shares.tailwind * (duel(mine, foe, setters, tailwind) - base);
+  }
+  return value;
+}
+
+const TRICK_ROOM: SpeedControl = { trickRoom: true, tailwind: null };
+const TAILWIND_P1: SpeedControl = { trickRoom: false, tailwind: 'p1' };
+const TAILWIND_P2: SpeedControl = { trickRoom: false, tailwind: 'p2' };
+
 /**
  * Doubles: each own group of four by its coverage of the player's six (like level 2's
  * `selectByCoverage`, with the same noise), the two best on average leading. Each duel is
- * fought in the weather the group's setters and that rival bring.
+ * fought in the weather the group's setters and that rival bring, blended with the speed
+ * control the group sets up.
  */
 function doublesOptions(
+  situation: Situation,
   own: readonly Combatant[],
   foes: readonly FoeMember[],
   duel: DuelTable,
+  ownRead: readonly MemberRead[],
   size: number,
   settings: PreviewSettings,
 ): PreviewOption[] {
   return combinations(own.length, size).map((members) => {
     const setters = members.map((i) => own[i] as Combatant).filter((mine) => weatherOf(mine));
+    const shares = speedControlShares(ownRead, members, settings);
     const duels = own.map((_, i) =>
       members.includes(i)
-        ? foes.map((foe, f) => duel(i, f, [...setters, foe.combatant]))
+        ? foes.map((foe, f) =>
+            blendedDuel(duel, i, f, [...setters, foe.combatant], shares, situation.me),
+          )
         : foes.map(() => 0),
     );
     const average = duels.map((row) => row.reduce((a, b) => a + b, 0) / Math.max(1, row.length));
@@ -296,6 +421,29 @@ function doublesOptions(
       score: coverage(duels, members, settings.averageWeight),
     };
   });
+}
+
+/**
+ * One team as a whole (`readTeam`): ties between groups broken by their coverage and between
+ * lead pairs by their average duel, from that team's side (`rows`: its duels when it brings
+ * `members`, with the speed control they set up).
+ */
+function readSide(
+  read: readonly MemberRead[],
+  rows: (members: readonly number[]) => number[][],
+  size: number,
+  leadsPerSide: number,
+  settings: PreviewSettings,
+): TeamReading {
+  const all = read.map((_, index) => index);
+  const averages = rows(all).map((row) => row.reduce((a, b) => a + b, 0) / Math.max(1, row.length));
+  return readTeam(
+    read,
+    size,
+    leadsPerSide,
+    (group) => coverage(rows(group), group, settings.averageWeight),
+    (member) => averages[member] ?? 0,
+  );
 }
 
 /**

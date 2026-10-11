@@ -1,8 +1,9 @@
 /**
  * What the level 3 bot reads of both teams at team preview, in the explanation's terms
  * (`PreviewAnalysis`): the role and speed of each of the other player's Pokémon, how fast the
- * bot's own are next to them and how many hits each side needs to knock the other out. Pure:
- * it never touches the random generator, so it cannot change a decision.
+ * bot's own are next to them, how many hits each side needs to knock the other out and both
+ * teams as a whole (their archetypes, `readTeam`). Pure: it never touches the random
+ * generator, so it cannot change a decision.
  */
 import type {
   PreviewAnalysis,
@@ -10,6 +11,7 @@ import type {
   PreviewRival,
   PreviewRole,
   SpeedComparison,
+  TeamReading,
 } from '@colleja/core';
 import { getMove, type MoveId } from '@colleja/data';
 import { type Combatant, effectiveSpeed, makeCombatant } from './combatant';
@@ -65,6 +67,8 @@ export interface PreviewInputs {
   brought: readonly number[];
   /** 0–1 per foe: chance that the player leads with it. */
   lead: readonly number[];
+  /** Both teams as a whole (`readTeam`). */
+  teams: { rival: TeamReading; own: TeamReading };
 }
 
 export function readPreview(situation: Situation, inputs: PreviewInputs): PreviewAnalysis {
@@ -104,6 +108,7 @@ export function readPreview(situation: Situation, inputs: PreviewInputs): Previe
     rivals: order.map((f) => rivals[f] as PreviewRival),
     own: own.map((mine) => ({ species: mine.set.species, speed: effectiveSpeed(mine) })),
     matchups,
+    teams: inputs.teams,
   };
 }
 
