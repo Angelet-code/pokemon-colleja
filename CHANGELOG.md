@@ -29,6 +29,30 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 - Con `npm run dev`, abrir la web en el puerto del servidor (3001) mostraba `apps/web/dist`, una compilación que podía ser vieja (por ejemplo, con los iconos Gen 8 pixelados en lugar de los renders de Champions). Ahora el servidor de desarrollo redirige las páginas a Vite (`WEB_DEV_URL`, que pone `npm run dev`).
 
+### Fase 15 — El nivel 3 lee el equipo entero (2026-10-11)
+
+#### Añadido
+
+- **Arquetipos en la vista previa del nivel 3** ([ADR-0017](docs/adr/0017-arquetipos-en-la-vista-previa.md), [brief](docs/fases/fase-15.md)): lee cada equipo entero (`analysis/team-read.ts`): Espacio Raro, Viento Afín, lluvia, sol, arena, nieve y potenciarse con apoyo (Sorpresa o redirección), quién los pone y quién los aprovecha (como probabilidad sobre los sets que considera), el grupo que mejor los mantiene juntos y, en dobles, la pareja de salida que arranca el plan.
+- **En dobles decide**: los duelos de cada grupo se mezclan con los mismos duelos bajo el Espacio Raro o el Viento Afín que pone ese grupo (`fieldShare` en `PREVIEW_SETTINGS`, `Situation.withSpeedControl`). Así trae al inductor con sus atacantes lentos o rápidos (antes dejaba fuera a Farigiraf). Individuales, sin cambios.
+- **«Pensamiento del bot»**: antes de lo demás, qué pinta tiene tu equipo («Tu equipo parece de Espacio Raro: lo pone Farigiraf y lo aprovechan Torkoal y Kingambit») y los que mejor encajan para ese plan con su pareja de salida. La lectura del suyo, solo con equipo abierto y en el replay. `PreviewAnalysis.teams` (core, protocol; opcional, los replays viejos siguen valiendo).
+- **Arena con tus rivales**: `npm run arena -- --teams rivales` (o una carpeta de equipos) juega con un conjunto de equipos en lugar de aleatorios; cada par saca dos distintos por semilla.
+
+#### Cambiado
+
+- «y» pasa a «e» delante de un sonido «i» en las frases del bot («Kingambit e Incineroar»).
+
+#### Medido
+
+Nivel 3 contra nivel 2 en dobles, mismas semillas, 3 tandas de 600 combates por conjunto:
+
+| | Antes | Ahora |
+|---|---|---|
+| Tus 26 rivales guardados | 76,9 % | **78,6 %** (+1,7; +3,4, +0,7 y +1,2 en cada tanda) |
+| Equipos aleatorios | 80,1 % | 79,2 % (−0,9, dentro del ruido) |
+
+Sumar puntos sueltos por arquetipo, sin cambiar los duelos, no ganaba nada (76,2 %). La vista previa en dobles tarda ≈ 14 ms (+1–3 ms).
+
 ### Fase 14 — El nivel 3 piensa en la vista previa (2026-10-10)
 
 #### Añadido
