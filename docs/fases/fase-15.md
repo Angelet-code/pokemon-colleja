@@ -36,6 +36,15 @@ En dobles, la predicción de tu vista previa no mejoró la elección (fase 14): 
 
 Lo mínimo para aguantar un golpe concreto o superar a alguien en velocidad, y el resto al ataque. Se apoya en `estimateDamage` (servidor) y `championsStats`.
 
+### G. Vista previa del bot menos predecible (pedida por el usuario el 2026-10-11)
+
+Hoy el bot elige en la vista previa **la opción de más puntuación** más un ruido pequeño (`PREVIEW_SETTINGS.noise`: 0–1 punto en individuales, 0–2 en dobles, sobre coberturas de ≈ 200 puntos). Con los mismos 6 enfrente trae casi siempre los mismos Pokémon y los mismos líderes: solo cambia en casi empates. Un jugador puede leerlo y aprovecharlo.
+
+- Elegir **con probabilidad entre las mejores opciones** (estrategia mixta): por ejemplo, softmax con temperatura sobre las opciones que estén a menos de X puntos de la mejor, en lugar de quedarse siempre con la primera. Todo con el generador sembrado (misma semilla → misma elección) y los pesos en `PREVIEW_SETTINGS`.
+- Vale para los dos modos (en dobles, sobre la cobertura del nivel 2; en individuales, sobre la cadena de equipo completo).
+- **Medir con el arena** contra la referencia (mismas semillas, ≥ 600 combates por modo) que la fuerza no baja más allá del ruido, y medir la variedad: cuántos grupos y líderes distintos elige contra el mismo equipo con semillas distintas.
+- Cabe junto a **D** (aprender tus vistas previas): un bot que aprende de ti y tú que no puedes leerle.
+
 ## Recomendación
 
 **A** para el objetivo del usuario (montar su equipo); después **B** (reutiliza la lectura de la vista previa) o **C**.
