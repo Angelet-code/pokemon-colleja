@@ -1,9 +1,11 @@
 /**
- * Bot arena CLI: plays bot vs bot battles with random teams and reports the win rate.
+ * Bot arena CLI: plays bot vs bot battles with random teams (or a pool, `--teams`) and reports
+ * the win rate.
  *
  *   npm run arena -- --a 2 --b 0                    # 100 battles per mode, both modes
  *   npm run arena -- --a 2 --b 1 --battles 500      # more battles
  *   npm run arena -- --a 1 --b 0 --mode doubles     # one mode
+ *   npm run arena -- --a 3 --b 2 --mode doubles --teams rivales   # the saved rivals
  *   npm run arena -- --help
  *
  * Battles that fail or send an invalid choice are saved to `storage/arena/` as replays
@@ -16,6 +18,7 @@ import { parseArgs } from 'node:util';
 import { type BotLevel, botLevelInfo, isBotLevel } from '@colleja/bot';
 import type { GameMode } from '@colleja/data';
 import { type ArenaResult, runArena } from './arena';
+import { loadPool, SAVED_RIVALS } from './pool';
 
 const OUTPUT = fileURLToPath(new URL('../../../storage/arena/', import.meta.url));
 
@@ -28,6 +31,9 @@ const USAGE = `Uso: npm run arena -- [opciones]
   --seed <texto>                 Semilla base (mismos parámetros = mismos combates). Por defecto: arena
   --no-preview                   Sin vista previa
   --open-team-sheets             Equipos abiertos (cada bot ve los sets del rival)
+  --teams ${SAVED_RIVALS}|<carpeta>       Equipos de un conjunto en lugar de aleatorios: tus rivales
+                                 guardados del modo o los ficheros de una carpeta (JSON o
+                                 texto de Showdown). Cada par, dos distintos al azar
   -h, --help                     Esta ayuda`;
 
 function fail(message: string): never {
@@ -104,6 +110,9 @@ async function main(): Promise<number> {
     console.log(
       `\nArena · A = ${name(a)} contra B = ${name(b)} · ${label} · ${battles} combates · semilla "${values.seed}"`,
     );
+    const pool = values.teams ? loadPool(values.teams, mode) : undefined;
+    if (pool && pool.length < 2) fail(`--teams necesita al menos dos equipos de ${label}.`);
+    if (pool) console.log(`  Equipos: ${pool.length} (${values.teams})`);
     const step = Math.max(1, Math.round(battles / 10));
     const result = await runArena({
       a,
@@ -113,6 +122,7 @@ async function main(): Promise<number> {
       seed: values.seed,
       teamPreview: !values['no-preview'],
       openTeamSheets: values['open-team-sheets'],
+      ...(pool ? { teams: pool.map((team) => team.members) } : {}),
       onBattle: (record) => {
         if ((record.index + 1) % step === 0 && process.stdout.isTTY) {
           process.stdout.write(`  … ${record.index + 1}/${battles}\r`);
@@ -135,6 +145,7 @@ function parse() {
       seed: { type: 'string', default: 'arena' },
       'no-preview': { type: 'boolean', default: false },
       'open-team-sheets': { type: 'boolean', default: false },
+      teams: { type: 'string' },
       help: { type: 'boolean', short: 'h', default: false },
     },
   }).values;

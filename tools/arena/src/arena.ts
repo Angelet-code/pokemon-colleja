@@ -1,10 +1,11 @@
 /**
- * Bot vs bot tournaments to measure the bot levels. Teams come from `@colleja/teamgen`; each
- * pair of teams is played twice, swapping which bot gets which team (and side), to cancel out
- * team bias. Everything derives from one base seed, so a run is reproducible.
+ * Bot vs bot tournaments to measure the bot levels. Teams come from `@colleja/teamgen` or from
+ * a fixed pool (`teams`, e.g. the saved rivals); each pair of teams is played twice, swapping
+ * which bot gets which team (and side), to cancel out team bias. Everything derives from one
+ * base seed, so a run is reproducible.
  */
 import { type BotLevel, createBot } from '@colleja/bot';
-import type { SideId } from '@colleja/core';
+import { type PokemonSet, SeededRandom, type SideId } from '@colleja/core';
 import type { GameMode } from '@colleja/data';
 import { playBotBattle, type ReplayData } from '@colleja/engine';
 import { generateTeam } from '@colleja/teamgen';
@@ -18,6 +19,11 @@ export interface ArenaOptions {
   seed: string;
   teamPreview?: boolean;
   openTeamSheets?: boolean;
+  /**
+   * Teams to draw each pair from (two different ones per pair) instead of random teams. They
+   * must be legal in `mode`.
+   */
+  teams?: readonly PokemonSet[][];
   /** Called after every battle (progress). */
   onBattle?: (record: BattleRecord) => void;
 }
@@ -47,7 +53,7 @@ export interface BattleRecord {
 }
 
 export interface ArenaResult {
-  options: Omit<ArenaOptions, 'onBattle'>;
+  options: Omit<ArenaOptions, 'onBattle' | 'teams'>;
   battles: number;
   wins: { a: number; b: number; tie: number; error: number };
   /** Bot A's win rate over finished battles (ties count half). */
@@ -78,8 +84,7 @@ export function wilsonInterval(successes: number, total: number, z = 1.96): [num
 export async function playArenaBattle(options: ArenaOptions, index: number): Promise<BattleRecord> {
   const { mode, seed } = options;
   const pair = Math.floor(index / 2);
-  const teamX = generateTeam(mode, { seed: `${seed}:${mode}:${pair}:x` });
-  const teamY = generateTeam(mode, { seed: `${seed}:${mode}:${pair}:y` });
+  const [teamX, teamY] = pairTeams(options, pair);
   // Even battles: A plays team X on p1. Odd: B plays team X on p1 and A gets team Y.
   const aSide: SideId = index % 2 === 0 ? 'p1' : 'p2';
   const bSide: SideId = aSide === 'p1' ? 'p2' : 'p1';
@@ -124,6 +129,22 @@ export async function playArenaBattle(options: ArenaOptions, index: number): Pro
   return record;
 }
 
+/** The two teams of a pair: random ones, or two different ones drawn from the pool. */
+export function pairTeams(options: ArenaOptions, pair: number): [PokemonSet[], PokemonSet[]] {
+  const { mode, seed, teams } = options;
+  if (!teams) {
+    return [
+      generateTeam(mode, { seed: `${seed}:${mode}:${pair}:x` }),
+      generateTeam(mode, { seed: `${seed}:${mode}:${pair}:y` }),
+    ];
+  }
+  if (teams.length < 2) throw new Error('The team pool needs at least two teams.');
+  const random = new SeededRandom(`${seed}:${mode}:${pair}:pool`);
+  const x = random.int(teams.length);
+  const y = (x + 1 + random.int(teams.length - 1)) % teams.length;
+  return [teams[x] as PokemonSet[], teams[y] as PokemonSet[]];
+}
+
 export async function runArena(options: ArenaOptions): Promise<ArenaResult> {
   const records: BattleRecord[] = [];
   for (let index = 0; index < options.battles; index++) {
@@ -144,7 +165,7 @@ export function summarize(options: ArenaOptions, records: readonly BattleRecord[
     a: sum(records.map((record) => record.decisions.a)),
     b: sum(records.map((record) => record.decisions.b)),
   };
-  const { onBattle: _, ...rest } = options;
+  const { onBattle: _, teams: _teams, ...rest } = options;
   return {
     options: rest,
     battles: records.length,

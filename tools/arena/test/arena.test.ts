@@ -1,5 +1,6 @@
+import { generateTeam } from '@colleja/teamgen';
 import { describe, expect, it } from 'vitest';
-import { playArenaBattle, runArena, wilsonInterval } from '../src/arena';
+import { pairTeams, playArenaBattle, runArena, wilsonInterval } from '../src/arena';
 
 describe('arena', () => {
   it('plays the battles, swaps sides and counts the results', async () => {
@@ -39,6 +40,21 @@ describe('arena', () => {
     expect(first.fingerprint).toMatch(/^[0-9a-f]{64}$/);
     expect(again.fingerprint).toBe(first.fingerprint);
     expect(other.fingerprint).not.toBe(first.fingerprint);
+  });
+
+  it('draws two different teams of the pool per pair, by seed', async () => {
+    const teams = ['x', 'y', 'z'].map((seed) => generateTeam('doubles', { seed }));
+    const options = { a: 1, b: 0, mode: 'doubles', battles: 2, seed: 'pool', teams } as const;
+    for (let pair = 0; pair < 20; pair++) {
+      const [x, y] = pairTeams(options, pair);
+      expect(teams).toContain(x);
+      expect(teams).toContain(y);
+      expect(x).not.toBe(y);
+      expect(pairTeams(options, pair)).toEqual([x, y]);
+    }
+    const result = await runArena(options);
+    expect(result.wins.error).toBe(0);
+    expect(result.options).not.toHaveProperty('teams');
   });
 
   it('computes Wilson intervals', () => {
