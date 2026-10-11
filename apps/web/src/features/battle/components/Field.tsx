@@ -156,7 +156,11 @@ function HpCard({
   const item = details?.item ?? pokemon.item;
   const ability = details?.ability ?? details?.baseAbility ?? pokemon.ability;
   return (
-    <div className="w-56 rounded-sm bg-surface/90 px-3.5 py-3 shadow-[inset_2px_0_0_var(--side)] backdrop-blur-sm sm:w-64">
+    <div
+      className={`w-56 rounded-sm bg-surface/90 px-3.5 py-3 backdrop-blur-sm sm:w-64 ${
+        rival ? 'shadow-[inset_-2px_0_0_var(--side)]' : 'shadow-[inset_2px_0_0_var(--side)]'
+      }`}
+    >
       <div className="flex items-center justify-between gap-2">
         <span className="display truncate text-[22px]" title={pokemon.name}>
           {speciesName(pokemon.species, locale)}
