@@ -1,0 +1,7 @@
+{
+  "name": "@colleja/desktop",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Acceso directo de escritorio en Windows: abre el simulador en su propia ventana (npm run desktop:install).",
+  "type": "module"
+}

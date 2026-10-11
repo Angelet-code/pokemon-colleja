@@ -21,6 +21,7 @@
     "dev": "tsx tools/dev/src/dev.ts",
     "build": "npm run build -w @colleja/web",
     "start": "npm run build && tsx apps/server/src/main.ts",
+    "desktop:install": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/desktop/install.ps1",
     "smoke": "tsx tools/smoke/src/run.ts",
     "play": "tsx tools/cli/src/play.ts",
     "arena": "tsx tools/arena/src/run.ts",
