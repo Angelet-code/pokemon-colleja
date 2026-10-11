@@ -156,8 +156,12 @@ function HpCard({
   const item = details?.item ?? pokemon.item;
   const ability = details?.ability ?? details?.baseAbility ?? pokemon.ability;
   return (
-    <div className="w-56 rounded-sm bg-surface/90 px-3.5 py-3 shadow-[inset_2px_0_0_var(--side)] backdrop-blur-sm sm:w-64">
-      <div className="flex items-center justify-between gap-2">
+    <div
+      className={`w-56 rounded-sm bg-surface/90 px-3.5 py-3 backdrop-blur-sm sm:w-64 ${
+        rival ? 'shadow-[inset_-2px_0_0_var(--side)]' : 'shadow-[inset_2px_0_0_var(--side)]'
+      }`}
+    >
+      <div className={`flex items-center justify-between gap-2 ${rival ? 'flex-row-reverse' : ''}`}>
         <span className="display truncate text-[22px]" title={pokemon.name}>
           {speciesName(pokemon.species, locale)}
         </span>
@@ -170,7 +174,7 @@ function HpCard({
           )}
         </span>
       </div>
-      <ul className="mt-1.5 flex gap-1" aria-label="Tipos">
+      <ul className={`mt-1.5 flex gap-1 ${rival ? 'justify-end' : ''}`} aria-label="Tipos">
         {currentTypes(pokemon).map((type) => (
           <li key={type}>
             <TypeBadge type={type} locale={locale} />
@@ -178,12 +182,19 @@ function HpCard({
         ))}
       </ul>
       <HpBar percent={percent} tone={hpTone(percent)} />
-      <div className="mt-1.5 flex justify-between font-display text-sm font-semibold tabular-nums">
+      <div
+        className={`mt-1.5 flex font-display text-sm font-semibold tabular-nums ${
+          rival ? 'justify-end' : 'justify-between'
+        }`}
+      >
         <span>{rival ? `${Math.round(percent)} %` : `${pokemon.hp} / ${pokemon.maxhp} PS`}</span>
         {!rival && <span className="text-muted">{Math.round(percent)} %</span>}
       </div>
       {boosts.length > 0 && (
-        <ul className="mt-1.5 flex flex-wrap gap-1" aria-label="Cambios de características">
+        <ul
+          className={`mt-1.5 flex flex-wrap gap-1 ${rival ? 'justify-end' : ''}`}
+          aria-label="Cambios de características"
+        >
           {boosts.map((boost) => (
             <li key={boost.label}>
               <Chip tone={boost.value > 0 ? 'good' : 'bad'}>{boost.label}</Chip>
@@ -192,7 +203,9 @@ function HpCard({
         </ul>
       )}
       {(item || ability) && (
-        <p className="mt-1.5 flex items-center gap-1 text-xs text-muted">
+        <p
+          className={`mt-1.5 flex items-center gap-1 text-xs text-muted ${rival ? 'justify-end' : ''}`}
+        >
           <span className="truncate">
             {ability && abilityName(ability, locale)}
             {ability && item ? ' · ' : ''}
