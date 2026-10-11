@@ -9,7 +9,7 @@ Decisión de arquitectura: [ADR-0002](../adr/0002-pipeline-de-datos.md).
 | Comando | Qué hace |
 |---|---|
 | `npm run data:build` | Regenera `packages/data/generated/` (≈2 s; la primera vez descarga los CSV de PokeAPI a una caché local) |
-| `npm run data:sprites` | Descarga los sprites a `assets/sprites/` (no versionado). Admite `-- --shiny` y `-- --force` |
+| `npm run data:sprites` | Descarga los sprites a `assets/sprites/` (no versionado). Incluye los shiny (`-- --no-shiny` los omite). Admite `-- --force` |
 
 Después de un `data:build`, revisa siempre el diff de `packages/data/generated/`: refleja exactamente qué ha cambiado en los datos del juego.
 

@@ -173,6 +173,8 @@ export interface ReplaySummary {
   players: { p1: string; p2: string };
   /** Teams as species, for the icons. */
   species: { p1: string[]; p2: string[] };
+  /** Whether each member (same order as `species`) is shiny. */
+  shiny: { p1: boolean[]; p2: boolean[] };
   winner: z.infer<typeof SideIdSchema> | null;
   turns: number;
   botLevel: z.infer<typeof BotLevelSchema>;

@@ -55,7 +55,7 @@ export function MemberList({
                 aria-current={active ? 'true' : undefined}
                 className="flex min-w-0 flex-1 items-center gap-2.5 py-1.5 pr-1 pl-2 text-left"
               >
-                <PokemonIcon species={set.species} size={44} />
+                <PokemonIcon species={set.species} shiny={set.shiny} size={44} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-semibold">{set.nickname ?? name}</span>
                   <span className="flex items-center gap-1 text-xs text-faint">

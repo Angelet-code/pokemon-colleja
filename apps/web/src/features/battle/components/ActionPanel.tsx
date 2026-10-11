@@ -6,6 +6,7 @@
 import {
   type BattleView,
   type Choice,
+  detailsShiny,
   type MoveOption,
   type MoveRequest,
   moveAction,
@@ -387,7 +388,13 @@ function TargetPicker({
                 : 'border-accent-fg/40 hover:border-accent-fg'
             }`}
           >
-            {pokemon && <PokemonIcon species={pokemon.species} size={40} />}
+            {pokemon && (
+              <PokemonIcon
+                species={pokemon.species}
+                shiny={detailsShiny(pokemon.details)}
+                size={40}
+              />
+            )}
             <span className="min-w-0 flex-1">
               <span className="block truncate font-semibold">{label}</span>
               <span className={`eyebrow ${rival ? 'text-rival' : 'text-accent-fg'}`}>
@@ -438,7 +445,7 @@ function SwitchList({
             disabled={disabled}
             className="flex items-center gap-2.5 rounded-sm border border-line bg-surface-2 py-1 pr-2.5 pl-1 text-left transition-colors hover:border-text/60 hover:bg-surface-3 disabled:opacity-35"
           >
-            <PokemonIcon species={species} size={40} />
+            <PokemonIcon species={species} shiny={detailsShiny(entry.details)} size={40} />
             <span className="flex min-w-24 flex-col gap-1">
               <span className="flex items-baseline justify-between gap-2 text-sm font-semibold">
                 {speciesName(species, locale)}
@@ -498,7 +505,13 @@ function EffectLine({
         .filter(Boolean)
         .join('\n')}
     >
-      {showTarget && <PokemonIcon species={target.pokemon.species} size={24} />}
+      {showTarget && (
+        <PokemonIcon
+          species={target.pokemon.species}
+          shiny={detailsShiny(target.pokemon.details)}
+          size={24}
+        />
+      )}
       <span className={`w-11 shrink-0 font-display font-semibold ${level?.tone ?? ''}`}>
         {level?.label}
       </span>

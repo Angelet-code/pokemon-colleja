@@ -19,6 +19,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ### Corregido
 
+- **Shiny**: el interruptor del teambuilder ya cambia el sprite, y los shiny se ven **en todas partes**: miniaturas del editor, listas de equipos y rivales, inicio de combate, calculadora, replays y combate (vista previa, campo, cambios y objetivos). En combate salen de los `details` (`detailsShiny` de core; `BattleView` guarda `previewShiny`) y en las listas de `shiny` de `TeamSummary` y `ReplaySummary`. `npm run data:sprites` descarga ahora también los shiny (`--no-shiny` los omite); si falta uno, se usa el normal.
 - Calculadora: la ficha salía en **forma Mega** (sprite, tipos y stats) con solo llevar la megapiedra, aunque el interruptor «Mega» estuviera apagado y el cálculo usara la forma base. Ahora la forma la manda el interruptor; activarlo **equipa la megapiedra** si no la lleva (antes no se podía), y equipar una lo activa. Test: `apps/web/test/calc-store.test.ts`.
 - En «Nuevo combate», los nombres largos de equipos y rivales guardados ensanchaban la lista y se salían del panel; ahora se recortan.
 - Nivel 1 en dobles: con dos Pokémon capaces de megaevolucionar en el campo, la segunda posición pasaba turno (todas sus opciones llevaban mega). Ahora ataca sin megaevolucionar.

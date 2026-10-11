@@ -12,6 +12,7 @@ export function summarize(team: Team, updatedAt: string): TeamSummary {
     name: team.name,
     mode: team.mode,
     species: team.members.map((member) => member.species),
+    shiny: team.members.map((member) => Boolean(member.shiny)),
     valid: problems.length === 0,
     problems,
     updatedAt,

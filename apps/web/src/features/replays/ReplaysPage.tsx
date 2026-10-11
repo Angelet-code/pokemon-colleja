@@ -155,14 +155,14 @@ function ReplayCard({
         <span className="flex">
           {summary.species.p1.map((species, index) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: team order is the identity.
-            <PokemonIcon key={index} species={species} size={34} />
+            <PokemonIcon key={index} species={species} shiny={summary.shiny.p1[index]} size={34} />
           ))}
         </span>
         <span className="display text-sm text-faint italic">vs</span>
         <span className="flex">
           {summary.species.p2.map((species, index) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: team order is the identity.
-            <PokemonIcon key={index} species={species} size={34} />
+            <PokemonIcon key={index} species={species} shiny={summary.shiny.p2[index]} size={34} />
           ))}
         </span>
       </div>

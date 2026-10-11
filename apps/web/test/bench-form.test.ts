@@ -15,6 +15,7 @@ const team = (id: string, valid = true): TeamSummary => ({
   name: `Equipo ${id}`,
   mode: 'doubles',
   species: [],
+  shiny: [],
   valid,
   problems: valid ? [] : ['Mal'],
   updatedAt: '2026-10-09T00:00:00.000Z',

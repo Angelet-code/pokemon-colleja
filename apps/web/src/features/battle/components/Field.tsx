@@ -5,7 +5,7 @@
  * request (exact HP, item, ability).
  */
 import type { BattleView, RequestPokemon, SideId, ViewPokemon } from '@colleja/core';
-import { currentTypes, parseCondition } from '@colleja/core';
+import { currentTypes, detailsShiny, parseCondition } from '@colleja/core';
 import { type Locale, toId } from '@colleja/data';
 import { abilityName, itemName, speciesName, statusName, statusShort } from '@colleja/narration';
 import type { CSSProperties } from 'react';
@@ -131,6 +131,7 @@ function Combatant({
         />
         <PokemonSprite
           species={pokemon.species}
+          shiny={detailsShiny(pokemon.details)}
           size={sprite}
           className={`relative transition-opacity duration-500 ${pokemon.fainted ? 'opacity-0' : ''} ${rival ? '' : '-scale-x-100'}`}
         />
@@ -250,6 +251,7 @@ function TeamStrip({
           const condition = parseCondition(entry.condition);
           return {
             species: toId(entry.details.split(',')[0] ?? ''),
+            shiny: detailsShiny(entry.details),
             fainted: condition.fainted,
             active: entry.active,
           };
@@ -274,7 +276,12 @@ function TeamStrip({
               : ''
           }
         >
-          <PokemonIcon species={member.species} size={32} fainted={member.fainted} />
+          <PokemonIcon
+            species={member.species}
+            shiny={member.shiny}
+            size={32}
+            fainted={member.fainted}
+          />
         </li>
       ))}
     </ul>
@@ -286,10 +293,11 @@ function rivalMembers(view: BattleView) {
   const seen = new Map(side.pokemon.map((pokemon) => [pokemon.baseSpecies, pokemon]));
   const species =
     side.preview.length > 0 ? side.preview : side.pokemon.map((pokemon) => pokemon.baseSpecies);
-  return species.map((id) => {
+  return species.map((id, index) => {
     const pokemon = seen.get(id) ?? side.pokemon.find((entry) => entry.species === id);
     return {
       species: pokemon?.species ?? id,
+      shiny: pokemon ? detailsShiny(pokemon.details) : (side.previewShiny[index] ?? false),
       fainted: pokemon?.fainted ?? false,
       active: pokemon?.position !== null && pokemon?.position !== undefined,
     };

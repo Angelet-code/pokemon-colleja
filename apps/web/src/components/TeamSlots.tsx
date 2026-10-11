@@ -4,11 +4,14 @@ import { PokemonIcon } from './PokemonIcon';
 
 export function TeamSlots({
   species,
+  shiny = [],
   size = 6,
   hidden = false,
   label,
 }: {
   species: string[];
+  /** Whether each member (same order as `species`) is shiny. */
+  shiny?: boolean[];
   size?: number;
   /** The team exists but is not known yet (random rival). */
   hidden?: boolean;
@@ -26,7 +29,7 @@ export function TeamSlots({
             className="flex aspect-square items-center justify-center rounded-sm bg-surface-2"
           >
             {id ? (
-              <PokemonIcon species={id} size={64} />
+              <PokemonIcon species={id} shiny={shiny[index]} size={64} />
             ) : (
               <span className="display text-2xl text-line-strong" aria-hidden="true">
                 {hidden ? '?' : '–'}

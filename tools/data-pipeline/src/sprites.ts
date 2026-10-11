@@ -3,8 +3,8 @@
  * assets/sprites/. That folder is gitignored: the artwork is © Nintendo / The Pokémon Company and
  * is only kept locally for this personal project.
  *
- *   npm run data:sprites              # Champions renders and item sprites
- *   npm run data:sprites -- --shiny   # also shiny renders
+ *   npm run data:sprites                 # Champions renders (normal and shiny) and item sprites
+ *   npm run data:sprites -- --no-shiny   # skip the shiny renders
  *   npm run data:sprites -- --force   # re-download existing files
  *
  * Files are named by Showdown id: assets/sprites/pokemon/charizardmegay.png, items/leftovers.png…
@@ -36,8 +36,9 @@ const REMOTE_PATHS: Record<SpriteKind, (key: string) => string> = {
 const CONCURRENCY = 8;
 
 const { values } = parseArgs({
+  allowNegative: true,
   options: {
-    shiny: { type: 'boolean', default: false },
+    shiny: { type: 'boolean', default: true },
     force: { type: 'boolean', default: false },
   },
 });

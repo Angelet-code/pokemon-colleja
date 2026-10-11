@@ -123,20 +123,23 @@ export function SetupPage() {
       ? {
           name: savedTeam?.name ?? null,
           species: savedTeam?.species ?? [],
+          shiny: savedTeam?.shiny ?? [],
           status: savedTeam && <LegalityChip problems={savedTeam.problems} />,
         }
       : {
           name: teamCheck.sets.length > 0 ? 'Pegado' : null,
           species: teamCheck.sets.map((set) => set.species),
+          shiny: teamCheck.sets.map((set) => Boolean(set.shiny)),
           status: teamCheck.sets.length > 0 && <LegalityChip problems={teamCheck.problems} />,
         };
   const theirs =
     form.opponentKind === 'random'
-      ? { name: 'Aleatorio', species: [], status: null }
+      ? { name: 'Aleatorio', species: [], shiny: [], status: null }
       : form.opponentKind === 'saved'
         ? {
             name: savedOpponent?.name ?? null,
             species: savedOpponent?.species ?? [],
+            shiny: savedOpponent?.shiny ?? [],
             status:
               savedOpponent &&
               (savedOpponent.valid ? (
@@ -148,6 +151,7 @@ export function SetupPage() {
         : {
             name: rivalCheck.sets.length > 0 ? 'Pegado' : null,
             species: rivalCheck.sets.map((set) => set.species),
+            shiny: rivalCheck.sets.map((set) => Boolean(set.shiny)),
             status: rivalCheck.sets.length > 0 && <LegalityChip problems={rivalCheck.problems} />,
           };
 
@@ -186,6 +190,7 @@ export function SetupPage() {
           name={mine.name}
           status={mine.status}
           species={mine.species}
+          shiny={mine.shiny}
           source={
             <Segmented
               label="Origen de tu equipo"
@@ -254,6 +259,7 @@ export function SetupPage() {
           name={theirs.name}
           status={theirs.status}
           species={theirs.species}
+          shiny={theirs.shiny}
           hidden={form.opponentKind === 'random'}
           source={
             <Segmented
@@ -403,6 +409,7 @@ function Side({
   name,
   status,
   species,
+  shiny,
   hidden = false,
   children,
 }: {
@@ -412,6 +419,8 @@ function Side({
   name: string | null;
   status: ReactNode;
   species: string[];
+  /** Whether each member (same order as `species`) is shiny. */
+  shiny: boolean[];
   hidden?: boolean;
   children?: ReactNode;
 }) {
@@ -436,7 +445,12 @@ function Side({
           </span>
           {status}
         </div>
-        <TeamSlots species={species} hidden={hidden} label={`Pokémon de ${title.toLowerCase()}`} />
+        <TeamSlots
+          species={species}
+          shiny={shiny}
+          hidden={hidden}
+          label={`Pokémon de ${title.toLowerCase()}`}
+        />
       </div>
       {children && <div className="p-2">{children}</div>}
     </section>

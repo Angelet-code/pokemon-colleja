@@ -47,7 +47,7 @@ export function SavedCard({
       <div className="flex min-h-10 gap-0.5" aria-hidden="true">
         {summary.species.map((species, index) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: members have no id; the order is the identity.
-          <PokemonIcon key={index} species={species} size={40} />
+          <PokemonIcon key={index} species={species} shiny={summary.shiny[index]} size={40} />
         ))}
         {summary.species.length === 0 && (
           <span className="eyebrow self-center text-faint">Vacío</span>

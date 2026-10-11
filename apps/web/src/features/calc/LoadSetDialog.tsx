@@ -79,7 +79,7 @@ export function LoadSetDialog({
                 onClick={() => onPick(set)}
                 className="flex items-center gap-3 rounded-sm px-3 py-1.5 text-left text-sm transition-colors hover:bg-surface-3"
               >
-                <PokemonIcon species={set.species} size={32} />
+                <PokemonIcon species={set.species} shiny={set.shiny} size={32} />
                 <span className="font-semibold">{getName('species', set.species, locale)}</span>
                 {set.item && (
                   <span className="flex items-center gap-1 text-faint">
@@ -108,8 +108,13 @@ export function LoadSetDialog({
               </span>
               <span className="flex gap-0.5" aria-hidden="true">
                 {source.summary.species.map((species, index) => (
-                  // biome-ignore lint/suspicious/noArrayIndexKey: team order is the identity.
-                  <PokemonIcon key={index} species={species} size={28} />
+                  <PokemonIcon
+                    // biome-ignore lint/suspicious/noArrayIndexKey: team order is the identity.
+                    key={index}
+                    species={species}
+                    shiny={source.summary.shiny[index]}
+                    size={28}
+                  />
                 ))}
               </span>
             </button>

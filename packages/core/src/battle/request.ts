@@ -126,3 +126,11 @@ export function identName(ident: string): string {
 export function detailsSpecies(details: string): string {
   return details.split(',')[0]?.trim() ?? details;
 }
+
+/** Whether a details string marks a shiny: `Rillaboom, L50, M, shiny` → `true`. */
+export function detailsShiny(details: string): boolean {
+  return details
+    .split(',')
+    .slice(1)
+    .some((part) => part.trim() === 'shiny');
+}

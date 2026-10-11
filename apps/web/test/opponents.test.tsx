@@ -43,6 +43,7 @@ const SUMMARY: OpponentSummary = {
   name: 'Lluvia rival',
   mode: 'doubles',
   species: ['pelipper', 'archaludon'],
+  shiny: [false, false],
   valid: true,
   problems: [],
   updatedAt: '2026-10-08T10:00:00.000Z',

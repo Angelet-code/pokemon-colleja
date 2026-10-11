@@ -78,7 +78,7 @@ Tests E2E en el navegador con Playwright (el primero descarga Chromium una vez):
 npm run data:sprites
 ```
 
-Descarga los sprites (renders de Champions, iconos y objetos) a `assets/`, que no se versiona. La web los usa si están; si no, muestra las iniciales.
+Descarga los sprites (renders de Champions normales y shiny, iconos y objetos) a `assets/`, que no se versiona. La web los usa si están; si no, muestra las iniciales.
 
 Los datos del juego ya vienen generados en `packages/data/generated/`. Para regenerarlos tras actualizar Showdown o PokeAPI: `npm run data:build`. Más detalle en la [guía de datos](docs/guias/datos.md).
 

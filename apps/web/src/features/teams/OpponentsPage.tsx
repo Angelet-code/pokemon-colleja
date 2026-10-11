@@ -210,7 +210,7 @@ function CopyTeamDialog({
             <span className="flex flex-wrap justify-end gap-0.5" aria-hidden="true">
               {team.species.map((species, index) => (
                 // biome-ignore lint/suspicious/noArrayIndexKey: members have no id; the order is the identity.
-                <PokemonIcon key={index} species={species} size={32} />
+                <PokemonIcon key={index} species={species} shiny={team.shiny[index]} size={32} />
               ))}
             </span>
           </button>

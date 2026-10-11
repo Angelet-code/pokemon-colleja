@@ -5,7 +5,7 @@
  * consumer needs more (volatiles, remaining turns of weather…).
  */
 import { getSpecies, type SpeciesId, TYPE_NAMES, type TypeName, toId } from '@colleja/data';
-import { detailsSpecies, identName, parseCondition } from './request';
+import { detailsShiny, detailsSpecies, identName, parseCondition } from './request';
 import type { SideId } from './types';
 
 export type BoostId = 'atk' | 'def' | 'spa' | 'spd' | 'spe' | 'accuracy' | 'evasion';
@@ -58,6 +58,8 @@ export interface ViewSide {
   name: string;
   /** Species shown at team preview (`|poke|`), Showdown ids. */
   preview: SpeciesId[];
+  /** Whether each `preview` entry is shiny (same order). */
+  previewShiny: boolean[];
   /** Pokémon brought to the battle (after team preview), if known. */
   teamSize: number | null;
   /** Pokémon seen in battle, in order of appearance. */
@@ -119,9 +121,14 @@ export class BattleView {
       case 'clearpoke':
         this.sides.p1.preview = [];
         this.sides.p2.preview = [];
+        this.sides.p1.previewShiny = [];
+        this.sides.p2.previewShiny = [];
         break;
       case 'poke':
-        if (isSide(a)) this.sides[a].preview.push(toId(detailsSpecies(b)));
+        if (isSide(a)) {
+          this.sides[a].preview.push(toId(detailsSpecies(b)));
+          this.sides[a].previewShiny.push(detailsShiny(b));
+        }
         break;
       case 'teamsize':
         if (isSide(a)) this.sides[a].teamSize = Number(b);
@@ -398,7 +405,16 @@ export class BattleView {
 }
 
 function emptySide(id: SideId): ViewSide {
-  return { id, name: id, preview: [], teamSize: null, pokemon: [], active: [], conditions: {} };
+  return {
+    id,
+    name: id,
+    preview: [],
+    previewShiny: [],
+    teamSize: null,
+    pokemon: [],
+    active: [],
+    conditions: {},
+  };
 }
 
 function isTypeName(text: string): text is TypeName {

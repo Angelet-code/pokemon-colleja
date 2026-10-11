@@ -122,6 +122,7 @@ describe('/api/teams', () => {
         name: 'Borrador',
         mode: 'singles',
         species: ['incineroar', 'charizard'],
+        shiny: [false, false],
         valid: false,
         problems: ['El equipo debe tener 6 Pokémon (tiene 2).'],
       }),

@@ -97,7 +97,7 @@ npm run dev          # servidor + web: http://127.0.0.1:5173
 | `npm run arena:perf` | Velocidad de un nivel en combates fijos (un hilo) y **huella** de cada combate: `-- --save <fichero>` antes de un cambio y `-- --compare <fichero>` después dice cuánto más rápido va y si cambió alguna decisión ([guía](docs/guias/bot.md#velocidad-npm-run-arenaperf)) |
 | `npm run smoke` | Combates headless de Champions (fixtures + aleatorios). Admite `-- --random N --seed X --verbose` |
 | `npm run data:build` | Regenera `packages/data/generated/` desde Showdown + PokeAPI (determinista). Después, revisa el diff |
-| `npm run data:sprites` | Descarga los sprites a `assets/sprites/` (no versionado). Admite `-- --shiny` y `-- --force` |
+| `npm run data:sprites` | Descarga los sprites a `assets/sprites/` (no versionado). Incluye los shiny (`-- --no-shiny` los omite). Admite `-- --force` |
 | `npm test` | Vitest (`{packages,apps,tools}/*/test/**/*.test.{ts,tsx}`; los de componentes con `// @vitest-environment happy-dom`). Fuzz del bot más largo: `BOT_FUZZ_BATTLES=1000 npx vitest run packages/bot` |
 | `npm run typecheck` | `tsc --noEmit` en cada workspace (TypeScript 7) |
 | `npm run lint` / `lint:fix` | Biome (formato + lint) |

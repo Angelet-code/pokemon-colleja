@@ -92,6 +92,7 @@ export function BattlePage() {
           request={request as TeamPreviewRequest}
           team={info.team}
           rivalSpecies={screen.view.sides.p2.preview}
+          rivalShiny={screen.view.sides.p2.previewShiny}
           rivalTeam={info.opponentTeam}
           mode={info.mode}
           onChoose={battle.choose}

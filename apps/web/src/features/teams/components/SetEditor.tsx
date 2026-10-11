@@ -99,7 +99,7 @@ export function SetEditor({
             background: `radial-gradient(circle at 50% 62%, color-mix(in oklab, ${typeColor(shown.types[0])} 34%, transparent), transparent 68%), var(--surface-2)`,
           }}
         >
-          <PokemonSprite species={mega ?? set.species} size={128} />
+          <PokemonSprite species={mega ?? set.species} shiny={Boolean(set.shiny)} size={128} />
         </div>
 
         <div className="flex min-w-60 flex-1 flex-col gap-3">

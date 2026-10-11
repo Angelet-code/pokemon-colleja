@@ -3,6 +3,7 @@ import {
   actionsChoice,
   BattleView,
   currentTypes,
+  detailsShiny,
   formatChoice,
   getSlotOptions,
   type MoveRequest,
@@ -299,5 +300,20 @@ describe('SeededRandom', () => {
     expect(Array.from({ length: 5 }, () => b.next())).toEqual(sequence);
     expect(new SeededRandom('y').next()).not.toBe(sequence[0]);
     expect(new SeededRandom('z').shuffle([1, 2, 3, 4]).sort()).toEqual([1, 2, 3, 4]);
+  });
+});
+
+describe('detailsShiny', () => {
+  it('reads the shiny flag of a details string', () => {
+    expect(detailsShiny('Rillaboom, L50, M, shiny')).toBe(true);
+    expect(detailsShiny('Rillaboom, L50, M')).toBe(false);
+    expect(detailsShiny('Shiny-Pokemon, L50')).toBe(false);
+  });
+
+  it('keeps the shiny flag of the team preview', () => {
+    const view = new BattleView();
+    view.applyAll(['|clearpoke', '|poke|p2|Rillaboom, M, shiny|', '|poke|p2|Gengar, F|']);
+    expect(view.sides.p2.preview).toEqual(['rillaboom', 'gengar']);
+    expect(view.sides.p2.previewShiny).toEqual([true, false]);
   });
 });

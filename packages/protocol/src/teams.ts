@@ -96,6 +96,8 @@ export interface TeamSummary {
   name: string;
   mode: z.infer<typeof GameModeSchema>;
   species: string[];
+  /** Whether each member (same order as `species`) is shiny, for the icons. */
+  shiny: boolean[];
   /** Same as `problems.length === 0`, kept for readability. */
   valid: boolean;
   problems: string[];

@@ -63,6 +63,10 @@ function toSummary({ replay: saved, updatedAt }: StoredReplay): ReplaySummary {
       p1: replay.players.p1.team.map((set) => set.species),
       p2: replay.players.p2.team.map((set) => set.species),
     },
+    shiny: {
+      p1: replay.players.p1.team.map((set) => Boolean(set.shiny)),
+      p2: replay.players.p2.team.map((set) => Boolean(set.shiny)),
+    },
     winner: replay.winner ?? null,
     turns: replay.turns,
     botLevel: saved.botLevel,

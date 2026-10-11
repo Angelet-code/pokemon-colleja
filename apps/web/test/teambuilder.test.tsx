@@ -150,6 +150,7 @@ describe('TeamsPage', () => {
         name: 'Lluvia',
         mode: 'doubles',
         species: ['pelipper', 'archaludon'],
+        shiny: [false, false],
         valid: false,
         problems: ['El equipo debe tener 6 Pokémon (tiene 2).'],
         updatedAt: '2026-10-08T10:00:00.000Z',

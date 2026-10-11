@@ -426,6 +426,7 @@ describe('replay list', () => {
     mode: 'singles',
     players: { p1: 'Jugador', p2: 'Bot Experto' },
     species: { p1: ['garchomp'], p2: ['incineroar'] },
+    shiny: { p1: [false], p2: [false] },
     winner: 'p1',
     turns: 12,
     botLevel: 3,

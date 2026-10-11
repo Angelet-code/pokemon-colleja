@@ -5,7 +5,7 @@
  */
 interface SpriteManifest {
   /** Only lists the copies made in the last run: the copied files stay on disk. */
-  fallbacks?: { pokemon?: Record<string, string> };
+  fallbacks?: { pokemon?: Record<string, string>; 'pokemon-shiny'?: Record<string, string> };
   missing?: { items?: string[] };
 }
 
@@ -28,11 +28,13 @@ export async function loadSpriteManifest(): Promise<void> {
 /**
  * Champions render (128 px) of a species id (`charizardmegay`). Used at every size: all renders
  * share the same framing, so a team reads evenly (the Gen 8 menu icons lacked Gen 9 and the new
- * megas, and mixing them with renders broke the proportions).
+ * megas, and mixing them with renders broke the proportions). Shiny renders live apart and are
+ * downloaded by default (`--no-shiny` skips them).
  */
-export function pokemonSprite(species: string): string {
-  const id = manifest.fallbacks?.pokemon?.[species] ?? species;
-  return `${BASE}/pokemon/${id}.png`;
+export function pokemonSprite(species: string, shiny = false): string {
+  const kind = shiny ? 'pokemon-shiny' : 'pokemon';
+  const id = manifest.fallbacks?.[kind]?.[species] ?? species;
+  return `${BASE}/${kind}/${id}.png`;
 }
 
 export function itemSprite(item: string): string | null {

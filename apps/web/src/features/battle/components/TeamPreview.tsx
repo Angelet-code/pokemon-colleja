@@ -1,5 +1,11 @@
 /** Team preview: see the rival's six and pick yours in order (the first ones lead). */
-import { type Choice, type PokemonSet, type TeamPreviewRequest, teamChoice } from '@colleja/core';
+import {
+  type Choice,
+  detailsShiny,
+  type PokemonSet,
+  type TeamPreviewRequest,
+  teamChoice,
+} from '@colleja/core';
 import { type Locale, toId } from '@colleja/data';
 import { abilityName, itemName, moveName, speciesName } from '@colleja/narration';
 import { useState } from 'react';
@@ -12,6 +18,7 @@ export function TeamPreview({
   request,
   team,
   rivalSpecies,
+  rivalShiny = [],
   rivalTeam,
   mode,
   onChoose,
@@ -21,6 +28,8 @@ export function TeamPreview({
   /** Your sets as built (same order as the request). */
   team: PokemonSet[];
   rivalSpecies: string[];
+  /** Whether each rival Pokémon (same order as `rivalSpecies`) is shiny. */
+  rivalShiny?: boolean[];
   /** Only with Open Team Sheets. */
   rivalTeam: PokemonSet[] | null;
   mode: 'singles' | 'doubles';
@@ -60,7 +69,11 @@ export function TeamPreview({
                   }`}
                 >
                   {entry ? (
-                    <PokemonIcon species={toId(entry.details.split(',')[0] ?? '')} size={40} />
+                    <PokemonIcon
+                      species={toId(entry.details.split(',')[0] ?? '')}
+                      shiny={detailsShiny(entry.details)}
+                      size={40}
+                    />
                   ) : (
                     <span className="display text-faint">{index + 1}</span>
                   )}
@@ -118,7 +131,11 @@ export function TeamPreview({
                     >
                       {picked >= 0 ? picked + 1 : ''}
                     </span>
-                    <PokemonIcon species={species} size={40} />
+                    <PokemonIcon
+                      species={species}
+                      shiny={detailsShiny(pokemon.details)}
+                      size={40}
+                    />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-semibold">
                         {speciesName(species, locale)}
@@ -147,7 +164,7 @@ export function TeamPreview({
                   className="flex items-center gap-3 rounded-sm px-2 py-1.5"
                 >
                   <span className="size-6 shrink-0" aria-hidden="true" />
-                  <PokemonIcon species={species} size={40} />
+                  <PokemonIcon species={species} shiny={rivalShiny[index]} size={40} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-semibold">
                       {speciesName(species, locale)}
