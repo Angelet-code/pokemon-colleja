@@ -9,9 +9,18 @@
  *   the coverage by the prediction and choosing the leads against the player's likely leads
  *   lost strength in the arena (ADR-0015): the duel model misses what makes a good lead pair.
  * One Mega Evolution per side: in a lineup only the first holder fights as a Mega.
+ * Weather setters (Drizzle…) bring their weather: each duel is fought in the weather of the
+ * setters involved (the slowest one's), and an own group is valued in the weather its setters
+ * bring (ADR-0016), so a rain team's Swift Swim and Water moves count only with Pelipper.
  */
 import type { SeededRandom } from '@colleja/core';
-import { type Combatant, makeCombatant, megaSpeciesOf } from '../analysis/combatant';
+import {
+  type Combatant,
+  makeCombatant,
+  megaSpeciesOf,
+  weatherAfter,
+  weatherOf,
+} from '../analysis/combatant';
 import { duelScore } from '../analysis/singles-plan';
 import { battleForm, type FoeMember, type Situation } from '../analysis/situation';
 import { teamChainValue } from '../analysis/team-chain';
@@ -89,7 +98,9 @@ export function planPreview(
   const own = situation.own.map((member) => battleForm(member.combatant));
   const foes = situation.foes.filter((foe) => foe.view === null);
   if (own.length === 0 || foes.length === 0) return null;
-  const duels = own.map((mine) => foes.map((foe) => duelScore(situation, mine, foe.combatant)));
+  const duel = duelTable(situation, own, foes);
+  // Each pair in its own weather (the setters among the two).
+  const duels = own.map((mine, i) => foes.map((foe, f) => duel(i, f, [mine, foe.combatant])));
   const leadsPerSide = situation.doubles ? 2 : 1;
   const foeGroups = predictGroups(duels, foes.length, picked, leadsPerSide, settings);
   const brought = foes.map((_, f) =>
@@ -103,7 +114,7 @@ export function planPreview(
   );
   const size = Math.min(picked, own.length);
   const options = situation.doubles
-    ? doublesOptions(duels, size, settings)
+    ? doublesOptions(own, foes, duel, size, settings)
     : singlesOptions(situation, own, foes, foeGroups, size, settings);
   for (const option of options) option.score += random.next() * settings.noise;
   options.sort((a, b) => b.score - a.score);
@@ -224,30 +235,67 @@ function singlesOptions(
       const group = [lead, ...members.filter((member) => member !== lead)];
       const line = lineup(group, ownBase, own);
       const score =
-        lineups.reduce(
-          (sum, entry) => sum + entry.weight * teamChainValue(situation, line, entry.line),
-          0,
-        ) / weightSum;
+        lineups.reduce((sum, entry) => {
+          // Both leads enter: the weather of their setters (later ones change it in the chain).
+          const leads = [line[0] as Combatant, entry.line[0] as Combatant];
+          const field = situation.withWeather(weatherAfter(leads, situation.field.weather));
+          return sum + entry.weight * teamChainValue(field, line, entry.line);
+        }, 0) / weightSum;
       return { group, leads: 1, score };
     }),
   );
 }
 
+/** Duel score of `own[mine]` against `foes[foe]` in the weather `setters` bring. */
+type DuelTable = (mine: number, foe: number, setters: readonly Combatant[]) => number;
+
+/** Duel scores by weather, each one computed once. */
+function duelTable(
+  situation: Situation,
+  own: readonly Combatant[],
+  foes: readonly FoeMember[],
+): DuelTable {
+  const cache = new Map<string, number>();
+  return (mine, foe, setters) => {
+    const weather = weatherAfter(setters, situation.field.weather);
+    const key = `${mine}:${foe}:${weather}`;
+    let score = cache.get(key);
+    if (score === undefined) {
+      const attacker = own[mine] as Combatant;
+      const defender = (foes[foe] as FoeMember).combatant;
+      score = duelScore(situation.withWeather(weather), attacker, defender);
+      cache.set(key, score);
+    }
+    return score;
+  };
+}
+
 /**
  * Doubles: each own group of four by its coverage of the player's six (like level 2's
- * `selectByCoverage`, with the same noise), the two best on average leading.
+ * `selectByCoverage`, with the same noise), the two best on average leading. Each duel is
+ * fought in the weather the group's setters and that rival bring.
  */
 function doublesOptions(
-  duels: readonly (readonly number[])[],
+  own: readonly Combatant[],
+  foes: readonly FoeMember[],
+  duel: DuelTable,
   size: number,
   settings: PreviewSettings,
 ): PreviewOption[] {
-  const average = duels.map((row) => row.reduce((a, b) => a + b, 0) / Math.max(1, row.length));
-  return combinations(duels.length, size).map((members) => ({
-    group: [...members].sort((a, b) => (average[b] ?? 0) - (average[a] ?? 0)),
-    leads: Math.min(2, size),
-    score: coverage(duels, members, settings.averageWeight),
-  }));
+  return combinations(own.length, size).map((members) => {
+    const setters = members.map((i) => own[i] as Combatant).filter((mine) => weatherOf(mine));
+    const duels = own.map((_, i) =>
+      members.includes(i)
+        ? foes.map((foe, f) => duel(i, f, [...setters, foe.combatant]))
+        : foes.map(() => 0),
+    );
+    const average = duels.map((row) => row.reduce((a, b) => a + b, 0) / Math.max(1, row.length));
+    return {
+      group: [...members].sort((a, b) => (average[b] ?? 0) - (average[a] ?? 0)),
+      leads: Math.min(2, size),
+      score: coverage(duels, members, settings.averageWeight),
+    };
+  });
 }
 
 /**

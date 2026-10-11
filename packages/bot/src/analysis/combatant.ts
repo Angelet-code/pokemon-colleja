@@ -148,6 +148,39 @@ const WEATHER_SPEED: Record<string, string[]> = {
   slushrush: ['snowscape', 'snow', 'hail'],
 };
 
+/** Weather each ability sets when its holder enters the field. */
+const WEATHER_SETTERS: Record<string, string> = {
+  drizzle: 'raindance',
+  drought: 'sunnyday',
+  sandstream: 'sandstorm',
+  snowwarning: 'snowscape',
+};
+
+/** Weather `combatant` sets when it enters the field (`null` if none). */
+export function weatherOf(combatant: Combatant): string | null {
+  return WEATHER_SETTERS[combatant.ability] ?? null;
+}
+
+/**
+ * Weather after `entering` come in at once: entry abilities activate fastest first, so the
+ * slowest setter's weather stays. Without setters, `current` stays.
+ */
+export function weatherAfter(
+  entering: readonly Combatant[],
+  current: string | null,
+): string | null {
+  let weather = current;
+  let slowest = Infinity;
+  for (const combatant of entering) {
+    const set = weatherOf(combatant);
+    if (set && combatant.stats.spe < slowest) {
+      weather = set;
+      slowest = combatant.stats.spe;
+    }
+  }
+  return weather;
+}
+
 /**
  * Speed used to predict turn order: stat × boosts, paralysis, Choice Scarf, Tailwind and
  * weather abilities. An estimate (no Unburden, Quick Feet…), good enough for the heuristics.

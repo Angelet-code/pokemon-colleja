@@ -85,6 +85,8 @@ export class Situation {
     Combatant,
     WeakMap<Combatant, Map<MoveId, DamageEstimate>>
   >();
+  /** This situation under each weather (`withWeather`), shared by all of them. */
+  private weatherViews: Map<string | null, Situation> | undefined;
 
   constructor(
     readonly context: AgentContext,
@@ -100,6 +102,25 @@ export class Situation {
     this.beliefs =
       options.beliefs === 'infer' ? inferBeliefs(context, this.view, this.model) : options.beliefs;
     this.foes = this.foeMembers();
+  }
+
+  /**
+   * The same situation under another weather (fresh damage caches), e.g. what a setter will
+   * bring when it enters. Views are shared, so asking twice gives the same one.
+   */
+  withWeather(weather: string | null): Situation {
+    if (weather === this.field.weather) return this;
+    if (!this.weatherViews) this.weatherViews = new Map([[this.field.weather, this]]);
+    let view = this.weatherViews.get(weather);
+    if (!view) {
+      view = Object.create(Situation.prototype) as Situation;
+      Object.assign(view, this, {
+        field: { ...this.field, weather },
+        damageCache: new WeakMap(),
+      });
+      this.weatherViews.set(weather, view);
+    }
+    return view;
   }
 
   get doubles(): boolean {

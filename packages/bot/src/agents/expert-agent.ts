@@ -21,6 +21,7 @@ import {
   type TeamPreviewRequest,
   teamChoice,
 } from '@colleja/core';
+import { weatherAfter } from '../analysis/combatant';
 import { pickBest } from '../analysis/evaluation';
 import { readPreview } from '../analysis/preview-read';
 import { fightingForm } from '../analysis/singles-plan';
@@ -150,7 +151,9 @@ export class ExpertAgent extends TacticalAgent {
       const own = [member, ...bench.filter((other) => other !== member)].map((other) =>
         fightingForm(situation, other),
       );
-      const total = lineups.reduce((sum, foes) => sum + teamChainValue(situation, own, foes), 0);
+      // The replacement enters: its weather (Drizzle…) is the field's for the first duel.
+      const field = situation.withWeather(weatherAfter(own.slice(0, 1), situation.field.weather));
+      const total = lineups.reduce((sum, foes) => sum + teamChainValue(field, own, foes), 0);
       return [{ position, score: total / Math.max(1, lineups.length) }];
     });
     const best = pickBest(scored, this.random);

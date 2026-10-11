@@ -3,9 +3,10 @@
  * (`simulateDuel`) and, when one falls, its side sends in its best answer to the survivor,
  * until a side runs out. Unlike level 2's chain (active plus the next in line against the
  * rival on the field), it counts every remaining Pokémon of both sides, so a good matchup
- * now is worth less when the rival's bench answers it.
+ * now is worth less when the rival's bench answers it. A replacement that sets weather
+ * (Drizzle…) changes it for the duels that follow; the first duel is fought in `situation`'s.
  */
-import type { Combatant } from './combatant';
+import { type Combatant, weatherAfter } from './combatant';
 import { hpShare, type Opening, simulateDuel, withFreshness } from './duel';
 import type { Situation } from './situation';
 
@@ -33,9 +34,10 @@ export function teamChainValue(
   const theirs = foes.map(toFighter);
   let active = mine.shift();
   let rival = theirs.shift();
+  let field = situation;
   for (let duel = 0; duel < MAX_DUELS && active && rival; duel++) {
     const result = simulateDuel(
-      situation,
+      field,
       active.combatant,
       rival.combatant,
       duel === 0 ? opening : {},
@@ -48,12 +50,20 @@ export function teamChainValue(
       rival = foeLeft;
       break;
     }
-    active = result.mineHp > 0 ? mineLeft : takeBest(situation, mine, foeLeft);
-    rival = result.foeHp > 0 ? foeLeft : takeBest(situation, theirs, mineLeft);
+    const entering: Combatant[] = [];
+    active = result.mineHp > 0 ? mineLeft : enter(takeBest(field, mine, foeLeft), entering);
+    rival = result.foeHp > 0 ? foeLeft : enter(takeBest(field, theirs, mineLeft), entering);
+    field = field.withWeather(weatherAfter(entering, field.field.weather));
   }
   const share = (list: readonly (Fighter | undefined)[]) =>
     list.reduce((sum, fighter) => sum + (fighter ? hpShare(fighter.combatant, fighter.hp) : 0), 0);
   return (share([active, ...mine]) - share([rival, ...theirs])) * 100;
+}
+
+/** `fighter`, noted down as entering the field. */
+function enter(fighter: Fighter | undefined, entering: Combatant[]): Fighter | undefined {
+  if (fighter) entering.push(fighter.combatant);
+  return fighter;
 }
 
 function toFighter(combatant: Combatant): Fighter {
