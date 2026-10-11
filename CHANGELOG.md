@@ -29,6 +29,17 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 - Con `npm run dev`, abrir la web en el puerto del servidor (3001) mostraba `apps/web/dist`, una compilación que podía ser vieja (por ejemplo, con los iconos Gen 8 pixelados en lugar de los renders de Champions). Ahora el servidor de desarrollo redirige las páginas a Vite (`WEB_DEV_URL`, que pone `npm run dev`).
 
+### Fase 16 — Por qué esa salida (2026-10-11)
+
+#### Añadido
+
+- **Salidas simuladas 2 contra 2** ([ADR-0018](docs/adr/0018-parejas-de-salida-simuladas.md), [brief](docs/fases/fase-16.md)): en dobles, el nivel 3 juega tus parejas de salida contra sus salidas probables con la simulación del nivel 2 (`DoublesSim.evaluateLineup`, que ahora acepta una alineación fuera del combate y apunta lo que pasa en `SimTrace`) para predecir con quién empezarás.
+- **«Pensamiento del bot» dice por qué**, en términos de partida: por qué esperaba tu salida y por qué eligió la suya. Para montar un plan («Para montar Espacio Raro: tu Slowking lo pone y tus Camerupt, Conkeldurr y Sylveon se mueven antes que su Kingambit»), a quién pueden tumbar y en qué turno, a quién presionan, Sorpresa, Señuelo y a quién deja atrás porque un líder rival lo tumba de un golpe. `PreviewAnalysis.leads` (core, protocol; opcional, los replays viejos siguen valiendo). Con equipo cerrado, de su salida no se cuenta lo que necesita un movimiento que aún no ha usado.
+
+#### Medido
+
+Elegir la salida del bot con la simulación **perdía** con tus rivales en las 8 variantes probadas (de 79,7 % a entre 76,5 y 77,5 %; mismas semillas, 600 combates por variante): tres turnos premian el primer intercambio y no el combate entero. La salida se elige como antes (decisiones idénticas a la fase 15) y la simulación se hace solo al explicar (≈ 60 ms), así que el arena y el banco no la pagan.
+
 ### Fase 15 — El nivel 3 lee el equipo entero (2026-10-11)
 
 #### Añadido

@@ -1,55 +1,50 @@
-# Fase 16 — Propuesta de ampliaciones (por elegir)
+# Fase 16 — Parejas de salida simuladas y por qué (E2)
 
-> **Propuesta, no plan cerrado.** Escrita el 2026-10-11 al cerrar la fase 15 (la E1 de su propuesta). La siguiente sesión debe **preguntar al usuario** qué opción (o combinación) quiere, con la recomendada primero, y después convertir este fichero en el brief de la fase con el formato de [fase-15.md](fase-15.md).
-> Lee antes [AGENTS.md](../../AGENTS.md), la [guía del bot](../guias/bot.md), la de [herramientas](../guias/herramientas.md) y la del [banco](../guias/banco.md).
+> **Brief de la fase.** Escrito el 2026-10-11 a partir de la propuesta de ampliaciones (opción **E2**, elegida por el usuario). Las opciones que no se hicieron pasan a la [propuesta de la fase 17](fase-17.md).
+> Lee antes [AGENTS.md](../../AGENTS.md), la [guía del bot](../guias/bot.md), la de [herramientas](../guias/herramientas.md), [ADR-0015](../adr/0015-vista-previa-del-nivel-3.md) y [ADR-0017](../adr/0017-arquetipos-en-la-vista-previa.md).
+
+## Objetivo
+
+Que el nivel 3, en dobles, valore las **parejas de salida** jugándolas 2 contra 2 (Sorpresa con quien se potencia, inductor con sus atacantes, dos que tumban a uno) en lugar de quedarse con los dos de mejor duelo medio, y que **explique por qué** esperaba tu salida y por qué eligió la suya.
+
+## Decisión del usuario (2026-10-11)
+
+1. Como siempre: **enseña y decide si mejora** (medido con el arena); si no, solo se enseña.
+2. La explicación, **en términos de partida y no con puntuaciones**: «por un combo, para presionar a un Pokémon, para poder tumbar a alguien, para evitar algo, porque si pasa X necesitamos Y para Z». Las frases con valores («le dejaba +24») no se entienden en mitad de una partida.
 
 ## Punto de partida
 
-- El nivel 3 lee los dos equipos enteros en la vista previa ([ADR-0017](../adr/0017-arquetipos-en-la-vista-previa.md)): arquetipos (Espacio Raro, Viento Afín, climas, potenciarse con apoyo), quién los pone y quién los aprovecha, el grupo que mejor los mantiene y la pareja de salida. Lo enseña en «Pensamiento del bot» (`teamStory`).
-- En dobles, los duelos de un grupo se mezclan con los mismos duelos bajo el Espacio Raro o el Viento Afín que pone (`fieldShare`); la pareja de salida sigue siendo la de mejor duelo medio. Sumar puntos sueltos por arquetipo no ganaba fuerza.
-- El arena puede jugar con tus rivales guardados (`--teams rivales`): son la referencia para medir algo de equipo, porque los aleatorios casi nunca forman arquetipos.
-- La predicción de tus grupos sigue siendo un modelo de cobertura: no aprende de cómo eliges tú.
-- El banco (`/banco`, `npm run bench`) mide tu equipo contra tus rivales; `--screen` (criba con el nivel 2) solo existe en la terminal.
+- La vista previa de dobles elegía su grupo por cobertura (con el clima y el control de velocidad del grupo, [ADR-0017](../adr/0017-arquetipos-en-la-vista-previa.md)) y salía con los dos de mejor duelo medio.
+- `DoublesSim` (nivel 2) ya modela Sorpresa, Refuerzo, redirección, Viento Afín, Espacio Raro, pantallas y ataques en área, pero solo con los Pokémon del campo.
 
-## Opciones
+## Hechos verificados
 
-### E2. Parejas de salida simuladas (recomendada, segunda parte de la E de la fase 15)
+- Una vista previa con todas las parejas simuladas tarda ≈ 90 ms (≈ 60 ms más). Como al final no decide, se calcula solo al explicar: las decisiones y los tiempos del arena son los de la fase 15.
+- Las 8 variantes de elección de salida medidas pierden entre 2 y 3 puntos con tus rivales (tabla en el [ADR-0018](../adr/0018-parejas-de-salida-simuladas.md)): no es la predicción, ni los movimientos de estado propios, ni la temperatura. Tres turnos premian el primer intercambio; el duelo medio, rendir contra todo el equipo rival.
+- Los cálculos de las razones salen de la calculadora: «tu Slowking tumba de un golpe a su Conkeldurr» es un Psíquico con un 56 % de KO.
 
-Valorar las parejas de salida propias contra tus parejas probables con la simulación 2 contra 2 (`doubles-sim`, que ya modela Sorpresa, Refuerzo, redirección, Viento Afín, Espacio Raro, pantallas y ataques en área) o con el sandbox, partiendo de los candidatos de `readTeam` (para no simular las 15 × 6 combinaciones). Es lo que falta para que la salida monte el plan (Sorpresa + potenciador, inductor + atacante). Medir con el arena con `--teams rivales` y con aleatorios (≥ 1 200 combates cada uno, mismas semillas que la referencia de la fase 15).
+## Diseño aplicado
 
-### G. Vista previa del bot menos predecible (pedida por el usuario el 2026-10-11)
+Ver [ADR-0018](../adr/0018-parejas-de-salida-simuladas.md).
 
-Hoy el bot elige en la vista previa **la opción de más puntuación** más un ruido pequeño (`PREVIEW_SETTINGS.noise`: 0–1 punto en individuales, 0–2 en dobles, sobre coberturas de ≈ 200 puntos). Con los mismos 6 enfrente trae casi siempre los mismos Pokémon y los mismos líderes. Elegir **con probabilidad entre las mejores opciones** (softmax con temperatura sobre las que estén a menos de X puntos de la mejor), con el generador sembrado y los pesos en `PREVIEW_SETTINGS`. Medir que la fuerza no baja (arena) y la variedad (grupos y líderes distintos contra el mismo equipo con semillas distintas). Cabe junto a **D**.
+1. `DoublesSim.evaluateLineup` (alineación fuera del combate) y `SimTrace` (KOs, daño, Sorpresa, efectos).
+2. `search/lead-plan.ts` (`leadMatchup`: mejor plan del turno 1 de una pareja contra otra) y `LeadPlanner` (`search/preview.ts`, caché y alineaciones con una Mega por lado).
+3. Predicción de tu salida 2 contra 2 contra sus salidas probables (`leads` en `PREVIEW_SETTINGS`), perezosa (`PreviewPlan.leads`).
+4. `search/lead-reasons.ts`: `LeadReading` con razones `combo`, `ko`, `pressure`, `fakeout`, `redirect` y `avoid`; `PreviewAnalysis.leads` (core, protocol); censura de las suyas con equipo cerrado; frases en la web (`leadStory`).
 
-### A. Criba y varias versiones en la web
+## Tests
 
-Llevar `--screen` a la página del banco: pegar o elegir 3–6 versiones del equipo, cribarlas con el nivel 2 y comparar las dos mejores con el nivel 3 en una sola prueba, con la tabla de cada fase. Es lo que más acerca el «equipo perfecto».
+- `packages/bot/test/leads.test.ts`: una alineación se juega fuera del combate y apunta Espacio Raro y el daño; `leadMatchup` es determinista; la explicación trae tu salida esperada y la suya (que es la que trae primero) sin cambiar la decisión.
+- `apps/server/test/tools.test.ts`: en dobles, la explicación trae tu salida esperada y, de la suya, solo Pokémon vistos y ningún plan que necesite un movimiento aún no usado.
+- `packages/protocol/test/protocol.test.ts` (ida y vuelta), `apps/web/test/explanation-story.test.ts` (frases de los dos lados).
 
-### B. Tabla de daños y velocidades en el teambuilder o el banco
+## Criterios de «hecho»
 
-La lectura de la vista previa ya calcula, para dos equipos, quién es más rápido y quién tumba a quién. Llevarla a una pantalla propia: tu equipo contra cada rival guardado, hacia los dos lados, con el % de daño y la probabilidad de KO. Sobre un endpoint del servidor (la calculadora no va a la web).
+- ✅ Medido: ninguna variante mejora (−2 a −3 puntos con tus rivales). La salida se elige como antes y las decisiones son idénticas a las de la fase 15 (comprobado semilla a semilla).
+- ✅ «Pensamiento del bot» dice por qué esperaba tu salida y por qué eligió la suya, con razones de partida y sin revelar lo oculto (tests).
+- ✅ `npm run check` y `npm run e2e` en verde; CI en verde.
+- ✅ Docs: CHANGELOG, AGENTS, PLAN, README, guías del bot y de herramientas, ADR-0018 y la [propuesta de la fase 17](fase-17.md).
 
-### C. Entrenador en la vista previa y «Pinta del equipo» en el teambuilder
+## Fuera de alcance
 
-Mientras eliges tu equipo, ver **lo tuyo** de la lectura del bot (tus amenazas, sus Pokémon más rápidos que los tuyos, a quién tumbas) sin revelar sus sets. Y en el editor, un panel con la lectura de tu equipo (`readTeam` es puro y apto para navegador, pero vive en el índice de `@colleja/bot`: haría falta una entrada ligera como `@colleja/bot/opponent-model`): arquetipo, piezas que faltan, el grupo que mejor encaja y la pareja de salida. El usuario no lo eligió en la fase 15 (solo «Pensamiento del bot»).
-
-### D. El nivel 3 aprende tus vistas previas
-
-Guardar qué Pokémon traes y con cuál empiezas contra cada tipo de equipo, y ajustar la predicción (`pickTemperature`, preferencias por Pokémon) con tu historial. Medible: acierto de la predicción en tus combates guardados.
-
-### F. Optimizador de Stat Points
-
-Lo mínimo para aguantar un golpe concreto o superar a alguien en velocidad, y el resto al ataque. Se apoya en `estimateDamage` (servidor) y `championsStats`.
-
-### H. Más arquetipos en la lectura
-
-`TEAM_ARCHETYPES` no ve Intimidación en bucle (Intimidación + cambios), terrenos (Electrogénesis, Psicogénesis…), Cola Somnífera/Otra Vez, ni las inmunidades del aliado a los ataques en área (Terremoto con un volador). Añadirlos a `team-read.ts` con su test, y los terrenos al modelo (`withTerrain`, como `withWeather`).
-
-## Recomendación
-
-**E2** (completa la vista previa en dobles, que es lo que el usuario pidió en dos pasos), con **G** si cabe. Para montar su equipo, **A**.
-
-## Criterios de «hecho» (los de la opción elegida, más)
-
-- `npm run check` y `npm run e2e` en verde; CI en verde.
-- Docs: CHANGELOG, AGENTS, PLAN, README, guías y ADR si hay decisión de arquitectura, y el brief de la fase 17.
+- Una valoración de la salida que mire más allá de los primeros turnos (la pareja con el resto del equipo detrás), la vista previa menos predecible (G) y el resto de opciones: [fase 17](fase-17.md).
