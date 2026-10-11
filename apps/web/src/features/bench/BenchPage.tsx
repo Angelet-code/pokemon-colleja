@@ -462,13 +462,22 @@ function BenchFormFields({
           value={form.precision}
           onChange={(precision) => form.update({ precision })}
           options={[
-            { value: 'p10', label: '± 10', title: 'Para cuando el total se sabe con ± 10 puntos' },
+            {
+              value: 'p10',
+              label: 'Rápido ± 10',
+              title:
+                'Rápido. El % de victorias puede variar unos 10 puntos (62 % = entre 52 y 72 %)',
+            },
             {
               value: 'p5',
-              label: '± 5',
-              title: 'Para cuando el total se sabe con ± 5 puntos (unas 4 veces más combates)',
+              label: 'Fiable ± 5',
+              title: 'Más fiable. Error de unos 5 puntos, pero unas 4 veces más combates',
             },
-            { value: 'fixed', label: 'Fijo', title: 'Un número fijo de combates por rival' },
+            {
+              value: 'fixed',
+              label: 'Fijo',
+              title: 'Siempre el mismo número de combates por rival, sin parar antes',
+            },
           ]}
         />
         {form.precision === 'fixed' && (

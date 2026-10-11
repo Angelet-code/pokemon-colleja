@@ -11,7 +11,7 @@ Diseño y cifras: [ADR-0013](../adr/0013-banco-de-pruebas-con-hilos.md).
 3. **Modo** y **rivales**: por defecto, todos los rivales legales del modo (en «Ambos», todos). Puedes quitar los que no quieras.
 4. **Niveles**: el de tu bot y el de los rivales, entre Táctico (2) y Experto (3). Con los dos en Experto la diferencia la marca el equipo. La dificultad guardada de cada rival no se usa.
 5. **Precisión**:
-   - **± 10** (por defecto) o **± 5**: para cuando el intervalo del total (o de la diferencia B − A) llega a ese margen. ± 5 cuesta unas 4 veces más combates.
+   - **Rápido ± 10** (por defecto) o **Fiable ± 5**: margen de error del % de victorias. El banco se para cuando el intervalo del total (o de la diferencia B − A) cabe en ese margen: con ± 10, un 62 % significa «entre 52 y 72 %». Reducirlo a ± 5 cuesta unas 4 veces más combates.
    - **Fijo**: un número de combates por rival.
 
 La tabla se llena en vivo, con el rival más flojo arriba (en A/B, donde B pierde más). Cada fila tiene un botón para **jugar contra ese rival**, que abre «Nuevo combate» con tu equipo, ese rival y su nivel. Se puede **cancelar**, y lo jugado se guarda igual.
