@@ -11,11 +11,18 @@ export interface BenchTeam {
   members: PokemonSet[];
 }
 
-/** A rival of the bench (a saved opponent; its own difficulty is not used). */
+/** A rival of the bench (a saved opponent or a metagame team; its difficulty is not used). */
 export interface BenchOpponent {
   id: string;
   name: string;
   members: PokemonSet[];
+  /**
+   * Relative weight in the total (default 1: every rival weighs the same). Metagame teams
+   * carry their share of the metagame.
+   */
+  weight?: number;
+  /** Only these modes (default: all of the bench). A metagame team belongs to one mode. */
+  modes?: GameMode[];
 }
 
 /**
@@ -51,6 +58,8 @@ export interface Stratum {
   opponentId: string;
   opponentName: string;
   mode: GameMode;
+  /** Relative weight in the total (the rival's). */
+  weight: number;
 }
 
 /** Version A (`0`) or B (`1`). */
@@ -111,7 +120,7 @@ export interface StratumSummary extends Stratum {
 }
 
 export interface TotalSummary {
-  /** Average over strata (each rival and mode weighs the same). */
+  /** Average over strata, each with its weight (by default every rival and mode the same). */
   team: Estimate | null;
   versus?: Estimate | null;
   difference?: Estimate | null;
