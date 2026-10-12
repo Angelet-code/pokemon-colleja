@@ -16,7 +16,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { type BotLevel, botLevelInfo, isBotLevel } from '@colleja/bot';
+import { type BotLevel, botLevelInfo, isBotLevel, STANDARD_SHARE } from '@colleja/bot';
 import type { GameMode } from '@colleja/data';
 import {
   type ArenaResult,
@@ -25,7 +25,7 @@ import {
   parseSearchSettings,
   runArena,
 } from './arena';
-import { loadPool, SAVED_RIVALS } from './pool';
+import { loadPool, loadSetPriors, METAGAME, SAVED_RIVALS } from './pool';
 
 const OUTPUT = fileURLToPath(new URL('../../../storage/arena/', import.meta.url));
 
@@ -38,9 +38,10 @@ const USAGE = `Uso: npm run arena -- [opciones]
   --seed <texto>                 Semilla base (mismos parámetros = mismos combates). Por defecto: arena
   --no-preview                   Sin vista previa
   --open-team-sheets             Equipos abiertos (cada bot ve los sets del rival)
-  --teams ${SAVED_RIVALS}|<carpeta>       Equipos de un conjunto en lugar de aleatorios: tus rivales
-                                 guardados del modo o los ficheros de una carpeta (JSON o
-                                 texto de Showdown). Cada par, dos distintos al azar
+  --teams ${SAVED_RIVALS}|${METAGAME}|<carpeta>  Equipos de un conjunto en lugar de aleatorios: tus
+                                 rivales guardados del modo, los equipos del meta activo o los
+                                 ficheros de una carpeta (JSON o texto de Showdown). Cada par,
+                                 dos distintos al azar
   --fixed                        Modo de medida: cada equipo lleva 4 fijos (3 en individuales)
                                  con salida al azar, la misma en los dos combates del par, y el
                                  par es un espejo (mismos equipos, salidas y suerte; los bots
@@ -52,6 +53,11 @@ const USAGE = `Uso: npm run arena -- [opciones]
   --b-leads bot|random           Lo mismo para el bot B
   --a-settings <json>            Ajustes de búsqueda del bot A (nivel 3) sobre SEARCH_SETTINGS,
                                  p. ej. '{"learnedWeight":1}': para medir una variante
+  --a-priors ${METAGAME}                 El bot A supone para el rival los sets que se juegan (los
+                                 del meta activo, fase 22) antes que los estándar
+  --b-priors ${METAGAME}                 Lo mismo para el bot B
+  --a-standard-share <0–1>       Con --a-priors: parte del prior que conservan los sets
+                                 estándar (por defecto ${STANDARD_SHARE})
   --json <fichero>               Guarda cada combate (par, salidas, resultado) y el resumen
   -h, --help                     Esta ayuda`;
 
@@ -64,6 +70,13 @@ function leadPolicy(text: string, flag: string): LeadPolicy {
   if (text !== 'bot' && text !== 'random')
     fail(`${flag} debe ser bot o random (recibido: "${text}").`);
   return text;
+}
+
+function share(text: string): number {
+  const value = Number(text);
+  if (!(value >= 0 && value <= 1))
+    fail(`--a-standard-share debe estar entre 0 y 1 (recibido: "${text}").`);
+  return value;
 }
 
 function level(text: string, flag: string): BotLevel {
@@ -144,6 +157,10 @@ async function main(): Promise<number> {
       fail(error instanceof Error ? error.message : String(error));
     }
   }
+  for (const flag of ['a-priors', 'b-priors'] as const) {
+    const value = values[flag];
+    if (value !== undefined && value !== METAGAME) fail(`--${flag} solo admite "${METAGAME}".`);
+  }
   const name = (bot: BotLevel) => `${botLevelInfo(bot).name} (${bot})`;
   let problems = 0;
   const output: { mode: GameMode; result: ArenaResult; battles: BattleRecord[] }[] = [];
@@ -155,6 +172,13 @@ async function main(): Promise<number> {
     const pool = values.teams ? loadPool(values.teams, mode) : undefined;
     if (pool && pool.length < 2) fail(`--teams necesita al menos dos equipos de ${label}.`);
     if (pool) console.log(`  Equipos: ${pool.length} (${values.teams})`);
+    const setPriors = {
+      ...(values['a-priors'] ? { a: loadSetPriors(mode) } : {}),
+      ...(values['b-priors'] ? { b: loadSetPriors(mode) } : {}),
+    };
+    if (values['a-priors'] || values['b-priors']) {
+      console.log(`  Sets del meta: ${Object.keys(setPriors).join(' y ').toUpperCase()}`);
+    }
     const step = Math.max(1, Math.round(battles / 10));
     const records: BattleRecord[] = [];
     const result = await runArena({
@@ -172,6 +196,10 @@ async function main(): Promise<number> {
         b: leadPolicy(values['b-leads'], '--b-leads'),
       },
       ...(aSettings ? { aSettings } : {}),
+      setPriors,
+      ...(values['a-standard-share'] !== undefined
+        ? { aStandardShare: share(values['a-standard-share']) }
+        : {}),
       ...(pool ? { teams: pool.map((team) => team.members) } : {}),
       onBattle: (record) => {
         const { replay: _replay, ...kept } = record;
@@ -215,6 +243,9 @@ function parse() {
       'a-leads': { type: 'string', default: 'bot' },
       'b-leads': { type: 'string', default: 'bot' },
       'a-settings': { type: 'string' },
+      'a-priors': { type: 'string' },
+      'b-priors': { type: 'string' },
+      'a-standard-share': { type: 'string' },
       json: { type: 'string' },
       help: { type: 'boolean', short: 'h', default: false },
     },

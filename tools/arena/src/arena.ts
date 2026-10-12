@@ -12,7 +12,13 @@
  * among its four (`leads.a`/`leads.b`: `bot`) or leads at random like `fixed` (`random`): a
  * mirrored pair then measures the leads (and the play).
  */
-import { type BotLevel, createBot, SEARCH_SETTINGS, type SearchSettings } from '@colleja/bot';
+import {
+  type BotLevel,
+  createBot,
+  SEARCH_SETTINGS,
+  type SearchSettings,
+  type SetPriors,
+} from '@colleja/bot';
 import { type PokemonSet, SeededRandom, type SideId } from '@colleja/core';
 import type { GameMode } from '@colleja/data';
 import { playBotBattle, type ReplayData } from '@colleja/engine';
@@ -41,6 +47,10 @@ export interface ArenaOptions {
   leads?: { a?: LeadPolicy; b?: LeadPolicy };
   /** Search settings of bot A (level 3), over `SEARCH_SETTINGS`: to measure a variant. */
   aSettings?: Partial<SearchSettings>;
+  /** The sets each bot assumes for its rival first (fase 22; default: the standard sets). */
+  setPriors?: { a?: SetPriors; b?: SetPriors };
+  /** With `setPriors`: bot A's share of the prior left to the standard sets (a variant). */
+  aStandardShare?: number;
   /** Called after every battle (progress). */
   onBattle?: (record: BattleRecord) => void;
 }
@@ -77,7 +87,7 @@ export interface BattleRecord {
 }
 
 export interface ArenaResult {
-  options: Omit<ArenaOptions, 'onBattle' | 'teams'>;
+  options: Omit<ArenaOptions, 'onBattle' | 'teams' | 'setPriors'>;
   battles: number;
   wins: { a: number; b: number; tie: number; error: number };
   /** Bot A's win rate over finished battles (ties count half). */
@@ -166,6 +176,10 @@ export async function playArenaBattle(options: ArenaOptions, index: number): Pro
       seed: `${botSeed}:${bot}`,
       ...own,
       ...(bot === 'a' && options.aSettings ? { settings: options.aSettings } : {}),
+      ...(options.setPriors?.[bot] ? { setPriors: options.setPriors[bot] } : {}),
+      ...(bot === 'a' && options.aStandardShare !== undefined
+        ? { standardShare: options.aStandardShare }
+        : {}),
     });
     return policy(bot) === 'random' ? new FixedLineupAgent(agent, groupOf(bot)) : agent;
   };
@@ -255,7 +269,7 @@ export function summarize(options: ArenaOptions, records: readonly BattleRecord[
     a: sum(records.map((record) => record.decisions.a)),
     b: sum(records.map((record) => record.decisions.b)),
   };
-  const { onBattle: _, teams: _teams, ...rest } = options;
+  const { onBattle: _, teams: _teams, setPriors: _priors, ...rest } = options;
   return {
     options: rest,
     battles: records.length,
