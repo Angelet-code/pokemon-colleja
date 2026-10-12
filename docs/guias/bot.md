@@ -56,7 +56,7 @@ Para cada suposición (`assumptions`), `searchMoves`:
 
 1. obtiene las respuestas probables del rival: el nivel 2 jugando su lado en el fork, sus `rivalReplies` mejores opciones con pesos softmax (`replyTemperature`), ajustadas a su **estilo** (ver más abajo);
 2. juega `turns` turnos por cada opción propia (las `ownOptions` mejores del nivel 2), cada uno contra una respuesta muestreada de forma estratificada por esos pesos. Con la misma semilla para todas las opciones y **suerte común por acción** (cada acción saca sus números de su propio flujo), las opciones se comparan con la misma suerte del rival. Los turnos se juegan por orden (cada turno, todas las suposiciones) y, tras `pruneAfter` turnos, se dejan de buscar las opciones cuya media queda más de `pruneMargin` puntos por debajo de la mejor (**poda sucesiva**, [ADR-0014](../adr/0014-nivel-3-mas-rapido-con-poda.md)): ≈ 2× más rápido con la misma fuerza;
-3. valora cada posición resultante, tras los relevos forzosos (del nivel 2): balance de PS × 100 más `positionWeight` × el cambio que el nivel 2 espera desde ahí (su mejor puntuación menos la que tendría si no pasara nada: `singlesBaseline`/`doublesBaseline`) y, en individuales, `chainWeight` × lo que la **cadena de equipo completo** (`teamChainValue`, con los banquillos de los dos lados en el fork) cambia ese balance; ±200 si el combate acaba.
+3. valora cada posición resultante, tras los relevos forzosos (del nivel 2): `materialWeight` × balance de PS × 100 más `positionWeight` × el cambio que el nivel 2 espera desde ahí (su mejor puntuación menos la que tendría si no pasara nada: `singlesBaseline`/`doublesBaseline`), en dobles `learnedWeight` × la **valoración aprendida** (ver más abajo) y, en individuales, `chainWeight` × lo que la **cadena de equipo completo** (`teamChainValue`, con los banquillos de los dos lados en el fork) cambia ese balance; ±200 si el combate acaba.
 
 Elige la media más alta, restando `loopPenalty` a las opciones con un cambio por cada cambio voluntario propio de los últimos 4 turnos (sin esto, dos bots pueden cambiar de Pokémon en bucle para siempre). En individuales, los **relevos forzosos** son para el Pokémon cuya cadena de equipo completo acaba mejor contra las suposiciones del rival. Sin sandbox (otra perspectiva o la vista previa) juega como el nivel 2. El esfuerzo es fijo, nunca por reloj, para que sea reproducible.
 
@@ -131,7 +131,9 @@ Muestra el % de victorias con su intervalo de confianza del 95 % (Wilson), los t
 
 Resultados de referencia (fases 4, 9 y 10): en el [CHANGELOG](../../CHANGELOG.md). El nivel 3 tarda unas décimas de segundo por decisión: para medirlo con cientos de combates conviene lanzar varios arenas en paralelo con semillas distintas. Con 600 combates el ruido es de ±2 puntos (IC 95 % ≈ ±4): compara variantes con la misma semilla y confirma lo prometedor con otra semilla antes de quedártelo.
 
-Referencia en espejo (fase 17, `--fixed`, 1 200 combates por modo): nivel 3 contra nivel 2, **81,0 % ± 2,1** en dobles (4 contra 4) y **64,2 % ± 2,4** en individuales (3 contra 3). Con tanta diferencia el espejo apenas baja el ruido; rinde al comparar variantes parecidas.
+Referencia en espejo (`--fixed`, 1 200 combates por modo): nivel 3 contra nivel 2, **≈ 83,4 %** en dobles (4 contra 4, con la valoración aprendida desde la fase 19; antes 81,0 % ± 2,1) y **64,2 % ± 2,4** en individuales (3 contra 3). El espejo apenas baja el ruido de una diferencia (en cuanto las decisiones divergen, la suerte también): compara variantes con dos tandas de semillas distintas.
+
+**Variantes del nivel 3** (`--a-settings`, fase 19): `npm run arena -- --a 3 --b 2 --mode doubles --fixed --a-settings '{"learnedWeight":0}'` juega el nivel 3 con esos ajustes sobre `SEARCH_SETTINGS` (solo claves numéricas existentes; también en `arena:perf`). Para 1 200 combates, lanza ≈ 15 arenas en paralelo de 80 combates con semillas `t1-0`…`t1-14` (≈ 9 min por variante en 16 núcleos) y suma los pares de sus `--json`.
 
 ### Velocidad (`npm run arena:perf`)
 
@@ -151,9 +153,13 @@ Lo que cuesta el nivel 3 ([ADR-0014](../adr/0014-nivel-3-mas-rapido-con-poda.md)
 3. Corrige el **modelo** (un efecto que falta en la simulación, un dato mal leído), no añadas pesos sueltos. En el nivel 3, su `explain()` da el valor medio de cada opción tras la búsqueda; compáralo con el del nivel 2 en la misma posición.
 4. Mide con el arena contra el nivel anterior: al menos 300 combates por modo (±5 %) y, para cifras finales, 1000.
 
-## Valoración aprendida (fase 17)
+## Valoración aprendida
 
-`learning/` tiene los factores de partida de una posición (`extractFeatures`), la posición de espectador (`spectatorPosition`), los turnos de los efectos (`EffectTimers`) y el modelo por factores (`value-model.ts`, pesos en `learning/models/value-v1.json`), entrenado con replays públicos. El nivel 3 aún no lo usa (fase 19). Todo en la [guía de aprendizaje](aprendizaje.md).
+`learning/` tiene los factores de partida de una posición (`extractFeatures`), la posición de espectador (`spectatorPosition`) y la del bot (`ownPosition`), los turnos de los efectos (`EffectTimers`) y el modelo por factores (`value-model.ts`, `VALUE_MODEL` con los pesos de `learning/models/value-v1.json`), entrenado con replays públicos (fase 17, [guía de aprendizaje](aprendizaje.md)).
+
+**En la búsqueda** (fase 19, [ADR-0021](../adr/0021-valoracion-aprendida-en-la-busqueda.md)): en dobles, cada hoja suma `learnedWeight` (1) × `LOGIT_POINTS` (65 puntos por log-odd) × `valueLogit` de `ownPosition`: sus sets y PS exactos, y los del rival según la suposición de esa copia (`Assumption.seen`). Medido en espejo: +2,4 puntos contra el nivel 2 sobre lo de antes; sola, igual que material más `outlook`. En individuales está en 0.
+
+**Explicaciones comprobadas**: como la valoración es una suma, la búsqueda guarda la contribución media de cada factor a cada opción (`SearchResult.learned`) y `checkedReasons` (`search/checked-reasons.ts`) enseña un factor solo si, quitándolo, la mejor opción pasa a ser otra (`DecisionExplanation.decisive`, con lo que habría elegido). La razón sale de `FeatureInfo.reason`, en términos de partida.
 
 ## Explicación de las decisiones
 

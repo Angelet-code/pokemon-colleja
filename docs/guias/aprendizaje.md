@@ -2,7 +2,7 @@
 
 Desde la fase 17 ([ADR-0019](../adr/0019-valoracion-aprendida-de-replays.md), [brief](../fases/fase-17.md)) el proyecto aprende a valorar posiciones de combate a partir de **partidas reales de Champions** (los replays públicos de Showdown), en lugar de sumar más reglas a mano. La valoración es un **modelo por factores de partida**: explicable, con un peso por factor y sin especies.
 
-En la fase 17 solo se mide si merece la pena (la «prueba barata»). El nivel 3 todavía no la usa: eso es la [fase 19](../fases/fase-19.md).
+En la fase 17 se midió si merecía la pena (la «prueba barata»). Desde la [fase 19](../fases/fase-19.md) ([ADR-0021](../adr/0021-valoracion-aprendida-en-la-busqueda.md)) el nivel 3 la usa en dobles para valorar las hojas de su búsqueda (con su posición exacta, `ownPosition`) y para explicar qué factor decidió cada jugada (ver la [guía del bot](bot.md#valoración-aprendida)).
 
 ## Flujo
 
@@ -61,4 +61,9 @@ Reglas:
 
 - **Regresión logística** con regularización L2, entrenada con el método de Newton: unas decenas de factores convergen en pocos pasos y siempre igual.
 - La valoración es una **suma**: `explainValue` da la contribución exacta de cada factor y `counterfactual` cuánto cambia la valoración sin uno (llevado a 0). Son la base de las explicaciones comprobadas: una razón solo se enseña si quitarla cambia la decisión.
-- Los pesos se guardan en `packages/bot/src/learning/models/value-v<N>.json` con su versión de factores.
+- Los pesos se guardan en `packages/bot/src/learning/models/value-v<N>.json` con su versión de factores. El bot usa el de `learning/shipped-model.ts` (`VALUE_MODEL`): si subes `FEATURES_VERSION`, regenera el modelo y cambia esa importación, y vuelve a medir el nivel 3 en espejo.
+- Cada factor tiene su `reason` (`FEATURES`): la frase de partida que se enseña cuando ese factor decide una jugada.
+
+## ¿Más datos?
+
+Curva de aprendizaje (fase 19, misma división de prueba): log-loss 0,559 con 500 partidas, 0,551 con 1 000, 0,550 con 2 000 y 0,546 con 4 000 (`s1`; igual en `s2` y `s3`). Con estos 20 factores **el modelo está saturado desde ≈ 1 000 partidas**: descargar más replays no lo mejora. Lo que puede mejorarlo son factores nuevos que la prueba barata justifique o posiciones de autojuego del propio bot.

@@ -29,6 +29,22 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 - Con `npm run dev`, abrir la web en el puerto del servidor (3001) mostraba `apps/web/dist`, una compilación que podía ser vieja (por ejemplo, con los iconos Gen 8 pixelados en lugar de los renders de Champions). Ahora el servidor de desarrollo redirige las páginas a Vite (`WEB_DEV_URL`, que pone `npm run dev`).
 
+### Fase 19 — El nivel 3 valora con lo aprendido (2026-10-12)
+
+[ADR-0021](docs/adr/0021-valoracion-aprendida-en-la-busqueda.md), [brief](docs/fases/fase-19.md), guías del [bot](docs/guias/bot.md#valoración-aprendida) y de [aprendizaje](docs/guias/aprendizaje.md).
+
+#### Añadido
+
+- **El nivel 3 valora con lo aprendido en dobles**: cada hoja de su búsqueda suma a lo de antes (material y lo que espera el nivel 2) la valoración aprendida de los replays (`learnedWeight = 1`, 65 puntos por log-odd). La posición se ve desde el bot (`ownPosition`): sus sets y PS exactos, y los del rival según la suposición de cada copia. En individuales no cambia nada.
+- **Explicaciones comprobadas** en «Pensamiento del bot»: «Frente a «X», eligió «Y» porque así se mueve antes que los tuyos en el campo…». Una razón solo se enseña **si quitarla cambia la jugada elegida** (`checkedReasons`, `DecisionExplanation.decisive`, opcional). Con equipo cerrado, lo que habría elegido se censura como las opciones.
+- `npm run arena -- --a 3 --a-settings '{"learnedWeight":0}'` (también `arena:perf`): mide una variante de la búsqueda del nivel 3 sin tocar el código.
+
+#### Medido
+
+- Arena en espejo, dobles, nivel 3 contra nivel 2, dos tandas de 1 200 combates por variante: hoy **81,1 / 81,0 %**; con lo aprendido sumado **83,0 / 83,8 %** (+1,9 y +2,8 puntos por pares; ≈ +2,4 ± 1,6 juntas). Lo aprendido solo iguala a lo de hoy (80,9 %); solo material, 72,4 %. Pesos 0,5 y 2: +1,8 y +1,5.
+- Velocidad en un hilo: 210 → **163 ms por decisión** en dobles; individuales, mismas decisiones.
+- Curva de aprendizaje: la log-loss deja de bajar desde ≈ 1 000 partidas (0,551 → 0,546 con 4 000). Más replays no mejoran este modelo: hacen falta factores nuevos o autojuego.
+
 ### Fase 17 — Medir bien y aprender a valorar con replays (2026-10-12)
 
 Cambio de método ([ADR-0019](docs/adr/0019-valoracion-aprendida-de-replays.md), [brief](docs/fases/fase-17.md), [guía](docs/guias/aprendizaje.md)): en lugar de más reglas a mano, el bot aprenderá a valorar posiciones con partidas reales de Champions. Esta fase prepara la base y comprueba que merece la pena.
