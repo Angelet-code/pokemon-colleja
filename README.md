@@ -6,7 +6,7 @@ Simulador de combates de **Pokémon Champions** para practicar en individuales y
 
 ## Estado
 
-✅ Fase 0 (investigación y plan) · ✅ Fase 1 (cimientos) · ✅ Fase 2 (datos) · ✅ Fase 3 (dominio + motor + combate en terminal) · ✅ Fase 4 (bot de 3 niveles, equipos aleatorios, arena) · ✅ Fase 5 (servidor + UI de combate: **MVP**) · ✅ Fase 6 (teambuilder y equipos guardados) · ✅ Fase 7 (rivales guardados) · ✅ Fase 8 (calculadora, replays y explicación del bot) · ✅ Rediseño de la web · ✅ Fase 9 (bot nivel 3 "Experto", ahora el rival por defecto) · ✅ Fase 10 («Calcular» desde el combate, críticos y efectos en la calculadora, replays renombrables, E2E y un nivel 3 más fuerte en individuales) · ✅ Fase 11 (el nivel 3 deduce tus sets y se adapta a tu estilo) · ✅ Fase 12 (banco de pruebas de equipos) · ✅ Fase 13 (nivel 3 el doble de rápido) · ✅ Fase 14 (el nivel 3 piensa en la vista previa y lo enseña en «Pensamiento del bot») · ✅ Fase 15 (el nivel 3 lee los equipos enteros: Espacio Raro, Viento Afín, climas…) · ✅ Fase 16 (te dice por qué esperaba tu salida y por qué eligió la suya) · ✅ Fase 17 (medir en espejo y aprender a valorar posiciones con replays reales) · ✅ Fase 18 (animaciones de combate) · ✅ Fase 19 (el nivel 3 valora con lo aprendido y te dice qué decidió cada jugada) · ⏭️ Fase 20 (rivales del meta y banco contra el meta). Ver [CHANGELOG](CHANGELOG.md).
+✅ Fase 0 (investigación y plan) · ✅ Fase 1 (cimientos) · ✅ Fase 2 (datos) · ✅ Fase 3 (dominio + motor + combate en terminal) · ✅ Fase 4 (bot de 3 niveles, equipos aleatorios, arena) · ✅ Fase 5 (servidor + UI de combate: **MVP**) · ✅ Fase 6 (teambuilder y equipos guardados) · ✅ Fase 7 (rivales guardados) · ✅ Fase 8 (calculadora, replays y explicación del bot) · ✅ Rediseño de la web · ✅ Fase 9 (bot nivel 3 "Experto", ahora el rival por defecto) · ✅ Fase 10 («Calcular» desde el combate, críticos y efectos en la calculadora, replays renombrables, E2E y un nivel 3 más fuerte en individuales) · ✅ Fase 11 (el nivel 3 deduce tus sets y se adapta a tu estilo) · ✅ Fase 12 (banco de pruebas de equipos) · ✅ Fase 13 (nivel 3 el doble de rápido) · ✅ Fase 14 (el nivel 3 piensa en la vista previa y lo enseña en «Pensamiento del bot») · ✅ Fase 15 (el nivel 3 lee los equipos enteros: Espacio Raro, Viento Afín, climas…) · ✅ Fase 16 (te dice por qué esperaba tu salida y por qué eligió la suya) · ✅ Fase 17 (medir en espejo y aprender a valorar posiciones con replays reales) · ✅ Fase 18 (animaciones de combate) · ✅ Fase 19 (el nivel 3 valora con lo aprendido y te dice qué decidió cada jugada) · ✅ Fase 20 (rivales del meta que se actualizan solos y banco contra el meta) · ⏭️ Fase 21 (la salida con lo aprendido). Ver [CHANGELOG](CHANGELOG.md).
 
 ## Puesta en marcha
 
@@ -30,9 +30,9 @@ En **Equipos** (http://127.0.0.1:5173/equipos) creas equipos desde cero o import
 
 En **PC de Bill** (http://127.0.0.1:5173/pc) apuntas los Pokémon que tienes en el juego; en el teambuilder, «Solo PC de Bill» limita las especies a esos ([guía](docs/guias/teambuilder.md#pc-de-bill)).
 
-En **Rivales** (http://127.0.0.1:5173/rivales) preparas equipos para el bot con su dificultad: genera uno aleatorio, cópialo de tus equipos, impórtalo o créalo, edítalo con el mismo editor y guárdalo. En el inicio eliges ese rival guardado y practicas contra él ([guía de rivales](docs/guias/rivales.md)).
+En **Rivales** (http://127.0.0.1:5173/rivales) preparas equipos para el bot con su dificultad: genera uno aleatorio, cópialo de tus equipos, impórtalo o créalo, edítalo con el mismo editor y guárdalo. En el inicio eliges ese rival guardado y practicas contra él. La sección **Meta** tiene los equipos del meta del ladder (sets de las estadísticas de Smogon, equipos reales de replays), cada uno con su peso. No se tocan: se actualizan con «Actualizar meta» (o `npm run meta:update`) y se pueden copiar a tus rivales ([guía de rivales](docs/guias/rivales.md)).
 
-En **Banco** (http://127.0.0.1:5173/banco) el bot juega tu equipo guardado contra tus rivales guardados y te da el **% de victorias por rival y en total**, con su margen de error, mientras la tabla se llena en vivo. También compara **dos versiones** de tu equipo (o una pegada como texto) en los mismos combates, guarda cada prueba en el historial del equipo y te lleva a jugar contra el rival donde flojeas ([guía del banco](docs/guias/banco.md)).
+En **Banco** (http://127.0.0.1:5173/banco) el bot juega tu equipo guardado contra tus rivales guardados **o contra el meta** (cada equipo pesado por lo que se juega, con «Donde más pierdes») y te da el **% de victorias por rival y en total**, con su margen de error, mientras la tabla se llena en vivo. También compara **dos versiones** de tu equipo (o una pegada como texto) en los mismos combates, guarda cada prueba en el historial del equipo y te lleva a jugar contra el rival donde flojeas ([guía del banco](docs/guias/banco.md)).
 
 Para aprender de cada combate: **Calculadora** (http://127.0.0.1:5173/calculadora) con las reglas de Champions y el mismo cálculo que usa el bot (críticos, climas, campos, pantallas, Refuerzo, Compiescolta, Gravedad y las zonas), que se abre con **«Calcular»** desde el propio combate con los Pokémon en el campo; **Replays** guardados al terminar, para revivirlos turno a turno y renombrarlos; y la pestaña **«Pensamiento del bot»** en el combate, que enseña lo que leyó de tu equipo en la vista previa (qué pinta tiene y qué plan monta, roles, velocidades, quién tumba a quién, qué esperaba que trajeras y por qué esperaba tu salida) y lo que valoró en cada turno ya jugado, sin revelar lo que aún no has visto ([guía de herramientas](docs/guias/herramientas.md)).
 
@@ -52,7 +52,13 @@ Enfrenta a dos niveles del bot con equipos aleatorios (o con tus rivales guardad
 npm run bench -- --team "Mi equipo" --versus version-b.txt
 ```
 
-El banco en la terminal: tu equipo contra tus rivales guardados, bot contra bot en todos los núcleos, hasta saber el resultado con ± 5 puntos. Con `--screen` criba muchas versiones con el bot táctico y compara las dos mejores, y `npm run bench:calc -- --team "Mi equipo"` saca la matriz de daño contra los sets de tus rivales sin combatir ([guía del banco](docs/guias/banco.md)).
+El banco en la terminal: tu equipo contra tus rivales guardados (o contra el meta, con `--opponents meta`), bot contra bot en todos los núcleos, hasta saber el resultado con ± 5 puntos. Con `--screen` criba muchas versiones con el bot táctico y compara las dos mejores, y `npm run bench:calc -- --team "Mi equipo"` saca la matriz de daño contra los sets de tus rivales sin combatir ([guía del banco](docs/guias/banco.md)).
+
+```bash
+npm run meta:update
+```
+
+Actualiza el meta: estadísticas del último mes de Smogon y unos 300 replays nuevos de dobles (unos 5 minutos). Las instantáneas se guardan en `storage/metagame/` ([guía de rivales](docs/guias/rivales.md#meta)).
 
 ```bash
 npm run smoke

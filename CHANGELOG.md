@@ -30,6 +30,42 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 - Con `npm run dev`, abrir la web en el puerto del servidor (3001) mostraba `apps/web/dist`, una compilación que podía ser vieja (por ejemplo, con los iconos Gen 8 pixelados en lugar de los renders de Champions). Ahora el servidor de desarrollo redirige las páginas a Vite (`WEB_DEV_URL`, que pone `npm run dev`).
 
+### Fase 20 — El meta: rivales que se actualizan solos y un banco sin sesgo (2026-10-12)
+
+[ADR-0022](docs/adr/0022-meta-del-ladder-como-rivales.md), [brief](docs/fases/fase-20.md), guías de [rivales](docs/guias/rivales.md#meta) y del [banco](docs/guias/banco.md#contra-el-meta).
+
+#### Añadido
+
+- **Rivales del meta** (`/rivales?seccion=meta`): la página de rivales tiene dos secciones, **Mis rivales** (los de siempre) y **Meta**. El meta son los equipos del ladder de Showdown, **de solo lectura**, cada uno con su **peso** en el meta de su modo.
+  - **Sets**: lo más usado según las estadísticas mensuales de Smogon con corte 1760.
+  - **Equipos de dobles**: equipos reales de seis vistos en replays (rating ≥ 1500), agrupados por arquetipo.
+  - **Equipos de individuales**: crecidos por compañeros, porque no hay replays con rating alto.
+
+  Cada equipo se puede usar como rival o **copiar a Mis rivales** para editarlo. En el inicio, el rival puede ser «Meta».
+- **Actualizar meta** (botón en la web y `npm run meta:update`): descarga el último mes de Smogon y unos 300 replays nuevos de dobles y guarda la instantánea en `storage/metagame/<mes>-<corte>.json`. Avisa si Smogon ya tiene un mes más nuevo. Nunca se actualiza sola.
+- **Banco «Contra el meta»** (web y `npm run bench -- --opponents meta`): el total pesa cada equipo por su parte del meta, así que da el % esperado contra el meta. La tabla enseña el peso de cada rival y **«Donde más pierdes»** (peso × derrotas, en puntos del total). El historial marca la instantánea.
+- Paquete `@colleja/metagame` (solo Node): estadísticas de Smogon, replays y su vista previa, sets, arquetipos, nombres y la instantánea (pura y determinista). La descarga de replays de `tools/ladder` se mueve aquí y gana `until`, para completar con los más nuevos.
+
+#### Cambiado
+
+- El banco pesa cada rival (`BenchOpponent.weight`, por defecto 1) en el total y en el reparto de Neyman. **Con pesos iguales, el resultado es idéntico al de antes** (test).
+
+#### Cifras
+
+- Meta de septiembre de 2026, corte 1760:
+  - **Dobles**: 1,63 M combates en Smogon y 4 000 equipos de replays; 24 arquetipos que cubren el 68 %.
+  - **Individuales**: 69 000 combates; 24 equipos.
+  - 0 equipos descartados por ilegales.
+- Contra mis rivales frente a contra el meta (dobles, nivel 2 contra 2, 20 combates por rival):
+
+  | Equipo | Contra mis rivales | Contra el meta |
+  |---|---|---|
+  | Collejas pingüi | 59,2 % | 46,9 % |
+  | Collejas pingüi (Bellibolt) | 58,8 % | 45,1 % |
+  | Viento Ninja | 45,4 % | 38,4 % |
+
+  El orden no cambia, pero los rivales guardados eran más fáciles: **contra el meta todos bajan entre 7 y 14 puntos**. Donde más pierden los tres es contra Mega-Floette + Rillaboom (13,6 % del meta).
+
 ### Fase 19 — El nivel 3 valora con lo aprendido (2026-10-12)
 
 [ADR-0021](docs/adr/0021-valoracion-aprendida-en-la-busqueda.md), [brief](docs/fases/fase-19.md), guías del [bot](docs/guias/bot.md#valoración-aprendida) y de [aprendizaje](docs/guias/aprendizaje.md).

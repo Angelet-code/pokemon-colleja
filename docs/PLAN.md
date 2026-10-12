@@ -79,7 +79,8 @@ pokemon-colleja-simulator/
 │  ├─ core/                # ✅ Dominio puro: tipos, stats (SP), import/export, elecciones, vista del combate, agentes
 │  ├─ data/                # ✅ JSON generados + i18n (es/en) + sets estándar + overrides (apto para navegador)
 │  ├─ engine/              # ✅ BattleSession sobre Battle de Showdown: validación, perspectivas, rebobinado, replays, sandbox (forks sin información oculta) y combate entre bots
-│  ├─ bench/               # ✅ Banco de pruebas de equipos: hilos de trabajo, parada temprana, reparto adaptativo y A/B en pares (Node-only, ADR-0013)
+│  ├─ bench/               # ✅ Banco de pruebas de equipos: hilos de trabajo, parada temprana, reparto adaptativo, A/B en pares y rivales con peso (Node-only, ADR-0013)
+│  ├─ metagame/            # ✅ El meta del ladder como rivales: estadísticas de Smogon (sets), replays (equipos de seis y su frecuencia), instantánea en storage/metagame (Node-only, ADR-0022)
 │  ├─ bot/                 # ✅ Bots: aleatorio, agresivo (daño esperado), táctico (simulación) y experto (búsqueda con el sandbox, cadena de equipo completo, deducción de sets y estilo del rival), con @smogon/calc; el experto también predice tu vista previa, lee los equipos enteros (arquetipos) y explica las salidas simulándolas 2 contra 2; `learning/`: factores de partida y valoración aprendida de replays, que el experto usa en dobles y con la que explica lo que decidió
 │  ├─ teamgen/             # ✅ Generador de equipos aleatorios legales a partir de sets estándar
 │  ├─ narration/           # ✅ Log del combate en español/inglés con las plantillas de Showdown (web y CLI)
@@ -90,6 +91,7 @@ pokemon-colleja-simulator/
 │  ├─ data-pipeline/       # ✅ Genera packages/data desde Showdown + PokeAPI y descarga sprites
 │  ├─ arena/               # ✅ Torneos bot contra bot con equipos aleatorios o tus rivales (`npm run arena`: % de victorias, tiempos, fallos) y velocidad con huellas de decisiones (`npm run arena:perf`)
 │  ├─ ladder/              # ✅ Replays públicos de dobles (`npm run ladder:fetch`), posiciones con sus factores, entrenamiento y prueba de la valoración aprendida
+│  ├─ metagame/            # ✅ `npm run meta:update`: actualiza la instantánea del meta
 │  ├─ bench/               # ✅ Banco de pruebas en terminal (`npm run bench`, criba con `--screen`) y matriz de daño (`npm run bench:calc`)
 │  ├─ cli/                 # ✅ Combate en terminal contra el bot (`npm run play`)
 │  ├─ dev/                 # ✅ `npm run dev`: servidor + Vite a la vez
@@ -97,7 +99,7 @@ pokemon-colleja-simulator/
 ├─ vendor/
 │  └─ pokemon-showdown/    # Submódulo git fijado a un commit concreto
 ├─ datasets/               # Replays descargados y sus posiciones (no versionados; `npm run ladder:*`)
-├─ storage/                # Datos del usuario: equipos ✅ (teams/), rivales ✅ (opponents/), replays ✅ (replays/), bancos ✅ (bench/), JSON legibles
+├─ storage/                # Datos del usuario: equipos ✅ (teams/), rivales ✅ (opponents/), replays ✅ (replays/), bancos ✅ (bench/), PC de Bill ✅ (collection/) y el meta ✅ (metagame/), JSON legibles
 ├─ docs/                   # Plan, investigación, ADRs, guías
 └─ assets/                 # Sprites descargados (no versionados, no se redistribuyen)
 ```
@@ -123,6 +125,11 @@ graph LR
   bench --> engine
   bench --> bot
   bench --> core
+  server --> metagame[packages/metagame]
+  metagame --> engine
+  metagame --> bot
+  metagame --> teamgen
+  metagame --> protocol
   core --> data
   engine --> core
   engine --> data
@@ -146,6 +153,9 @@ graph LR
   arena --> teamgen
   benchcli[tools/bench] --> bench
   benchcli --> protocol
+  benchcli --> metagame
+  ladder[tools/ladder] --> metagame
+  metacli[tools/metagame] --> metagame
 ```
 
 **Regla dura:** solo `packages/showdown` accede a `vendor/`. Showdown se compila como CommonJS y el puente lo carga con `createRequire`, junto con sus `.d.ts`. Es Node-only: nunca se importa desde `apps/web`, que solo usa paquetes aptos para navegador (`core`, `data`, `protocol`, `narration` y, de `bot`, solo la entrada `@colleja/bot/opponent-model`, sin la calculadora; lo comprueban unos tests).
@@ -356,11 +366,11 @@ Tamaños orientativos: S (pocas sesiones) · M · L.
 | **18. Animaciones de combate** ✅ | M | Línea de tiempo desde el protocolo de p1, catálogo de plantillas para los 511 movimientos (firmas para los más usados), partículas en canvas con la luz del tipo, rótulo del movimiento, ajuste ×1 · ×2 · No, saltar, replays animados y galería `/animaciones` ([brief](fases/fase-18.md), [ADR-0020](adr/0020-animaciones-de-combate.md)) | ✅ Se ve quién actúa primero y qué usa cada uno; turno de individuales ≈ 1,5 s y de dobles ≈ 2,5–3 s a ×1, 60 fps sin tareas largas; sin dependencias nuevas. 437 tests + 8 E2E |
 | **17. Medir bien y aprender a valorar** ✅ | L | Modo de medida 4 contra 4 en espejo (`arena --fixed`), replays de dobles de Champions convertidos en posiciones (`npm run ladder:*`), modelo por factores de partida (sin especies) y la prueba de si predice al ganador mejor que la valoración actual; la salida del bot explica su razón real ([brief](fases/fase-17.md), [ADR-0019](adr/0019-valoracion-aprendida-de-replays.md)) | ✅ 4 999 partidas: log-loss 0,566 frente a 0,619 del balance de PS (acierto 68,4 frente a 63,7 %), calibrado. Referencia en espejo del nivel 3 contra el 2: 81,0 % (dobles) y 64,2 % (individuales). Factores sin especies (test) |
 | **19. El nivel 3 valora con lo aprendido** ✅ | M–L | La valoración aprendida en las hojas de la búsqueda (posición exacta del bot), medida en espejo con variantes (`arena --a-settings`), y explicaciones comprobadas en «Pensamiento del bot» ([brief](fases/fase-19.md), [ADR-0021](adr/0021-valoracion-aprendida-en-la-busqueda.md)) | ✅ Dobles: 81,1 / 81,0 → 83,0 / 83,8 % contra el nivel 2 (dos tandas de 1 200 combates en espejo, ≈ +2,4 puntos), 163 ms por decisión. Una razón solo se enseña si quitarla cambia la jugada (test). Más replays no mejoran el modelo (curva plana desde ≈ 1 000 partidas). 468 tests + 8 E2E |
-| **20. El meta** ⏭️ | M | Sección «Meta» de rivales de solo lectura (equipos y sets del ladder: Smogon a 1760 + replays, con su peso) que se actualiza con un botón, y banco «Contra el meta» pesado por frecuencia ([brief](fases/fase-20.md)) | — |
-| 21. La salida con lo aprendido | M–L | Valorar el emparejamiento de salidas (turnos 1–2) aprendido de replays y elegir con él la pareja de salida en dobles, medido en espejo con grupos fijos ([brief](fases/fase-21.md)) | — |
-| **Futuro** | — | Modo clásico IV/EV/Tera, PWA/móvil, PvP, rivales basados en uso real | — |
+| **20. El meta** ✅ | M | Sección «Meta» de rivales de solo lectura (equipos y sets del ladder: Smogon a 1760 + replays, con su peso) que se actualiza con un botón o `npm run meta:update`, y banco «Contra el meta» pesado por frecuencia ([brief](fases/fase-20.md), [ADR-0022](adr/0022-meta-del-ladder-como-rivales.md)) | ✅ Septiembre de 2026: 24 arquetipos de dobles que cubren el 68 % de 4 000 equipos de replays y 24 equipos de individuales, todos legales. Con pesos iguales el banco da lo mismo que antes (test). Contra el meta, tres equipos del usuario bajan entre 7 y 14 puntos frente a sus rivales guardados. 506 tests + 9 E2E |
+| **21. La salida con lo aprendido** ⏭️ | M–L | Valorar el emparejamiento de salidas (turnos 1–2) aprendido de replays y elegir con él la pareja de salida en dobles, medido en espejo con grupos fijos ([brief](fases/fase-21.md)) | — |
+| **Futuro** | — | Modo clásico IV/EV/Tera, PWA/móvil, PvP, sets del meta en el modelo del rival | — |
 
-**MVP = fases 1–5** ✅. Con la fase 6 ✅ los equipos se crean y guardan en el navegador, y con la 7 ✅ también los rivales: la experiencia que pediste está completa. Con la 8 ✅ llegan las herramientas para aprender de cada combate, con la 9 ✅ un rival más fuerte con la 10 ✅ se pulen las herramientas y el rival mira los dos equipos enteros, con la 11 ✅ el rival deduce tus sets y se adapta a tu estilo, con la 12 ✅ el banco de pruebas mide tu equipo contra tus rivales con la 13 ✅ el nivel 3 piensa el doble de rápido, con la 14 ✅ piensa ya en la vista previa y te lo enseña con la 15 ✅ lee los equipos enteros (Espacio Raro, Viento Afín, climas…) y con la 16 ✅ te dice por qué esperaba tu salida y por qué eligió la suya. Con la 17 ✅ cambia de método y aprende a valorar posiciones con partidas reales de Champions, y con la 19 ✅ el nivel 3 juega con esa valoración y te dice qué decidió cada jugada. Lo siguiente: rivales del meta que se actualizan solos y un banco que mide contra el meta ([fase 20](fases/fase-20.md)); después, elegir la salida con lo aprendido ([fase 21](fases/fase-21.md)).
+**MVP = fases 1–5** ✅. Con la fase 6 ✅ los equipos se crean y guardan en el navegador, y con la 7 ✅ también los rivales: la experiencia que pediste está completa. Con la 8 ✅ llegan las herramientas para aprender de cada combate, con la 9 ✅ un rival más fuerte con la 10 ✅ se pulen las herramientas y el rival mira los dos equipos enteros, con la 11 ✅ el rival deduce tus sets y se adapta a tu estilo, con la 12 ✅ el banco de pruebas mide tu equipo contra tus rivales con la 13 ✅ el nivel 3 piensa el doble de rápido, con la 14 ✅ piensa ya en la vista previa y te lo enseña con la 15 ✅ lee los equipos enteros (Espacio Raro, Viento Afín, climas…) y con la 16 ✅ te dice por qué esperaba tu salida y por qué eligió la suya. Con la 17 ✅ cambia de método y aprende a valorar posiciones con partidas reales de Champions, y con la 19 ✅ el nivel 3 juega con esa valoración y te dice qué decidió cada jugada. Con la 20 ✅ los rivales del meta se actualizan solos y el banco mide tu equipo contra el meta real. Lo siguiente: elegir la salida con lo aprendido ([fase 21](fases/fase-21.md)).
 
 ---
 
@@ -402,6 +412,7 @@ Las mecánicas en sí **no se re-testean**: son responsabilidad del motor (Showd
 | La predicción de tu vista previa es un modelo de cobertura: no sabe cómo eliges tú | Mezclada con un reparto uniforme (`pickUniform`) para no fiarse de más. Aprender de tu historial queda propuesto ([fase 16](fases/fase-16.md)) |
 | La lectura de arquetipos es heurística (listas de movimientos y umbrales de velocidad) y la pareja de salida aún sale de duelos 1 contra 1 | Solo decide el control de velocidad dentro de los duelos, medido con tus rivales ([ADR-0017](adr/0017-arquetipos-en-la-vista-previa.md)). Simular las salidas 2 contra 2 perdía fuerza: solo explica ([ADR-0018](adr/0018-parejas-de-salida-simuladas.md)). Las reglas a mano tocan techo: desde la [fase 19](fases/fase-19.md) el nivel 3 valora con lo aprendido de replays en dobles ([ADR-0021](adr/0021-valoracion-aprendida-en-la-busqueda.md)); la salida es la [fase 21](fases/fase-21.md) |
 | La valoración aprendida es lineal, con 20 factores, y está saturada con ≈ 1 000 partidas; las razones aún no nombran Pokémon | Mejorarla con factores nuevos justificados por la prueba barata (`FEATURES_VERSION`) o con autojuego, no con más replays. Cada cambio se mide en espejo con dos tandas ([ADR-0021](adr/0021-valoracion-aprendida-en-la-busqueda.md)) |
+| El meta es el del ladder de Showdown (no el del juego), con un set por especie; en individuales los equipos se construyen por compañeros y sus pesos son aproximados | Corte 1760 (los mejores del ladder) y equipos reales de replays en dobles. Las instantáneas se guardan por mes y el banco compara solo con la misma. Si aparecen replays de BSS con rating alto, se usan sin cambios (`MIN_SAMPLES`) ([ADR-0022](adr/0022-meta-del-ladder-como-rivales.md)) |
 | Dos bots pueden cambiar de Pokémon en bucle (combates sin fin en el arena) | El nivel 3 penaliza los cambios repetidos ([ADR-0011](adr/0011-nivel-3-con-equipo-completo.md)). Un humano siempre puede romper el bucle |
 | El nivel 3 piensa de forma síncrona (≈ 0,15–0,5 s): mientras, el servidor no atiende otros mensajes | Piensa después de enviar el turno al jugador, así que coincide con su tiempo de decisión. El banco ya juega en hilos de trabajo ([ADR-0013](adr/0013-banco-de-pruebas-con-hilos.md)); el combate humano podría moverse igual si molestara |
 | El nivel 3 es caro para el banco (≈ 0,5 s por decisión en dobles con 15 hilos): una A/B con ± 5 contra 20 rivales tarda ≈ 7 min y la CPU va al 100 % | Pares, reparto de Neyman y parada temprana (≈ 3× menos combates); criba con el nivel 2 y márgenes de ± 10; poda sucesiva en la búsqueda ([ADR-0014](adr/0014-nivel-3-mas-rapido-con-poda.md)). Un banco a la vez. Lo que queda es el simulador de Showdown: bajarlo exigiría tocar `vendor/` o simular menos |

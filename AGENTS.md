@@ -36,8 +36,8 @@ El proyecto avanza **por fases** (PLAN §8). Cuando te pidan *"continúa con la 
 | 17. Medir bien y aprender a valorar con replays | ✅ ([brief](docs/fases/fase-17.md), [ADR-0019](docs/adr/0019-valoracion-aprendida-de-replays.md), [guía](docs/guias/aprendizaje.md)) |
 | 18. Animaciones de combate (independiente de la 17) | ✅ ([brief](docs/fases/fase-18.md), [ADR-0020](docs/adr/0020-animaciones-de-combate.md), [guía](docs/guias/web.md#animaciones-de-combate)) |
 | 19. El nivel 3 valora con lo aprendido | ✅ ([brief](docs/fases/fase-19.md), [ADR-0021](docs/adr/0021-valoracion-aprendida-en-la-busqueda.md), guías del [bot](docs/guias/bot.md#valoración-aprendida) y de [aprendizaje](docs/guias/aprendizaje.md)) |
-| **20. El meta (rivales que se actualizan solos y banco sin sesgo)** | ⏭️ **Siguiente**: brief en [docs/fases/fase-20.md](docs/fases/fase-20.md) |
-| 21. La salida con lo aprendido | Planificada: brief en [docs/fases/fase-21.md](docs/fases/fase-21.md) |
+| 20. El meta (rivales que se actualizan solos y banco sin sesgo) | ✅ ([brief](docs/fases/fase-20.md), [ADR-0022](docs/adr/0022-meta-del-ladder-como-rivales.md), guías de [rivales](docs/guias/rivales.md#meta) y del [banco](docs/guias/banco.md#contra-el-meta)) |
+| **21. La salida con lo aprendido** | ⏭️ **Siguiente**: brief en [docs/fases/fase-21.md](docs/fases/fase-21.md) |
 
 ### Protocolo de cierre de fase
 
@@ -80,6 +80,7 @@ El proyecto avanza **por fases** (PLAN §8). Cuando te pidan *"continúa con la 
   - Animaciones (2026-10-12, fase 18): **propias por plantillas** (sin portar Showdown ni añadir librerías), **rápidas** (ajuste ×1 · ×2 · No, y saltar con un clic o Espacio) y **bien hechas** (anticipación, impacto y luz del tipo). Se revisan en la galería `/animaciones`. Sustituye a «animaciones mínimas» de la fase 5.
   - Fase 19 (2026-10-12): la valoración aprendida **sumada** a la de antes (material y `outlook`) en las hojas del nivel 3, **solo en dobles** (`learnedWeight = 1`): +2,4 puntos en espejo contra el nivel 2 (dos tandas). Explicaciones **comprobadas**: una razón solo se enseña si quitarla cambia la jugada.
   - Meta (2026-10-12, fase 20): los rivales guardados **sesgaban el banco** (pesos iguales, núcleos repetidos, lejos del ladder). Rivales en **dos secciones**: «Mis rivales» (editables) y **«Meta»** (solo lectura, con peso por frecuencia; se copian a «Mis rivales»). Fuente: **estadísticas de Smogon a 1760** (sets) y **replays** (equipos de 6). Se actualiza con **botón y comando**, nunca al arrancar. Va **antes** de la salida con lo aprendido (fase 21).
+  - Fase 20 (2026-10-12): hecha como se decidió. Contra el meta, los equipos del usuario bajan entre 7 y 14 puntos frente a sus rivales guardados (el orden no cambia). El banco sigue con **«Mis rivales» por defecto**; «Meta» se elige en «Contra».
   - Fase 16 (2026-10-11): la opción **E2** (parejas de salida simuladas). La explicación, **en términos de partida, nunca con puntuaciones**: por un combo, para presionar o tumbar a alguien, para evitar algo, «si pasa X, Y hace Z». Elegir la salida con la simulación perdía: **solo explica**.
   - Fase 15 (2026-10-11): la opción **E1** (leer el equipo entero: arquetipos, el grupo que encaja y la pareja de salida) antes que simular parejas (E2); **enseña y decide si mejora**; se mide con **tus rivales guardados y aleatorios**; se ve solo en **«Pensamiento del bot»** (no en el teambuilder); **lectura en los dos modos, decide solo en dobles**. También pidió una vista previa **menos predecible** (opción G de la fase 16).
   - Fase 14 (2026-10-09): el nivel 3 **piensa en la vista previa** (en lugar de la propuesta de ampliaciones, que pasa a la fase 15): el análisis de tu equipo **se enseña y decide** (medido con el arena); se ve **al empezar el combate**, ocultando lo no revelado; en una **pestaña junto al registro** («Pensamiento del bot»); contenido: roles, velocidades, KOs en los dos sentidos, amenazas y plan, y lo que cree de tus sets.
@@ -111,6 +112,7 @@ npm run dev          # servidor + web: http://127.0.0.1:5173
 | `npm run arena:perf` | Velocidad de un nivel en combates fijos (un hilo) y **huella** de cada combate: `-- --save <fichero>` antes de un cambio y `-- --compare <fichero>` después dice cuánto más rápido va y si cambió alguna decisión; admite `--a-settings` ([guía](docs/guias/bot.md#velocidad-npm-run-arenaperf)) |
 | `npm run ladder:fetch` | Descarga replays públicos de dobles de Champions (rating ≥ 1400) a `datasets/ladder/`, a una petición por segundo y reanudable. Admite `-- --limit 5000 --min-rating 1400 --from-newest` ([guía](docs/guias/aprendizaje.md)) |
 | `npm run ladder:positions` / `ladder:train` / `ladder:eval` | Factores de cada turno de cada replay (`positions-v<N>.jsonl`), entrenamiento de la valoración aprendida (`packages/bot/src/learning/models/value-v<N>.json`) y la prueba barata contra el balance de PS (`-- --seeds 5`) ([guía](docs/guias/aprendizaje.md)) |
+| `npm run meta:update` | Instantánea del meta (`storage/metagame/<mes>-<corte>.json`): estadísticas de Smogon del último mes (corte 1760) y unos 300 replays nuevos de dobles (≈ 1 por segundo). Admite `-- --month 2026-09 --cutoff 1760 --teams 24 --replays 0 --min-rating 1500`. Lo mismo hace el botón «Actualizar meta» de la web ([guía](docs/guias/rivales.md#meta)) |
 | `npm run smoke` | Combates headless de Champions (fixtures + aleatorios). Admite `-- --random N --seed X --verbose` |
 | `npm run data:build` | Regenera `packages/data/generated/` desde Showdown + PokeAPI (determinista). Después, revisa el diff |
 | `npm run data:sprites` | Descarga los sprites a `assets/sprites/` (no versionado). Incluye los shiny (`-- --no-shiny` los omite). Admite `-- --force` |
@@ -124,19 +126,19 @@ npm run dev          # servidor + web: http://127.0.0.1:5173
 
 ```
 apps/       → aplicaciones (web, server). Pueden depender de packages/*
-packages/   → librerías: showdown (puente al motor), data (datos del juego), core (dominio), engine (sesiones), bot, teamgen, narration (log), protocol (mensajes web ↔ servidor), bench (banco de pruebas)
-tools/      → scripts: setup, smoke, data-pipeline, cli, arena, bench, ladder (replays y valoración aprendida), dev, e2e (Playwright)
+packages/   → librerías: showdown (puente al motor), data (datos del juego), core (dominio), engine (sesiones), bot, teamgen, narration (log), protocol (mensajes web ↔ servidor), bench (banco de pruebas), metagame (el meta del ladder)
+tools/      → scripts: setup, smoke, data-pipeline, cli, arena, bench, ladder (replays y valoración aprendida), metagame (meta:update), dev, e2e (Playwright)
 vendor/pokemon-showdown → submódulo git fijado a un commit (NO editar)
 docs/       → PLAN, research/, adr/, guias/, fases/ (briefs de cada fase)
-storage/    → datos del usuario (teams/, opponents/, replays/, bench/ y collection/: equipos, rivales, replays, bancos guardados y el PC de Bill): local, no versionado
+storage/    → datos del usuario (teams/, opponents/, replays/, bench/, collection/ y metagame/: equipos, rivales, replays, bancos guardados, el PC de Bill y el meta): local, no versionado
 assets/     → sprites descargados: local, no versionado
 datasets/   → replays públicos descargados y sus posiciones (npm run ladder:*): local, no versionado
 ```
 
 - **Solo `packages/showdown` toca `vendor/`.** El resto importa `@colleja/showdown`. Esto es una regla dura.
 - `@colleja/showdown` es Node-only (usa `createRequire`). Nunca se importa desde `apps/web` ni desde `packages/core`.
-- **Capas** (ver PLAN §3.3): `core` → `data`; `bot` → `core`, `data`, `@smogon/calc`; `teamgen` → `core`, `data`; `narration` → `core`, `data`; `protocol` → `core` (tipos), `zod`; `engine` → `core`, `data`, `showdown`; `bench` → `core`, `data`, `engine`, `bot`; apps y tools → lo que necesiten. Nadie depende de `apps/*` ni de `tools/*`. `engine` y `teamgen` pueden ser dependencias **de desarrollo** de `bot` (sus tests juegan combates).
-- **`@colleja/core`, `@colleja/bot`, `@colleja/teamgen`, `@colleja/narration` y `@colleja/protocol` son aptos para navegador**: sin `node:*` ni Showdown. **`apps/web` solo importa paquetes aptos para navegador** (nunca `engine`, `showdown` ni `node:*`; lo comprueba `apps/web/test/dependencies.test.ts`). `@colleja/engine` es solo Node y es el **único paquete de dominio que importa `@colleja/showdown`** (además de `tools/smoke` y `tools/data-pipeline`). `@colleja/bench` también es solo Node (hilos de trabajo).
+- **Capas** (ver PLAN §3.3): `core` → `data`; `bot` → `core`, `data`, `@smogon/calc`; `teamgen` → `core`, `data`; `narration` → `core`, `data`; `protocol` → `core` (tipos), `zod`; `engine` → `core`, `data`, `showdown`; `bench` → `core`, `data`, `engine`, `bot`; `metagame` → `core`, `data`, `engine`, `bot`, `teamgen`, `protocol`; apps y tools → lo que necesiten. Nadie depende de `apps/*` ni de `tools/*`. `engine` y `teamgen` pueden ser dependencias **de desarrollo** de `bot` (sus tests juegan combates).
+- **`@colleja/core`, `@colleja/bot`, `@colleja/teamgen`, `@colleja/narration` y `@colleja/protocol` son aptos para navegador**: sin `node:*` ni Showdown. **`apps/web` solo importa paquetes aptos para navegador** (nunca `engine`, `showdown` ni `node:*`; lo comprueba `apps/web/test/dependencies.test.ts`). `@colleja/engine` es solo Node y es el **único paquete de dominio que importa `@colleja/showdown`** (además de `tools/smoke` y `tools/data-pipeline`). `@colleja/bench` también es solo Node (hilos de trabajo), y `@colleja/metagame` (ficheros, red y el validador).
 - **`@colleja/data` es apto para navegador**: solo lee los JSON generados. Los datos del juego (roster, movimientos, nombres en español…) **se consultan ahí**, nunca a mano ni de memoria.
 - `packages/data/generated/` **no se edita a mano**: se regenera con `npm run data:build`. Las correcciones van en `packages/data/overrides/` (sets propios en formato export, nombres en español y plantillas de mensajes de combate en español que falten en Showdown).
 - El pipeline importa `@colleja/data/schema` (tipos y constantes), nunca `@colleja/data`, porque este carga los JSON que el propio pipeline genera.
@@ -260,6 +262,16 @@ datasets/   → replays públicos descargados y sus posiciones (npm run ladder:*
 - `BenchSummarySchema` (protocol) replica `BenchSummary` (bench): si cambias uno, cambia el otro (el servidor deja de compilar si divergen). Los bancos los guarda solo el servidor (`FileBenchRepository`, `storage/bench/`) y hay **uno a la vez**.
 - El progreso va por su propio WebSocket (`/ws/bench`, `bench:watch`), que responde enseguida con el estado actual: reconectar no necesita nada más.
 - El nivel 3 es caro (≈ 1 s por decisión en dobles con 15 hilos). Para medir variantes rápido: criba con el nivel 2 (`--screen`, comprobado que elige las mismas finalistas que el 3) y márgenes de ± 10.
+
+## Particularidades del meta
+
+- **Todo vive en `@colleja/metagame`** (solo Node) y `tools/metagame` ([ADR-0022](docs/adr/0022-meta-del-ladder-como-rivales.md), [guía](docs/guias/rivales.md#meta)). `storage/metagame/` **solo lo escribe `FileMetagameStore`** (el comando y el servidor), una instantánea por mes y corte. El servidor nunca la modifica por la API: no hay `PUT` ni `DELETE`; para editar un equipo se copia a «Mis rivales».
+- **La instantánea es pura y determinista** (`buildSnapshot`): mismas estadísticas y replays → misma instantánea, sea cual sea el orden (test). La fecha se pasa desde fuera.
+- **Sets**: lo más usado **que sea legal** en `@colleja/data` (habilidad de la especie, objeto sin repetir, reparto dentro de 66/32, movimientos que aprende). Una Mega se monta como la base con su piedra y la habilidad de la base. Todo equipo pasa por `teamProblems`: si no es legal, se descarta y se cuenta.
+- **Equipos**: en dobles, arquetipos de equipos reales de replays (4 de 6 en común) con el peso de su grupo; en individuales (no hay replays con rating alto), crecidos por compañeros con Bayes ingenuo. Como mucho dos Megas por equipo.
+- **Nada de red en el check ni en los E2E**: los tests usan `packages/metagame/test/fixtures/` (estadísticas recortadas), un Smogon falso y replays en carpetas temporales; el servidor de los tests recibe `metagameUpdate`/`metagameLatest` falsos y los E2E arrancan con `METAGAME_LATEST=off`. Si la descarga falla con `SEC_E_UNTRUSTED_ROOT`, es la VPN.
+- **La descarga de replays** (`fetchReplays`, `FolderReplayStore`) vive aquí y la usan también `tools/ladder` y el servidor; `until` completa con los más nuevos sin tocar el cursor de `ladder:fetch`.
+- **Banco con pesos**: `BenchOpponent.weight` (por defecto 1) y `modes`. El total y el reparto de Neyman normalizan los pesos; con pesos iguales, todo es idéntico a antes (test). Contra el meta, `setup.metagame` guarda la instantánea: compara solo bancos con la misma.
 
 ## Actualizar Showdown (nueva regulación o fixes)
 
