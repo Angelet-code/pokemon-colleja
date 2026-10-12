@@ -8,6 +8,7 @@ import type {
   ExpectedReply,
   ExplainedAction,
   ExplainedOption,
+  LeadChoice,
   LeadReading,
   LeadReason,
   PreviewAnalysis,
@@ -109,6 +110,7 @@ function previewStory(
     );
   }
   if (preview.leads?.expected) story.push(...leadStory(preview.leads.expected, 'tu', locale));
+  if (preview.leads?.choice) story.push(...leadChoiceStory(preview.leads.choice, locale));
   if (preview.leads?.own) story.push(...leadStory(preview.leads.own, 'su', locale));
   if (preview.teams?.own) story.push(...teamStory(preview.teams.own, 'su', locale));
   return story;
@@ -117,9 +119,40 @@ function previewStory(
 const TURN_NAMES = ['', 'el primer turno', 'el segundo turno', 'el tercer turno'];
 
 /**
- * Why a pair of leads, in game terms: the plan it starts, Fake Out and redirection, who it
- * can knock out or pressure and who stays behind. `whose`: the player's pair (expected) or
- * the bot's.
+ * Why the bot led with its pair, the real reason (fase 17): of the group it brought, they fare
+ * best one on one against your team; who each one beats and fears, and who stays behind.
+ */
+export function leadChoiceStory(choice: LeadChoice, locale: Locale): string[] {
+  const names = (species: readonly string[]) =>
+    joinAnd(species.map((name) => speciesName(name, locale)));
+  const yours = (species: readonly string[]) =>
+    `${species.length > 1 ? 'tus' : 'tu'} ${names(species)}`;
+  const pair = names(choice.leads.map((lead) => lead.species));
+  const head = `Por qué salió con ${pair}: de su grupo, ${choice.leads.length > 1 ? 'son los que mejor rinden' : 'es el que mejor rinde'} uno a uno contra tu equipo.`;
+  const story = [head];
+  for (const lead of choice.leads) {
+    const name = speciesName(lead.species, locale);
+    const beats = lead.beats.length > 0 ? `gana a ${yours(lead.beats)}` : '';
+    const fears = lead.fears.length > 0 ? `teme a ${yours(lead.fears)}` : '';
+    const parts = [beats, fears].filter(Boolean);
+    story.push(
+      parts.length > 0
+        ? `Su ${name} ${parts.join(' y ')}.`
+        : `Su ${name} no gana ni pierde claro contra nadie, pero aguanta contra todos.`,
+    );
+  }
+  if (choice.behind.length > 0) {
+    const worse = choice.behind.length > 1 ? 'rinden' : 'rinde';
+    story.push(`Atrás deja a ${names(choice.behind)}: ${worse} peor uno a uno.`);
+  }
+  return story;
+}
+
+/**
+ * A pair of leads in game terms: the plan it starts, Fake Out and redirection, who it can
+ * knock out or pressure and who stays behind. `whose`: the player's pair (why the bot
+ * expected it) or the bot's (what it expects to happen with it: the 2 vs 2 simulation only
+ * explains, the leads are chosen one on one).
  */
 export function leadStory(reading: LeadReading, whose: 'tu' | 'su', locale: Locale): string[] {
   const theirs = whose === 'tu' ? 'su' : 'tu';
@@ -131,9 +164,11 @@ export function leadStory(reading: LeadReading, whose: 'tu' | 'su', locale: Loca
   const head =
     whose === 'tu'
       ? `Por qué esperaba que salieras con ${pair}${chance} contra ${of('su', reading.versus)}:`
-      : `Por qué salió con ${pair} contra ${of('tu', reading.versus)}:`;
+      : `Qué espera que pase con ${pair} contra ${of('tu', reading.versus)}:`;
   if (reading.reasons.length === 0) {
-    return [`${head} era la pareja a la que mejor le iba en los primeros turnos.`];
+    return whose === 'tu'
+      ? [`${head} era la pareja a la que mejor le iba en los primeros turnos.`]
+      : [`${head} nada decisivo en los primeros turnos.`];
   }
   return [head, ...reading.reasons.map((reason) => leadReason(reason, whose, theirs, of, locale))];
 }

@@ -194,6 +194,26 @@ export interface LeadReading {
   reasons: LeadReason[];
 }
 
+/** One of the bot's leads and how it fares one on one against the player's six. */
+export interface LeadDuels {
+  species: string;
+  /** The player's Pokémon it beats in a duel, clearest first. */
+  beats: string[];
+  /** The player's Pokémon that beat it in a duel, clearest first. */
+  fears: string[];
+}
+
+/**
+ * Why the bot leads with its pair (doubles, level 3): the real reason of the decision. Of the
+ * group it brings, these two fare best one on one against the player's six (the same duels
+ * that ranked them).
+ */
+export interface LeadChoice {
+  leads: LeadDuels[];
+  /** The rest of its group, behind because they fare worse one on one. */
+  behind: string[];
+}
+
 /** What the bot thought of both teams at team preview (level 3). */
 export interface PreviewAnalysis {
   /** The other player's six, most dangerous first. */
@@ -209,11 +229,12 @@ export interface PreviewAnalysis {
    */
   teams?: { rival: TeamReading; own?: TeamReading };
   /**
-   * Doubles: the leads it expected from the player (`expected`) and its own (`own`), each with
-   * its reasons. With closed team sheets the redaction leaves out of `own` what reveals the
-   * bot's unused moves or its Pokémon not seen yet.
+   * Doubles: the leads it expected from the player (`expected`) and its own: why it chose them
+   * (`choice`, one on one) and what it expects to happen with them (`own`, the 2 vs 2
+   * simulation, which only explains). With closed team sheets the redaction leaves out what
+   * reveals the bot's unused moves or its Pokémon not seen yet.
    */
-  leads?: { expected?: LeadReading; own?: LeadReading };
+  leads?: { expected?: LeadReading; own?: LeadReading; choice?: LeadChoice };
 }
 
 export interface DecisionExplanation {
@@ -323,9 +344,11 @@ function redactPreview(
   });
   const { teams, leads, ...rest } = preview;
   const ownLeads = leads?.own && redactLeads(leads.own, find);
+  const choice = leads?.choice && redactChoice(leads.choice, find);
   const redactedLeads = {
     ...(leads?.expected ? { expected: leads.expected } : {}),
     ...(ownLeads ? { own: ownLeads } : {}),
+    ...(choice ? { choice } : {}),
   };
   return {
     ...rest,
@@ -336,6 +359,15 @@ function redactPreview(
     ...(teams ? { teams: { rival: teams.rival } } : {}),
     ...(leads ? { leads: redactedLeads } : {}),
   };
+}
+
+/** Why the bot chose its leads, without its Pokémon the player has not seen. */
+function redactChoice(
+  choice: LeadChoice,
+  find: (species: string) => ViewPokemon | undefined,
+): LeadChoice | undefined {
+  if (!choice.leads.every((lead) => find(lead.species))) return undefined;
+  return { ...choice, behind: choice.behind.filter((species) => find(species)) };
 }
 
 /** The move each kind of plan needs (a plan the bot has not shown yet stays hidden). */

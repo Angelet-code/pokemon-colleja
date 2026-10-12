@@ -1,4 +1,4 @@
-import type { PokemonSet } from '@colleja/core';
+import { type PokemonSet, SeededRandom } from '@colleja/core';
 import { getStandardSets } from '@colleja/data';
 import { BattleSession } from '@colleja/engine';
 import { standardToSet } from '@colleja/teamgen';
@@ -8,6 +8,8 @@ import { DoublesSim, type SimTrace } from '../src/analysis/doubles-sim';
 import { Situation } from '../src/analysis/situation';
 import { ExpertAgent } from '../src/index';
 import { leadMatchup } from '../src/search/lead-plan';
+import { CLEAR_DUEL, leadChoice } from '../src/search/lead-reasons';
+import { PREVIEW_SETTINGS, planPreview } from '../src/search/preview';
 import { teamWith } from './helpers';
 
 /** A standard doubles set of a species, with another item (Item Clause). */
@@ -111,6 +113,50 @@ describe('lead pairs played 2 vs 2 (fase 16)', () => {
       action.kind === 'bring' && action.lead ? [action.species] : [],
     );
     expect([...(leads?.own?.pair ?? [])].sort()).toEqual([...(leaders ?? [])].sort());
+    // And the reason it gives is about those same leads.
+    expect(leads?.choice?.leads.map((lead) => lead.species).sort()).toEqual(
+      [...(leaders ?? [])].sort(),
+    );
     expect(explained.choose(context)).toEqual(silent.choose(context));
+  });
+});
+
+describe('why the bot leads with its pair (fase 17)', () => {
+  it('gives the reasons of the same duels that decided the leads', () => {
+    const situation = previewSituation(teamWith('doubles', [], 'own'), trickRoom());
+    const plan = planPreview(situation, 4, PREVIEW_SETTINGS.doubles, new SeededRandom('why'));
+    if (!plan) throw new Error('sin plan');
+    const choice = leadChoice(plan);
+    const rows = plan.chosen.duels;
+    if (!choice || !rows) throw new Error('sin razón de la salida');
+    const species = (index: number) => plan.own[index]?.set.species;
+    const rival = (f: number) => plan.foes[f]?.combatant.set.species;
+    const leads = plan.chosen.group.slice(0, 2);
+    // The leads are the ones it brings first, and the rest stays behind.
+    expect(choice.leads.map((lead) => lead.species)).toEqual(leads.map(species));
+    expect(choice.behind).toEqual(plan.chosen.group.slice(2).map(species));
+    // Each named duel is one of the duels that ranked the group, and clear.
+    const average = (index: number) => {
+      const row = rows[index] ?? [];
+      return row.reduce((a, b) => a + b, 0) / row.length;
+    };
+    leads.forEach((index, i) => {
+      const lead = choice.leads[i];
+      const row = rows[index] ?? [];
+      for (const name of lead?.beats ?? []) {
+        expect(row[plan.foes.findIndex((_, f) => rival(f) === name)]).toBeGreaterThanOrEqual(
+          CLEAR_DUEL,
+        );
+      }
+      for (const name of lead?.fears ?? []) {
+        expect(row[plan.foes.findIndex((_, f) => rival(f) === name)]).toBeLessThanOrEqual(
+          -CLEAR_DUEL,
+        );
+      }
+      for (const behind of plan.chosen.group.slice(2)) {
+        expect(average(index)).toBeGreaterThanOrEqual(average(behind));
+      }
+    });
+    expect(choice.leads.some((lead) => lead.beats.length + lead.fears.length > 0)).toBe(true);
   });
 });

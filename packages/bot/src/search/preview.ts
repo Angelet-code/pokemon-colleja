@@ -105,6 +105,11 @@ export interface PreviewOption {
   /** How many of `group` start on the field. */
   leads: number;
   score: number;
+  /**
+   * Doubles: each own Pokémon's duels against the player's six as this group weighs them (0
+   * outside the group). The two best on average lead: the real reason of the leads.
+   */
+  duels?: number[][];
 }
 
 export interface PreviewPlan {
@@ -621,6 +626,7 @@ function doublesOptions(
       group: [...members].sort((a, b) => (average[b] ?? 0) - (average[a] ?? 0)),
       leads: Math.min(2, size),
       score: coverage(duels, members, settings.averageWeight),
+      duels,
     };
   });
 }

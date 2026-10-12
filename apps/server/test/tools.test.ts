@@ -298,6 +298,10 @@ describe('level 3 lead pairs explanation (doubles)', () => {
           (pokemon) => pokemon.species === species || pokemon.baseSpecies === species,
         );
       for (const species of leads?.own?.pair ?? []) expect(seen(species)).toBe(true);
+      // Why it led with them: its leads, and behind only the ones you have seen.
+      for (const lead of leads?.choice?.leads ?? []) expect(seen(lead.species)).toBe(true);
+      for (const species of leads?.choice?.behind ?? []) expect(seen(species)).toBe(true);
+      expect(leads?.choice?.leads).toHaveLength(2);
       // On turn 1 the bot has used no move yet: no plan that needs one is told.
       for (const reason of leads?.own?.reasons ?? []) {
         expect(['fakeout', 'redirect']).not.toContain(reason.kind);

@@ -439,7 +439,7 @@ describe('phase 8: calculator, replays and explanations', () => {
     expect(TurnExplanationSchema.safeParse(bad).success).toBe(false);
   });
 
-  it('carries why the bot expected your leads and chose its own (phase 16)', () => {
+  it('carries why the bot expected your leads and chose its own (phases 16 and 17)', () => {
     const preview = {
       turn: 0,
       kind: 'team',
@@ -470,6 +470,13 @@ describe('phase 8: calculator, replays and explanations', () => {
             ],
           },
           own: { pair: ['camerupt', 'kingambit'], versus: ['slowking', 'sylveon'], reasons: [] },
+          choice: {
+            leads: [
+              { species: 'camerupt', beats: ['sylveon'], fears: ['slowking'] },
+              { species: 'kingambit', beats: [], fears: [] },
+            ],
+            behind: ['conkeldurr'],
+          },
         },
       },
     };

@@ -5,6 +5,7 @@
  */
 import type {
   ExplainedAction,
+  LeadChoice,
   LeadReading,
   LeadReason,
   PokemonBeliefs,
@@ -120,6 +121,19 @@ const LeadReadingSchema = z.object({
   reasons: z.array(LeadReasonSchema).max(12),
 }) satisfies z.ZodType<LeadReading>;
 
+const LeadChoiceSchema = z.object({
+  leads: z
+    .array(
+      z.object({
+        species: SpeciesSchema,
+        beats: z.array(SpeciesSchema).max(6),
+        fears: z.array(SpeciesSchema).max(6),
+      }),
+    )
+    .max(2),
+  behind: z.array(SpeciesSchema).max(4),
+}) satisfies z.ZodType<LeadChoice>;
+
 export const PreviewAnalysisSchema = z.object({
   rivals: z
     .array(
@@ -149,7 +163,11 @@ export const PreviewAnalysisSchema = z.object({
   hiddenOwn: z.number().int().min(0).max(6).optional(),
   teams: z.object({ rival: TeamReadingSchema, own: TeamReadingSchema.optional() }).optional(),
   leads: z
-    .object({ expected: LeadReadingSchema.optional(), own: LeadReadingSchema.optional() })
+    .object({
+      expected: LeadReadingSchema.optional(),
+      own: LeadReadingSchema.optional(),
+      choice: LeadChoiceSchema.optional(),
+    })
     .optional(),
 }) satisfies z.ZodType<PreviewAnalysis>;
 

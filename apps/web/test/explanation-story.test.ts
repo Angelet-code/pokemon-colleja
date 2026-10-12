@@ -1,6 +1,11 @@
 import type { DecisionExplanation, ExpectedReply, ExplainedOption } from '@colleja/core';
 import { describe, expect, it } from 'vitest';
-import { explanationStory, leadStory, teamStory } from '../src/features/battle/explanation-story';
+import {
+  explanationStory,
+  leadChoiceStory,
+  leadStory,
+  teamStory,
+} from '../src/features/battle/explanation-story';
 
 const label = (option: ExplainedOption): string =>
   option.actions.map((action) => (action.kind === 'move' ? action.move : action.kind)).join(' · ');
@@ -180,7 +185,7 @@ describe('lead pairs (fase 16)', () => {
     ]);
   });
 
-  it("tells the bot's own leads from its side", () => {
+  it('tells what the bot expects to happen with its own leads', () => {
     const story = leadStory(
       {
         pair: ['pelipper', 'swampert'],
@@ -201,10 +206,29 @@ describe('lead pairs (fase 16)', () => {
       'es',
     );
     expect(story).toEqual([
-      'Por qué salió con Pelipper y Swampert contra tus Sylveon y Gengar:',
+      'Qué espera que pase con Pelipper y Swampert contra tus Sylveon y Gengar:',
       'Para jugar con lluvia: su Pelipper la pone y su Swampert la aprovecha.',
       'Entre sus Pelipper y Swampert pueden tumbar a tu Gengar en el segundo turno.',
       'Sorpresa de su Pelipper a tu Sylveon para que el otro actúe sin riesgo.',
+    ]);
+  });
+
+  it('says why the bot led with its pair: the duels that decided it (fase 17)', () => {
+    const story = leadChoiceStory(
+      {
+        leads: [
+          { species: 'pelipper', beats: ['camerupt'], fears: ['raichu'] },
+          { species: 'swampert', beats: ['raichu', 'gengar'], fears: [] },
+        ],
+        behind: ['kingambit'],
+      },
+      'es',
+    );
+    expect(story).toEqual([
+      'Por qué salió con Pelipper y Swampert: de su grupo, son los que mejor rinden uno a uno contra tu equipo.',
+      'Su Pelipper gana a tu Camerupt y teme a tu Raichu.',
+      'Su Swampert gana a tus Raichu y Gengar.',
+      'Atrás deja a Kingambit: rinde peor uno a uno.',
     ]);
   });
 });

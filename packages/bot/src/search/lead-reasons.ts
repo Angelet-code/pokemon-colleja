@@ -4,7 +4,7 @@
  * Tailwind, weather, setup) and who it keeps behind. Built only for the explanation, after the
  * decision: it never touches the random generator.
  */
-import type { LeadReading, LeadReason, PreviewAnalysis } from '@colleja/core';
+import type { LeadChoice, LeadReading, LeadReason, PreviewAnalysis } from '@colleja/core';
 import { getMove } from '@colleja/data';
 import { type Combatant, effectiveSpeed } from '../analysis/combatant';
 import type { SimTrace } from '../analysis/doubles-sim';
@@ -29,6 +29,10 @@ const PRESSURE_SHARE = 0.5;
 const AVOID_KO_CHANCE = 0.5;
 /** Reasons kept per pair (the plan first, then Fake Out and redirection, KOs, pressure…). */
 const MAX_REASONS = 5;
+/** Duel points (−100 to 100) from which a lead clearly beats, or fears, a rival. */
+export const CLEAR_DUEL = 25;
+/** Rivals named per lead as beaten or feared. */
+const MAX_DUELS = 3;
 
 export interface LeadReadingInput {
   planner: LeadPlanner;
@@ -49,11 +53,13 @@ export interface LeadReadingInput {
  */
 export function previewLeads(plan: PreviewPlan): PreviewAnalysis['leads'] {
   const { chosen, reads } = plan;
+  const choice = leadChoice(plan);
   const leads = plan.leads?.();
   const top = leads?.foePairs[0];
-  if (!leads || !top) return undefined;
+  if (!leads || !top) return choice ? { choice } : undefined;
   const own = chosen.group.slice(0, chosen.leads);
   return {
+    ...(choice ? { choice } : {}),
     expected: leadReading({
       planner: leads.planner,
       side: 'foe',
@@ -71,6 +77,33 @@ export function previewLeads(plan: PreviewPlan): PreviewAnalysis['leads'] {
       group: chosen.group,
       read: reads.own,
     }),
+  };
+}
+
+/**
+ * Why the bot leads with its pair, from the same duels that ranked its group (fase 17): each
+ * lead with the player's Pokémon it beats and fears one on one, and the rest of the group
+ * behind. Doubles only (singles values whole lineups with the team chain).
+ */
+export function leadChoice(plan: PreviewPlan): LeadChoice | undefined {
+  const { chosen, own, foes } = plan;
+  const rows = chosen.duels;
+  if (!rows || chosen.leads < 1) return undefined;
+  const rival = (f: number) => foes[f]?.combatant.set.species ?? '';
+  const clearest = (row: readonly number[], sign: 1 | -1) =>
+    row
+      .map((score, f) => ({ f, score: score * sign }))
+      .filter((entry) => entry.score >= CLEAR_DUEL)
+      .sort((a, b) => b.score - a.score || a.f - b.f)
+      .slice(0, MAX_DUELS)
+      .map((entry) => rival(entry.f));
+  const species = (index: number) => own[index]?.set.species ?? '';
+  return {
+    leads: chosen.group.slice(0, chosen.leads).map((index) => {
+      const row = rows[index] ?? [];
+      return { species: species(index), beats: clearest(row, 1), fears: clearest(row, -1) };
+    }),
+    behind: chosen.group.slice(chosen.leads).map(species),
   };
 }
 
