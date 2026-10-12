@@ -128,7 +128,7 @@ const BOOSTS = ['atk', 'def', 'spa', 'spd', 'spe'] as const;
 /** The factors of `position` from `me`'s side. Deterministic. */
 export function extractFeatures(position: Position, me: SideId): FeatureVector {
   const foe = otherSide(me);
-  const ctx = new Context(position);
+  const ctx = new PositionContext(position);
   const mine = position.sides[me];
   const theirs = position.sides[foe];
   const alive = (members: readonly PositionMember[]) =>
@@ -180,8 +180,11 @@ export function featureRecord(vector: readonly number[]): Record<FeatureId, numb
   >;
 }
 
-/** Best hit of one combatant on another, and the speeds, computed once per position. */
-class Context {
+/**
+ * Best hit of one combatant on another, and the speeds, computed once per position (shared
+ * with the lead factors, `lead-features.ts`).
+ */
+export class PositionContext {
   private readonly hits = new Map<Combatant, Map<Combatant, Hit>>();
 
   constructor(private readonly position: Position) {}
@@ -343,7 +346,7 @@ function fakeOuts(members: readonly PositionMember[]): number {
  * By what the move does, not its name: top priority, a sure flinch and little power (Fake Out;
  * Upper Hand hits harder and only works against priority).
  */
-function firstTurnFlinch(move: string): boolean {
+export function firstTurnFlinch(move: string): boolean {
   const data = getMove(move);
   return (
     data !== undefined &&

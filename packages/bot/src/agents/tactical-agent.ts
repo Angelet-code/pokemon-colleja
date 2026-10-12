@@ -24,7 +24,7 @@ import { planDoubles } from '../analysis/doubles-plan';
 import { pickBest } from '../analysis/evaluation';
 import { duelScore, fightingForm, planSingles } from '../analysis/singles-plan';
 import type { Situation } from '../analysis/situation';
-import { selectByCoverage } from '../analysis/team-selection';
+import { leadOrder, selectByCoverage } from '../analysis/team-selection';
 import { describeAction, EXPLANATION_METHODS, explanation, roundScore } from '../explain';
 import type { BotLevel } from '../levels';
 import { AggressiveAgent, explainContext } from './aggressive-agent';
@@ -41,7 +41,8 @@ export class TacticalAgent extends AggressiveAgent {
       const form = fightingForm(situation, member);
       return foes.map((foe) => duelScore(situation, form, foe));
     });
-    const order = selectByCoverage(scores, picked, this.random);
+    const fixed = this.fixedMembers(situation);
+    const order = fixed ? leadOrder(scores, fixed) : selectByCoverage(scores, picked, this.random);
     return teamChoice(order.map((index) => situation.own[index]?.position ?? index + 1));
   }
 

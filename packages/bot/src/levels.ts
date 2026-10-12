@@ -55,6 +55,8 @@ export interface CreateBotOptions {
   seed?: string;
   /** Level 3 only: search settings over `SEARCH_SETTINGS` (to measure variants in the arena). */
   settings?: Partial<SearchSettings>;
+  /** Levels 2 and 3: bring exactly these team positions (`BotOptions.fixedGroup`, fase 21). */
+  fixedGroup?: readonly number[];
 }
 
 export function createBot(level: BotLevel, options: CreateBotOptions = {}): BattleAgent {

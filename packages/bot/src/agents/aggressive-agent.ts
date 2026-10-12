@@ -47,6 +47,11 @@ import type { BotLevel } from '../levels';
 export interface BotOptions {
   /** Same seed → same decisions for the same situations (ties are broken at random). */
   seed?: string;
+  /**
+   * Measuring hook (arena `--fixed-group`, fase 21): at team preview, bring exactly these team
+   * positions (1-based) and only choose who leads. Levels 2 and 3; nothing changes without it.
+   */
+  fixedGroup?: readonly number[];
 }
 
 /** One possible action of one slot and its value. */
@@ -67,8 +72,21 @@ export class AggressiveAgent implements BattleAgent {
   /** Builds the explanation of the last decision on demand (only the server asks for it). */
   protected explainLast: (() => DecisionExplanation) | null = null;
 
+  /** Team positions it must bring (`BotOptions.fixedGroup`). */
+  protected readonly fixedGroup: readonly number[] | undefined;
+
   constructor(options: BotOptions = {}) {
     this.random = new SeededRandom(options.seed ?? String(Math.random()));
+    this.fixedGroup = options.fixedGroup;
+  }
+
+  /** Indexes into `situation.own` of the fixed group, if any. */
+  protected fixedMembers(situation: Situation): number[] | undefined {
+    const group = this.fixedGroup;
+    if (!group) return undefined;
+    return situation.own.flatMap((member, index) =>
+      group.includes(member.position ?? index + 1) ? [index] : [],
+    );
   }
 
   explain(): DecisionExplanation | null {

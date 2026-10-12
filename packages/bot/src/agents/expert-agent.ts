@@ -116,7 +116,13 @@ export class ExpertAgent extends TacticalAgent {
   protected override chooseTeam(situation: Situation, request: TeamPreviewRequest): Choice {
     const picked = request.maxChosenTeamSize ?? request.side.pokemon.length;
     const settings = { ...PREVIEW_SETTINGS[situation.mode], ...this.options.preview };
-    const plan = planPreview(situation, picked, settings, this.random);
+    const plan = planPreview(
+      situation,
+      picked,
+      settings,
+      this.random,
+      this.fixedMembers(situation),
+    );
     if (!plan) return super.chooseTeam(situation, request);
     const position = (index: number) => situation.own[index]?.position ?? index + 1;
     this.explainLast = () => ({

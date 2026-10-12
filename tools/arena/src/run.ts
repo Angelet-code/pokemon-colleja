@@ -18,7 +18,13 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { type BotLevel, botLevelInfo, isBotLevel } from '@colleja/bot';
 import type { GameMode } from '@colleja/data';
-import { type ArenaResult, type BattleRecord, parseSearchSettings, runArena } from './arena';
+import {
+  type ArenaResult,
+  type BattleRecord,
+  type LeadPolicy,
+  parseSearchSettings,
+  runArena,
+} from './arena';
 import { loadPool, SAVED_RIVALS } from './pool';
 
 const OUTPUT = fileURLToPath(new URL('../../../storage/arena/', import.meta.url));
@@ -39,6 +45,11 @@ const USAGE = `Uso: npm run arena -- [opciones]
                                  con salida al azar, la misma en los dos combates del par, y el
                                  par es un espejo (mismos equipos, salidas y suerte; los bots
                                  cambian de asiento)
+  --fixed-group                  Como --fixed, pero cada bot elige su salida entre sus 4 fijos
+                                 (fase 21): un par en espejo mide la salida
+  --a-leads bot|random           Con --fixed-group: quién elige la salida del bot A (por
+                                 defecto el bot; random: al azar, como --fixed)
+  --b-leads bot|random           Lo mismo para el bot B
   --a-settings <json>            Ajustes de búsqueda del bot A (nivel 3) sobre SEARCH_SETTINGS,
                                  p. ej. '{"learnedWeight":1}': para medir una variante
   --json <fichero>               Guarda cada combate (par, salidas, resultado) y el resumen
@@ -47,6 +58,12 @@ const USAGE = `Uso: npm run arena -- [opciones]
 function fail(message: string): never {
   console.error(`${message}\n\n${USAGE}`);
   process.exit(2);
+}
+
+function leadPolicy(text: string, flag: string): LeadPolicy {
+  if (text !== 'bot' && text !== 'random')
+    fail(`${flag} debe ser bot o random (recibido: "${text}").`);
+  return text;
 }
 
 function level(text: string, flag: string): BotLevel {
@@ -133,7 +150,7 @@ async function main(): Promise<number> {
   for (const mode of modes) {
     const label = mode === 'singles' ? 'Individuales' : 'Dobles';
     console.log(
-      `\nArena · A = ${name(a)} contra B = ${name(b)} · ${label}${values.fixed ? ' · espejo con grupos fijos' : ''} · ${battles} combates · semilla "${values.seed}"`,
+      `\nArena · A = ${name(a)} contra B = ${name(b)} · ${label}${values.fixed ? ' · espejo con grupos fijos' : ''}${values['fixed-group'] ? ` · espejo con grupos fijos (salida: A ${values['a-leads']}, B ${values['b-leads']})` : ''} · ${battles} combates · semilla "${values.seed}"`,
     );
     const pool = values.teams ? loadPool(values.teams, mode) : undefined;
     if (pool && pool.length < 2) fail(`--teams necesita al menos dos equipos de ${label}.`);
@@ -149,6 +166,11 @@ async function main(): Promise<number> {
       teamPreview: !values['no-preview'],
       openTeamSheets: values['open-team-sheets'],
       fixed: values.fixed,
+      fixedGroup: values['fixed-group'],
+      leads: {
+        a: leadPolicy(values['a-leads'], '--a-leads'),
+        b: leadPolicy(values['b-leads'], '--b-leads'),
+      },
       ...(aSettings ? { aSettings } : {}),
       ...(pool ? { teams: pool.map((team) => team.members) } : {}),
       onBattle: (record) => {
@@ -189,6 +211,9 @@ function parse() {
       'open-team-sheets': { type: 'boolean', default: false },
       teams: { type: 'string' },
       fixed: { type: 'boolean', default: false },
+      'fixed-group': { type: 'boolean', default: false },
+      'a-leads': { type: 'string', default: 'bot' },
+      'b-leads': { type: 'string', default: 'bot' },
       'a-settings': { type: 'string' },
       json: { type: 'string' },
       help: { type: 'boolean', short: 'h', default: false },

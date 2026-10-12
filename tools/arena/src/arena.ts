@@ -7,6 +7,10 @@
  * Measuring mode (`fixed`, fase 17): each team brings a fixed group with a random lead
  * (`fixedLineup`), the same in both battles of the pair, and both battles share the battle
  * seed. A pair is then a mirror: same teams, same leads, same luck stream, only the bots swap.
+ *
+ * With `fixedGroup` (fase 21) the groups are fixed the same way but each bot chooses who leads
+ * among its four (`leads.a`/`leads.b`: `bot`) or leads at random like `fixed` (`random`): a
+ * mirrored pair then measures the leads (and the play).
  */
 import { type BotLevel, createBot, SEARCH_SETTINGS, type SearchSettings } from '@colleja/bot';
 import { type PokemonSet, SeededRandom, type SideId } from '@colleja/core';
@@ -31,6 +35,10 @@ export interface ArenaOptions {
   teams?: readonly PokemonSet[][];
   /** Measuring mode: fixed groups with random leads, each pair a mirror (see above). */
   fixed?: boolean;
+  /** Measuring mode with fixed groups whose leads each bot chooses (see above). */
+  fixedGroup?: boolean;
+  /** With `fixedGroup`: who chooses each bot's leads (default: the bot). */
+  leads?: { a?: LeadPolicy; b?: LeadPolicy };
   /** Search settings of bot A (level 3), over `SEARCH_SETTINGS`: to measure a variant. */
   aSettings?: Partial<SearchSettings>;
   /** Called after every battle (progress). */
@@ -39,11 +47,14 @@ export interface ArenaOptions {
 
 export type BattleOutcome = 'a' | 'b' | 'tie' | 'error';
 
+/** Who decides the leads within a fixed group: the bot itself or a seeded draw. */
+export type LeadPolicy = 'bot' | 'random';
+
 export interface BattleRecord {
   index: number;
   /** The pair of teams (two battles each, bots swapped). */
   pair: number;
-  /** Fixed mode: species each bot brought, leads first. */
+  /** Fixed modes: species each bot brought (leads first when drawn at random). */
   lineups?: { a: string[]; b: string[] };
   seed: string;
   /** Side bot A played on. */
@@ -135,19 +146,34 @@ export async function playArenaBattle(options: ArenaOptions, index: number): Pro
   const aSide: SideId = index % 2 === 0 ? 'p1' : 'p2';
   const bSide: SideId = aSide === 'p1' ? 'p2' : 'p1';
   // A mirror shares the luck stream: both battles of the pair use the same battle seed.
-  const battleSeed = options.fixed ? `${seed}:${mode}:fixed:${pair}` : `${seed}:${mode}:${index}`;
+  const mirrored = options.fixed || options.fixedGroup;
+  const battleSeed = mirrored ? `${seed}:${mode}:fixed:${pair}` : `${seed}:${mode}:${index}`;
   const botSeed = `${seed}:${mode}:${index}`;
-  const a = createBot(options.a, {
-    seed: `${botSeed}:a`,
-    ...(options.aSettings ? { settings: options.aSettings } : {}),
-  });
-  const b = createBot(options.b, { seed: `${botSeed}:b` });
-  let agents = aSide === 'p1' ? { p1: a, p2: b } : { p1: b, p2: a };
+  // The same groups (and drawn leads) for a pair, whatever the mode.
+  const x = mirrored ? fixedLineup(mode, teamX.length, `${seed}:${mode}:${pair}:x:lineup`) : [];
+  const y = mirrored ? fixedLineup(mode, teamY.length, `${seed}:${mode}:${pair}:y:lineup`) : [];
+  const groupOf = (bot: 'a' | 'b') => ((bot === 'a') === (aSide === 'p1') ? x : y);
+  // Levels 0 and 1 do not choose within a group (`BotOptions.fixedGroup`): their leads are drawn.
+  const policy = (bot: 'a' | 'b'): LeadPolicy | null => {
+    if (options.fixed) return 'random';
+    if (!options.fixedGroup) return null;
+    const level = bot === 'a' ? options.a : options.b;
+    return level < 2 ? 'random' : (options.leads?.[bot] ?? 'bot');
+  };
+  const make = (bot: 'a' | 'b') => {
+    const own = policy(bot) === 'bot' ? { fixedGroup: groupOf(bot) } : {};
+    const agent = createBot(bot === 'a' ? options.a : options.b, {
+      seed: `${botSeed}:${bot}`,
+      ...own,
+      ...(bot === 'a' && options.aSettings ? { settings: options.aSettings } : {}),
+    });
+    return policy(bot) === 'random' ? new FixedLineupAgent(agent, groupOf(bot)) : agent;
+  };
+  const a = make('a');
+  const b = make('b');
+  const agents = aSide === 'p1' ? { p1: a, p2: b } : { p1: b, p2: a };
   let lineups: BattleRecord['lineups'];
-  if (options.fixed) {
-    const x = fixedLineup(mode, teamX.length, `${seed}:${mode}:${pair}:x:lineup`);
-    const y = fixedLineup(mode, teamY.length, `${seed}:${mode}:${pair}:y:lineup`);
-    agents = { p1: new FixedLineupAgent(agents.p1, x), p2: new FixedLineupAgent(agents.p2, y) };
+  if (mirrored) {
     const species = (team: PokemonSet[], order: number[]) =>
       order.map((position) => team[position - 1]?.species ?? '');
     const p1 = species(teamX, x);

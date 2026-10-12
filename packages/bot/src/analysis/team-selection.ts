@@ -26,6 +26,18 @@ export function combinations(count: number, size: number): number[][] {
  * Picks `picked` rows of `scores[own][rival]` and orders them: the member with the best
  * average leads. Returns indices into `scores`. Ties are broken with `random`.
  */
+/** A fixed group in lead order: the best average duels first (like `selectByCoverage`). */
+export function leadOrder(
+  scores: readonly (readonly number[])[],
+  group: readonly number[],
+): number[] {
+  const average = (own: number) => {
+    const row = scores[own] ?? [];
+    return row.length > 0 ? row.reduce((a, b) => a + b, 0) / row.length : 0;
+  };
+  return [...group].sort((a, b) => average(b) - average(a));
+}
+
 export function selectByCoverage(
   scores: readonly (readonly number[])[],
   picked: number,

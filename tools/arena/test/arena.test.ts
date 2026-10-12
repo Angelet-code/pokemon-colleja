@@ -122,6 +122,33 @@ describe('measuring mode: fixed lineups, mirrored pairs (fase 17)', () => {
     expect(result.pairs.count).toBe(2);
   });
 
+  it('with --fixed-group, keeps the groups of a pair and lets each bot choose its leads', async () => {
+    const records: BattleRecord[] = [];
+    const options = {
+      a: 2,
+      b: 2,
+      mode: 'doubles',
+      battles: 4,
+      seed: 'mirror',
+      fixedGroup: true,
+      leads: { a: 'bot', b: 'random' },
+    } as const;
+    const result = await runArena({ ...options, onBattle: (record) => records.push(record) });
+    expect(result.wins.error).toBe(0);
+    expect(result.invalidChoices).toBe(0);
+    for (const pair of [0, 1]) {
+      const [first, second] = records.filter((record) => record.pair === pair);
+      if (!first?.lineups || !second?.lineups) throw new Error('sin alineaciones');
+      // The same groups as --fixed (the same draw) and the same battle seed.
+      expect([...second.lineups.a].sort()).toEqual([...first.lineups.b].sort());
+      expect(first.seed).toBe(second.seed);
+      const [teamX] = pairTeams(options, pair);
+      const group = fixedLineup('doubles', teamX.length, `mirror:doubles:${pair}:x:lineup`);
+      const p1 = first.aSide === 'p1' ? first.lineups.a : first.lineups.b;
+      expect([...p1].sort()).toEqual(group.map((position) => teamX[position - 1]?.species).sort());
+    }
+  });
+
   it('summarizes each pair of battles', () => {
     const record = (pair: number, outcome: BattleRecord['outcome']) =>
       ({ pair, outcome }) as BattleRecord;
