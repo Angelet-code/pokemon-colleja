@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { FEATURES } from '@colleja/bot';
+import { FEATURES, LEAD_FEATURES } from '@colleja/bot';
 import {
   type FetchLike,
   fetchReplays,
@@ -8,6 +8,7 @@ import {
 } from '@colleja/metagame';
 import { describe, expect, it } from 'vitest';
 import { splitByBattle } from '../src/dataset';
+import { broughtBySide, replayLeads } from '../src/leads';
 import { type PositionRow, replayPositions } from '../src/positions';
 
 /** A real Champions doubles replay, trimmed and with the players renamed (Ana and Bea). */
@@ -161,5 +162,33 @@ describe('replay download (fase 17)', () => {
     expect(store.saved.size).toBe(eligible.length);
     const downloads = server.urls.filter((url) => !url.includes('search.json'));
     expect(new Set(downloads).size).toBe(downloads.length);
+  });
+});
+
+describe('lead positions of a replay (fase 21)', () => {
+  it('gives the leads of both sides at turn 1, with the winner', () => {
+    const rows = replayLeads(fixture);
+    expect(rows.map((row) => [row.side, row.leads, row.won])).toEqual([
+      ['p1', ['garchomp', 'gholdengo'], 0],
+      ['p2', ['farigiraf', 'raichu'], 1],
+    ]);
+    expect(rows.every((row) => row.x.length === LEAD_FEATURES.length)).toBe(true);
+    expect(replayLeads(fixture)).toEqual(rows);
+  });
+
+  it('knows the own group of each side from the whole replay', () => {
+    const brought = broughtBySide(fixture.log.split('\n'));
+    expect(brought.p1).toEqual(['garchomp', 'gholdengo', 'milotic']);
+    expect(brought.p2).toEqual(['farigiraf', 'raichu', 'sylveon', 'torkoal']);
+  });
+
+  it('never uses what the rival does after turn 1', () => {
+    const [p1] = replayLeads(fixture);
+    // Without Bea's later switches, Ana's lead position is the same.
+    const log = fixture.log
+      .split('\n')
+      .filter((line, i, lines) => !(line.startsWith('|switch|p2') && i > lines.indexOf('|turn|1')))
+      .join('\n');
+    expect(replayLeads({ ...fixture, log })[0]).toEqual(p1);
   });
 });
