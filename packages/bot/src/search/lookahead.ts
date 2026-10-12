@@ -575,7 +575,10 @@ function positionValue(
   }
   const request = leaf.request(me);
   if (!request || requestKind(request) !== 'move') return tools.settings.materialWeight * material;
-  const next = new Situation(ownContext(situation, request, leaf.log(me)));
+  const next = new Situation(ownContext(situation, request, leaf.log(me)), {
+    priors: situation.model.priors,
+    standardShare: situation.model.standardShare,
+  });
   const { materialWeight, positionWeight, chainWeight, learnedWeight } = tools.settings;
   let value = materialWeight * material;
   if (learnedWeight > 0 && tools.timers) {

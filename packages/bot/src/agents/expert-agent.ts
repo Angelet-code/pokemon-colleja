@@ -77,7 +77,11 @@ export class ExpertAgent extends TacticalAgent {
 
   constructor(private readonly options: ExpertOptions = {}) {
     super(options);
-    this.replacements = new TacticalAgent({ seed: `${this.random.next()}` });
+    this.replacements = new TacticalAgent({
+      seed: `${this.random.next()}`,
+      ...(options.setPriors ? { setPriors: options.setPriors } : {}),
+      ...(options.standardShare !== undefined ? { standardShare: options.standardShare } : {}),
+    });
   }
 
   /**
@@ -88,7 +92,10 @@ export class ExpertAgent extends TacticalAgent {
     const kind = requestKind(context.request);
     const infer =
       kind === 'team' || kind === 'switch' || (kind === 'move' && context.sandbox !== undefined);
-    const situation = new Situation(context, infer ? { beliefs: 'infer' } : {});
+    const situation = new Situation(context, {
+      ...this.priorOptions(),
+      ...(infer ? { beliefs: 'infer' as const } : {}),
+    });
     this.lastSituation = situation;
     return situation;
   }

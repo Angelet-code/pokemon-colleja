@@ -90,6 +90,29 @@ describe('set beliefs', () => {
     expect(defensive?.probability ?? 0).toBeLessThan(0.01);
   });
 
+  it('starts from the weights of the sets that are played (fase 22)', () => {
+    const session = scenario('singles', [hippowdon], [sweeper], { seed: 'prior' });
+    const context = session.getAgentContext('p1');
+    if (!context) throw new Error('p1 no tiene que elegir');
+    const priors = {
+      garchomp: [
+        { set: bulky, weight: 0.75 },
+        { set: sweeper, weight: 0.25 },
+      ],
+    };
+    const model = new OpponentModel('singles', null, priors, 0);
+    const hypotheses = inferBeliefs(context, BattleView.from(context.log), model).of('garchomp');
+    // Nothing observed yet: the beliefs are the priors.
+    expect(hypotheses?.map((h) => [h.set.item, h.probability])).toEqual([
+      ['rockyhelmet', 0.75],
+      ['lumberry', 0.25],
+    ]);
+    // After the hits, what was seen weighs more than the prior.
+    const seen = afterEarthquakes(sweeper);
+    const [top] = inferBeliefs(seen, BattleView.from(seen.log), model).of('garchomp') ?? [];
+    expect(top?.set.item).toBe('lumberry');
+  });
+
   it('knows the defensive set when that is what hits', () => {
     const [top] = beliefsOf(afterEarthquakes(bulky)).of('garchomp') ?? [];
     expect(top?.set.item).toBe('rockyhelmet');

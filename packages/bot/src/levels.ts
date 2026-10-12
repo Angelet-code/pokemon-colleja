@@ -5,6 +5,7 @@ import type { BattleAgent } from '@colleja/core';
 import { AggressiveAgent } from './agents/aggressive-agent';
 import { ExpertAgent } from './agents/expert-agent';
 import { TacticalAgent } from './agents/tactical-agent';
+import type { SetPriors } from './analysis/opponent-model';
 import { RandomAgent } from './random-agent';
 import type { SearchSettings } from './search/lookahead';
 
@@ -57,6 +58,10 @@ export interface CreateBotOptions {
   settings?: Partial<SearchSettings>;
   /** Levels 2 and 3: bring exactly these team positions (`BotOptions.fixedGroup`, fase 21). */
   fixedGroup?: readonly number[];
+  /** Levels 1–3: the sets that are played, assumed for the rival first (fase 22). */
+  setPriors?: SetPriors;
+  /** With `setPriors`: the share of the prior left to the standard sets (measuring hook). */
+  standardShare?: number;
 }
 
 export function createBot(level: BotLevel, options: CreateBotOptions = {}): BattleAgent {

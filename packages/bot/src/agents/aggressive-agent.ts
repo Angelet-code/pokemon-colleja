@@ -34,6 +34,7 @@ import {
   teamPreviewOrder,
 } from '../analysis/evaluation';
 import { FIRST_TURN_MOVES, SELF_KO_MOVES } from '../analysis/move-knowledge';
+import type { SetPriors } from '../analysis/opponent-model';
 import { type FoeMember, type OwnMember, Situation } from '../analysis/situation';
 import {
   describeAction,
@@ -52,6 +53,16 @@ export interface BotOptions {
    * positions (1-based) and only choose who leads. Levels 2 and 3; nothing changes without it.
    */
   fixedGroup?: readonly number[];
+  /**
+   * The sets that are played (fase 22, ADR-0024), by base species: the bot assumes them for the
+   * rival before the standard sets. Plain data (the bot never reads files).
+   */
+  setPriors?: SetPriors;
+  /**
+   * Measuring hook (fase 22): with `setPriors`, the share of the prior left to the standard sets
+   * (default `STANDARD_SHARE`).
+   */
+  standardShare?: number;
 }
 
 /** One possible action of one slot and its value. */
@@ -74,10 +85,15 @@ export class AggressiveAgent implements BattleAgent {
 
   /** Team positions it must bring (`BotOptions.fixedGroup`). */
   protected readonly fixedGroup: readonly number[] | undefined;
+  /** The sets that are played (`BotOptions.setPriors`). */
+  protected readonly setPriors: SetPriors | null;
+  protected readonly standardShare: number | undefined;
 
   constructor(options: BotOptions = {}) {
     this.random = new SeededRandom(options.seed ?? String(Math.random()));
     this.fixedGroup = options.fixedGroup;
+    this.setPriors = options.setPriors ?? null;
+    this.standardShare = options.standardShare;
   }
 
   /** Indexes into `situation.own` of the fixed group, if any. */
@@ -109,7 +125,15 @@ export class AggressiveAgent implements BattleAgent {
 
   /** What the bot makes of its context before deciding. */
   protected situation(context: AgentContext): Situation {
-    return new Situation(context);
+    return new Situation(context, this.priorOptions());
+  }
+
+  /** How the opponent model takes the set priors (`BotOptions.setPriors`). */
+  protected priorOptions(): { priors: SetPriors | null; standardShare?: number } {
+    return {
+      priors: this.setPriors,
+      ...(this.standardShare !== undefined ? { standardShare: this.standardShare } : {}),
+    };
   }
 
   protected chooseTeam(situation: Situation, request: TeamPreviewRequest): Choice {

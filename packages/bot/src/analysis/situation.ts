@@ -25,7 +25,7 @@ import {
   megaSpeciesOf,
 } from './combatant';
 import { type DamageEstimate, estimateDamage, type FieldState, fieldFromView } from './damage';
-import { OpponentModel } from './opponent-model';
+import { OpponentModel, type SetPriors } from './opponent-model';
 import { findOwnSet } from './own-sets';
 
 export interface OwnMember {
@@ -66,6 +66,10 @@ export interface SituationOptions {
    * from the log (`inferBeliefs`). Without it, the opponent model's order (level 2).
    */
   beliefs?: SetBeliefs | 'infer';
+  /** The sets that are played (fase 22): the opponent model assumes them first. */
+  priors?: SetPriors | null;
+  /** With priors: the share left to the standard sets (`OpponentModel`; default its own). */
+  standardShare?: number;
 }
 
 export class Situation {
@@ -97,7 +101,12 @@ export class Situation {
     this.foe = otherSide(context.side);
     this.mode = context.mode;
     this.field = fieldFromView(this.view);
-    this.model = new OpponentModel(context.mode, context.opponentTeam);
+    this.model = new OpponentModel(
+      context.mode,
+      context.opponentTeam,
+      options.priors ?? null,
+      options.standardShare,
+    );
     this.own = context.request.side.pokemon.map((pokemon, i) => this.ownMember(pokemon, i));
     this.beliefs =
       options.beliefs === 'infer' ? inferBeliefs(context, this.view, this.model) : options.beliefs;
