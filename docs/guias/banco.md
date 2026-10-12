@@ -30,6 +30,7 @@ Mis rivales sirven para preparar enfrentamientos concretos, pero no representan 
 - Más combates van a los rivales con más peso e incertidumbre (Neyman con pesos).
 - El historial marca los bancos contra el meta con su instantánea (`meta 2026-09`). Compara solo bancos con la misma instantánea: al cambiar el meta cambian los rivales.
 - En la terminal: `--opponents meta` (la instantánea activa) o `--opponents meta:<id>` (otra).
+- Con cualquier rival, si hay meta, los dos bots suponen los **sets del meta** para su rival (fase 22, como en la web). El banco apunta qué instantánea (`setup.metagameSets`): compara solo bancos que la compartan.
 
 ## En la terminal
 

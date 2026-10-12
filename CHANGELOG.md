@@ -31,6 +31,23 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 - Con `npm run dev`, abrir la web en el puerto del servidor (3001) mostraba `apps/web/dist`, una compilación que podía ser vieja (por ejemplo, con los iconos Gen 8 pixelados en lugar de los renders de Champions). Ahora el servidor de desarrollo redirige las páginas a Vite (`WEB_DEV_URL`, que pone `npm run dev`).
 
+### Fase 22 — Sets del meta para predecir al rival (2026-10-12)
+
+[ADR-0024](docs/adr/0024-sets-del-meta-para-predecir-al-rival.md), [brief](docs/fases/fase-22.md), guías del [bot](docs/guias/bot.md#nivel-3-qué-deduce-del-rival), de [rivales](docs/guias/rivales.md#meta), del [banco](docs/guias/banco.md#contra-el-meta) y de [aprendizaje](docs/guias/aprendizaje.md#sets-del-meta-laddersetseval).
+
+#### Añadido
+
+- **Sets que se juegan, con su probabilidad** (`@colleja/metagame`, `buildSetPriors`): por especie, los 6 sets más probables de las estadísticas de Smogon (2 habilidades × 3 objetos × 3 repartos con los 4 movimientos más usados que aprende; sus Megas con su piedra), todos legales y con pesos que suman 1. Van en la instantánea del meta (`MetagameSnapshot.sets`, por modo; opcional, las viejas se leen igual) y `GET /api/metagame` no los envía a la web. **Actualiza el meta** (`npm run meta:update`) para tenerlos.
+- **El bot los supone para el rival** (`BotOptions.setPriors`): candidatos del meta en orden de probabilidad, filtrados por lo revelado (en cada paso de la cascada, antes que los estándar), y la deducción del nivel 3 parte de sus pesos. Sin priors, las mismas decisiones (huellas de `arena:perf`). Los pasan **el servidor** (cada combate, con la instantánea activa; `BattleRoomInfo.metagameSets`) y **el banco** en la web y en la terminal (los dos bots; `setup.metagameSets`).
+- Arena: `--a-priors meta`/`--b-priors meta`, `--teams meta` (equipos del meta activo) y `--a-standard-share` (gancho de medida).
+- `npm run ladder:sets:eval`: la prueba barata de los sets contra lo que revelan los replays.
+
+#### Medidas
+
+- Prueba barata (1 598 partidas de octubre, rating ≥ 1 500, sin nada revelado): el primer set supuesto acierta el **objeto** un **78,6 %** con el meta frente al 34,5 % con los estándar, y los **movimientos** revelados un **81,7 %** frente al 62,2 %. Habilidad igual (≈ 96 %).
+- Nivel 3 con el meta contra el nivel 3 de antes, dobles, espejo, 600 pares por tanda: **59,5 % ± 2,5** y **59,3 % ± 2,5** con equipos del meta, **55,1 % ± 2,5** con los rivales guardados y 46,6 % ± 2,5 con aleatorios (sets estándar, el caso en que el modelo de siempre acierta por construcción). Dejar un 20 % del prior a los estándar: 56,6 % con el meta y 46,9 % con aleatorios (no se usa). Misma velocidad.
+- Decisión del usuario: **activado siempre** que haya meta con sets.
+
 ### Fase 21 — La salida no se aprende (2026-10-12)
 
 [ADR-0023](docs/adr/0023-la-salida-no-se-aprende.md), [brief](docs/fases/fase-21.md), guías de [aprendizaje](docs/guias/aprendizaje.md#salidas-ladderleads) y del [bot](docs/guias/bot.md#arena-npm-run-arena).

@@ -1,5 +1,7 @@
 # Fase 22 — El nivel 3 supone los sets del meta
 
+> **Cerrada el 2026-10-12** ([ADR-0024](../adr/0024-sets-del-meta-para-predecir-al-rival.md)): el objeto supuesto acierta un 78,6 % (antes 34,5 %) y el nivel 3 con los sets del meta gana al de antes 59,5 / 59,3 % con equipos del meta y 55,1 % con los rivales guardados (46,6 % con aleatorios de sets estándar). Activado siempre que haya meta (decisión del usuario). La siguiente es la [fase 23](fase-23.md).
+
 > **Brief de la fase.** Escrito el 2026-10-12 al cerrar la fase 21. Lo eligió el usuario: le importa que el bot **prediga al rival**, y lo que más limita al nivel 3 es la información oculta (con equipo abierto gana bastante más que con equipo cerrado y deducción). Lee antes [AGENTS.md](../../AGENTS.md), la [guía del bot](../guias/bot.md), [ADR-0012](../adr/0012-deduccion-de-sets-y-estilo-del-rival.md) (deducción de sets), [ADR-0022](../adr/0022-meta-del-ladder-como-rivales.md) (el meta) y [ADR-0023](../adr/0023-la-salida-no-se-aprende.md).
 
 ## Objetivo

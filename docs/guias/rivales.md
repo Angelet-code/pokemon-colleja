@@ -74,6 +74,7 @@ Errores: 400 con `details` en español y 404 (`Ese rival no existe.`). En `battl
   - En **individuales** no hay replays con rating alto: cada equipo crece desde una especie muy usada con sus compañeros más probables, y su peso (el uso de esa especie) es aproximado.
 
   Todo equipo pasa por el validador.
+- **El bot supone estos sets** (fase 22, [ADR-0024](../adr/0024-sets-del-meta-para-predecir-al-rival.md)): la instantánea guarda también, por modo, los **6 sets más probables de cada especie** con su peso (`sets`; combinaciones de las habilidades, objetos y repartos más usados con los movimientos más usados). En todo combate de la web y en el banco, el bot los supone para tus Pokémon antes que los sets estándar. Sin meta (o con una instantánea anterior a la fase 22), los estándar; actualizar el meta los regenera.
 - **Acciones**:
   - **Usar como rival**: abre el inicio con ese equipo.
   - **Copiar a mis rivales**: crea un rival guardado editable con la dificultad por defecto y abre el editor.
@@ -91,7 +92,7 @@ Las instantáneas se guardan en `storage/metagame/<mes>-<corte>.json`, una por m
 
 | Pieza | Qué hace |
 |---|---|
-| `@colleja/metagame` (solo Node) | `smogon.ts` (estadísticas), `replay-fetch.ts` y `replay-store.ts` (replays y su vista previa), `sets.ts` (`UsageIndex`, `buildSet`), `teams.ts` (`clusterTeams`, `teammateTeams`, `buildTeam`), `naming.ts`, `snapshot.ts` (`buildSnapshot`, puro y determinista), `store.ts` (`FileMetagameStore`, el único que escribe `storage/metagame/`) y `update.ts` (`updateMetagame`) |
+| `@colleja/metagame` (solo Node) | `smogon.ts` (estadísticas), `replay-fetch.ts` y `replay-store.ts` (replays y su vista previa), `sets.ts` (`UsageIndex`, `buildSet`), `priors.ts` (`buildSetPriors`: los sets que se juegan con su peso), `teams.ts` (`clusterTeams`, `teammateTeams`, `buildTeam`), `naming.ts`, `snapshot.ts` (`buildSnapshot`, puro y determinista), `store.ts` (`FileMetagameStore`, el único que escribe `storage/metagame/`) y `update.ts` (`updateMetagame`) |
 | `@colleja/protocol` (`metagame.ts`) | `MetagameSnapshotSchema`, `MetagameTeamSchema` y las respuestas. `battle.ts`: `opponent: { kind: 'metagame', snapshotId, teamId }` |
 | `apps/server` | `metagame/metagame-manager.ts` (actualización en segundo plano, una a la vez; último mes cacheado) y `routes/metagame.ts` |
 | `apps/web` | `features/teams/MetagameSection.tsx`, las secciones de `OpponentsPage` y el rival «Meta» del inicio |
@@ -99,7 +100,7 @@ Las instantáneas se guardan en `storage/metagame/<mes>-<corte>.json`, una por m
 
 | Petición | Respuesta |
 |---|---|
-| `GET /api/metagame` | La instantánea activa (sin equipos), sus equipos como resúmenes con `weight` y `archetype`, las anteriores y el estado de la actualización |
+| `GET /api/metagame` | La instantánea activa (sin equipos ni sets), sus equipos como resúmenes con `weight` y `archetype`, las anteriores y el estado de la actualización |
 | `GET /api/metagame/latest` | El último mes de Smogon y si es más nuevo (`METAGAME_LATEST=off` no consulta) |
 | `POST /api/metagame/update` `{ month?, cutoff? }` | 202 con el estado; 409 si ya se está actualizando |
 | `GET /api/metagame/:snapshotId/teams/:teamId` | El equipo |

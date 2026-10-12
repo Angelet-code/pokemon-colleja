@@ -72,6 +72,10 @@ Fase 21 ([ADR-0023](../adr/0023-la-salida-no-se-aprende.md)):
 - `npm run ladder:leads:eval` (`-- --seeds 10 --min-rating 1500`) entrena cuatro modelos (duelos de la salida, grupos, grupos más duelos y todos) y los compara con el 50 %, con varias divisiones por partida y curva de aprendizaje.
 - **Resultado**: nada predice al ganador en el turno 1 (log-loss 0,6930 frente a 0,6931). Por eso la salida del bot no se aprende de replays.
 
+## Sets del meta (`ladder:sets:eval`)
+
+Fase 22 ([ADR-0024](../adr/0024-sets-del-meta-para-predecir-al-rival.md)): `npm run ladder:sets:eval` (`-- --min-rating 1500 --after 2026-10-01`) compara, sin haber visto nada de cada rival, lo que suponen los sets estándar y los del meta activo (`MetagameSnapshot.sets`) con lo que acaba revelado en los replays: objeto, habilidad y movimientos, con el primer candidato y con la probabilidad que el modelo da a lo visto. Usa replays posteriores al mes de las estadísticas para que no haya fuga. Resultado con el meta de 2026-09: objeto 78,6 % frente a 34,5 %, movimientos 81,7 % frente a 62,2 %, habilidad igual.
+
 ## ¿Más datos?
 
 Curva de aprendizaje (fase 19, misma división de prueba): log-loss 0,559 con 500 partidas, 0,551 con 1 000, 0,550 con 2 000 y 0,546 con 4 000 (`s1`; igual en `s2` y `s3`). Con estos 20 factores **el modelo está saturado desde ≈ 1 000 partidas**: descargar más replays no lo mejora. Lo que puede mejorarlo son factores nuevos que la prueba barata justifique o posiciones de autojuego del propio bot.
