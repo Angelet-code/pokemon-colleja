@@ -58,6 +58,8 @@ const USAGE = `Uso: npm run arena -- [opciones]
   --b-priors ${METAGAME}                 Lo mismo para el bot B
   --a-standard-share <0–1>       Con --a-priors: parte del prior que conservan los sets
                                  estándar (por defecto ${STANDARD_SHARE})
+  --a-oracle                     Con --fixed o --fixed-group: el bot A sabe qué especies
+                                 trajo el B (no sus sets): el techo de predecirlo (fase 23)
   --json <fichero>               Guarda cada combate (par, salidas, resultado) y el resumen
   -h, --help                     Esta ayuda`;
 
@@ -148,6 +150,9 @@ async function main(): Promise<number> {
         ? [values.mode]
         : fail(`--mode debe ser singles, doubles o both (recibido: "${values.mode}").`);
 
+  if (values['a-oracle'] && !values.fixed && !values['fixed-group'])
+    fail('--a-oracle solo vale con --fixed o --fixed-group.');
+
   let aSettings: ReturnType<typeof parseSearchSettings> | undefined;
   if (values['a-settings']) {
     if (a !== 3) fail('--a-settings solo vale con --a 3.');
@@ -200,6 +205,7 @@ async function main(): Promise<number> {
       ...(values['a-standard-share'] !== undefined
         ? { aStandardShare: share(values['a-standard-share']) }
         : {}),
+      ...(values['a-oracle'] ? { aOracle: true } : {}),
       ...(pool ? { teams: pool.map((team) => team.members) } : {}),
       onBattle: (record) => {
         const { replay: _replay, ...kept } = record;
@@ -246,6 +252,7 @@ function parse() {
       'a-priors': { type: 'string' },
       'b-priors': { type: 'string' },
       'a-standard-share': { type: 'string' },
+      'a-oracle': { type: 'boolean', default: false },
       json: { type: 'string' },
       help: { type: 'boolean', short: 'h', default: false },
     },

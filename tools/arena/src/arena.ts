@@ -20,7 +20,7 @@ import {
   type SetPriors,
 } from '@colleja/bot';
 import { type PokemonSet, SeededRandom, type SideId } from '@colleja/core';
-import type { GameMode } from '@colleja/data';
+import { type GameMode, toId } from '@colleja/data';
 import { playBotBattle, type ReplayData } from '@colleja/engine';
 import { generateTeam } from '@colleja/teamgen';
 import { FixedLineupAgent, fixedLineup } from './fixed-lineup';
@@ -51,6 +51,11 @@ export interface ArenaOptions {
   setPriors?: { a?: SetPriors; b?: SetPriors };
   /** With `setPriors`: bot A's share of the prior left to the standard sets (a variant). */
   aStandardShare?: number;
+  /**
+   * Fixed modes: bot A knows which species bot B brought (not their sets), the ceiling of
+   * predicting it (fase 23, `BotOptions.rivalBrought`).
+   */
+  aOracle?: boolean;
   /** Called after every battle (progress). */
   onBattle?: (record: BattleRecord) => void;
 }
@@ -170,6 +175,10 @@ export async function playArenaBattle(options: ArenaOptions, index: number): Pro
     const level = bot === 'a' ? options.a : options.b;
     return level < 2 ? 'random' : (options.leads?.[bot] ?? 'bot');
   };
+  const teamOf = (bot: 'a' | 'b') => ((bot === 'a') === (aSide === 'p1') ? teamX : teamY);
+  const brought = (bot: 'a' | 'b') =>
+    groupOf(bot).map((position) => toId(teamOf(bot)[position - 1]?.species ?? ''));
+  if (options.aOracle && !mirrored) throw new Error('aOracle needs a fixed mode.');
   const make = (bot: 'a' | 'b') => {
     const own = policy(bot) === 'bot' ? { fixedGroup: groupOf(bot) } : {};
     const agent = createBot(bot === 'a' ? options.a : options.b, {
@@ -180,6 +189,7 @@ export async function playArenaBattle(options: ArenaOptions, index: number): Pro
       ...(bot === 'a' && options.aStandardShare !== undefined
         ? { standardShare: options.aStandardShare }
         : {}),
+      ...(bot === 'a' && options.aOracle ? { rivalBrought: brought('b') } : {}),
     });
     return policy(bot) === 'random' ? new FixedLineupAgent(agent, groupOf(bot)) : agent;
   };

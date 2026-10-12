@@ -81,6 +81,7 @@ export class ExpertAgent extends TacticalAgent {
       seed: `${this.random.next()}`,
       ...(options.setPriors ? { setPriors: options.setPriors } : {}),
       ...(options.standardShare !== undefined ? { standardShare: options.standardShare } : {}),
+      ...(options.rivalBrought ? { rivalBrought: options.rivalBrought } : {}),
     });
   }
 

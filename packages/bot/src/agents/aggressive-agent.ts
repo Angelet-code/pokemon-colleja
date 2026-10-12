@@ -21,7 +21,7 @@ import {
   type TeamPreviewRequest,
   teamChoice,
 } from '@colleja/core';
-import { getMove, type MoveId } from '@colleja/data';
+import { getMove, type MoveId, type SpeciesId } from '@colleja/data';
 import { type Combatant, megaEvolved } from '../analysis/combatant';
 import type { DamageEstimate } from '../analysis/damage';
 import {
@@ -35,7 +35,12 @@ import {
 } from '../analysis/evaluation';
 import { FIRST_TURN_MOVES, SELF_KO_MOVES } from '../analysis/move-knowledge';
 import type { SetPriors } from '../analysis/opponent-model';
-import { type FoeMember, type OwnMember, Situation } from '../analysis/situation';
+import {
+  type FoeMember,
+  type OwnMember,
+  Situation,
+  type SituationOptions,
+} from '../analysis/situation';
 import {
   describeAction,
   EXPLANATION_METHODS,
@@ -63,6 +68,11 @@ export interface BotOptions {
    * (default `STANDARD_SHARE`).
    */
   standardShare?: number;
+  /**
+   * Measuring hook (arena, fase 23): the species the rival brought, as if the bot knew them
+   * (only what it brought, not its sets). Nothing changes without it.
+   */
+  rivalBrought?: readonly SpeciesId[];
 }
 
 /** One possible action of one slot and its value. */
@@ -88,12 +98,15 @@ export class AggressiveAgent implements BattleAgent {
   /** The sets that are played (`BotOptions.setPriors`). */
   protected readonly setPriors: SetPriors | null;
   protected readonly standardShare: number | undefined;
+  /** What the rival brought (`BotOptions.rivalBrought`). */
+  protected readonly rivalBrought: readonly SpeciesId[] | undefined;
 
   constructor(options: BotOptions = {}) {
     this.random = new SeededRandom(options.seed ?? String(Math.random()));
     this.fixedGroup = options.fixedGroup;
     this.setPriors = options.setPriors ?? null;
     this.standardShare = options.standardShare;
+    this.rivalBrought = options.rivalBrought;
   }
 
   /** Indexes into `situation.own` of the fixed group, if any. */
@@ -128,11 +141,12 @@ export class AggressiveAgent implements BattleAgent {
     return new Situation(context, this.priorOptions());
   }
 
-  /** How the opponent model takes the set priors (`BotOptions.setPriors`). */
-  protected priorOptions(): { priors: SetPriors | null; standardShare?: number } {
+  /** How the bot models the rival: set priors (`BotOptions.setPriors`) and its measuring hooks. */
+  protected priorOptions(): SituationOptions {
     return {
       priors: this.setPriors,
       ...(this.standardShare !== undefined ? { standardShare: this.standardShare } : {}),
+      ...(this.rivalBrought ? { rivalBrought: this.rivalBrought } : {}),
     };
   }
 

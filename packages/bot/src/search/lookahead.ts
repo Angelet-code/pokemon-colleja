@@ -578,6 +578,7 @@ function positionValue(
   const next = new Situation(ownContext(situation, request, leaf.log(me)), {
     priors: situation.model.priors,
     standardShare: situation.model.standardShare,
+    rivalBrought: situation.rivalBrought,
   });
   const { materialWeight, positionWeight, chainWeight, learnedWeight } = tools.settings;
   let value = materialWeight * material;

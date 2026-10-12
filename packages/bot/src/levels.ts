@@ -2,6 +2,7 @@
  * Bot levels available to the CLI, the arena and (phase 5) the UI.
  */
 import type { BattleAgent } from '@colleja/core';
+import type { SpeciesId } from '@colleja/data';
 import { AggressiveAgent } from './agents/aggressive-agent';
 import { ExpertAgent } from './agents/expert-agent';
 import { TacticalAgent } from './agents/tactical-agent';
@@ -62,6 +63,8 @@ export interface CreateBotOptions {
   setPriors?: SetPriors;
   /** With `setPriors`: the share of the prior left to the standard sets (measuring hook). */
   standardShare?: number;
+  /** Levels 1–3: the species the rival brought (measuring hook, fase 23). */
+  rivalBrought?: readonly SpeciesId[];
 }
 
 export function createBot(level: BotLevel, options: CreateBotOptions = {}): BattleAgent {

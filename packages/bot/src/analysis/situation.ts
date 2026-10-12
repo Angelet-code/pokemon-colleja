@@ -70,6 +70,11 @@ export interface SituationOptions {
   priors?: SetPriors | null;
   /** With priors: the share left to the standard sets (`OpponentModel`; default its own). */
   standardShare?: number;
+  /**
+   * Measuring hook (fase 23): the species the rival brought. The rival's preview is narrowed
+   * to them, as if the bot knew which ones it left behind.
+   */
+  rivalBrought?: readonly SpeciesId[] | null;
 }
 
 export class Situation {
@@ -85,6 +90,8 @@ export class Situation {
   readonly foes: FoeMember[];
   /** Beliefs about the rival's sets, when the bot weighs them (level 3). */
   readonly beliefs: SetBeliefs | undefined;
+  /** What the rival brought, when known (`SituationOptions.rivalBrought`). */
+  readonly rivalBrought: readonly SpeciesId[] | null;
   private readonly damageCache = new WeakMap<
     Combatant,
     WeakMap<Combatant, Map<MoveId, DamageEstimate>>
@@ -101,6 +108,8 @@ export class Situation {
     this.foe = otherSide(context.side);
     this.mode = context.mode;
     this.field = fieldFromView(this.view);
+    this.rivalBrought = options.rivalBrought ?? null;
+    if (this.rivalBrought) narrowPreview(this.view, this.foe, this.rivalBrought);
     this.model = new OpponentModel(
       context.mode,
       context.opponentTeam,
@@ -350,6 +359,15 @@ function choiceLock(
 
 function speciesNum(species: SpeciesId): number {
   return getSpecies(species)?.num ?? -1;
+}
+
+/** Leaves in `side`'s preview only the species it brought. */
+function narrowPreview(view: BattleView, side: SideId, brought: readonly SpeciesId[]): void {
+  const nums = new Set(brought.map(speciesNum));
+  const data = view.sides[side];
+  const keep = data.preview.map((species) => nums.has(speciesNum(species)));
+  data.preview = data.preview.filter((_, i) => keep[i]);
+  data.previewShiny = data.previewShiny.filter((_, i) => keep[i]);
 }
 
 /** Own team set behind a request Pokémon. */

@@ -149,6 +149,14 @@ describe('measuring mode: fixed lineups, mirrored pairs (fase 17)', () => {
     }
   });
 
+  it('with aOracle, bot A knows what B brought (fixed modes only)', async () => {
+    const options = { a: 2, b: 2, mode: 'doubles', battles: 2, seed: 'oracle' } as const;
+    const result = await runArena({ ...options, fixed: true, aOracle: true });
+    expect(result.wins.error).toBe(0);
+    expect(result.invalidChoices).toBe(0);
+    await expect(runArena({ ...options, aOracle: true })).rejects.toThrow(/fixed mode/);
+  });
+
   it('summarizes each pair of battles', () => {
     const record = (pair: number, outcome: BattleRecord['outcome']) =>
       ({ pair, outcome }) as BattleRecord;
