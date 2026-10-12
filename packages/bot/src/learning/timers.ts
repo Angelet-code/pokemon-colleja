@@ -56,8 +56,19 @@ export class EffectTimers {
     }
   }
 
-  applyAll(lines: readonly string[]): void {
+  applyAll(lines: readonly string[]): this {
     for (const line of lines) this.apply(line);
+    return this;
+  }
+
+  /** An independent copy (to follow a fork of the battle from here). */
+  clone(): EffectTimers {
+    const copy = new EffectTimers();
+    copy.turn = this.turn;
+    copy.trickRoom = this.trickRoom;
+    copy.sides.p1 = { ...this.sides.p1 };
+    copy.sides.p2 = { ...this.sides.p2 };
+    return copy;
   }
 
   /** Turns left at the start of the current turn (0 = not up). */

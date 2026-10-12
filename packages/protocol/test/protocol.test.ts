@@ -385,6 +385,16 @@ describe('phase 8: calculator, replays and explanations', () => {
       ],
     };
     expect(TurnExplanationSchema.parse(withExpected)).toEqual(withExpected);
+    const withDecisive = {
+      ...explanation,
+      decisive: [
+        {
+          reason: 'se mueve antes que los tuyos en el campo',
+          instead: [{ kind: 'move', user: 'garchomp', move: 'protect' }],
+        },
+      ],
+    };
+    expect(TurnExplanationSchema.parse(withDecisive)).toEqual(withDecisive);
     // Old explanations (and replays) have none.
     expect(TurnExplanationSchema.parse(explanation)).toEqual(explanation);
     const bad = structuredClone(withBeliefs);

@@ -48,6 +48,28 @@ describe('bot train of thought', () => {
     ]);
   });
 
+  it('says what really decided, against what it would have chosen without it', () => {
+    const checked: DecisionExplanation = {
+      ...SINGLES,
+      decisive: [
+        {
+          reason: 'se mueve antes que los tuyos en el campo',
+          instead: [{ kind: 'move', user: 'gengar', move: 'shadowball' }],
+        },
+        {
+          reason: 'recibe menos daño en el campo',
+          instead: [{ kind: 'move', user: 'gengar', move: 'shadowball' }],
+        },
+      ],
+    };
+    expect(explanationStory(checked, 'es', label).at(-1)).toBe(
+      'Frente a «shadowball», eligió «protect» porque así se mueve antes que los tuyos en el campo y recibe menos daño en el campo.',
+    );
+    // Without expected replies, the decisive factors are the whole story.
+    const { expected: _, ...alone } = checked;
+    expect(explanationStory(alone, 'es', label)).toHaveLength(1);
+  });
+
   it('says the choice was the best against the likeliest reply', () => {
     const sure: DecisionExplanation = {
       ...SINGLES,

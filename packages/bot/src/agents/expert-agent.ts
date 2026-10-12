@@ -11,6 +11,7 @@
 import {
   type AgentContext,
   type Choice,
+  type DecisiveFactor,
   type ExplainedAction,
   getSlotOptions,
   type MoveRequest,
@@ -38,10 +39,12 @@ import { explainBeliefs } from '../inference/explain-beliefs';
 import { COUNTER_CHANCE, RivalStyle, type StyleSummary } from '../inference/style';
 import type { BotLevel } from '../levels';
 import { rivalAssumptions } from '../search/assumptions';
+import { checkedReasons, reasonText } from '../search/checked-reasons';
 import { previewLeads } from '../search/lead-reasons';
 import { foeLineup } from '../search/lineups';
 import {
   SEARCH_SETTINGS,
+  type SearchResult,
   type SearchSettings,
   type StyleAdjustment,
   searchMoves,
@@ -217,9 +220,11 @@ export class ExpertAgent extends TacticalAgent {
             : {}),
         })),
       ]);
-      if (expected.length === 0) return decided;
+      const decisive = decisiveFactors(result, (list) => describeActions(context, slots, list));
+      const checked = decisive.length > 0 ? { ...decided, decisive } : decided;
+      if (expected.length === 0) return checked;
       return {
-        ...decided,
+        ...checked,
         expected: expected.map((reply) => {
           const rival: ExplainContext = {
             request: reply.request,
@@ -236,6 +241,26 @@ export class ExpertAgent extends TacticalAgent {
     };
     return { type: 'actions', actions: result.chosen.actions };
   }
+}
+
+/**
+ * The factors of the learned value that decided the move (`checkedReasons`): each one, with
+ * what the bot would have chosen without it.
+ */
+function decisiveFactors(
+  result: SearchResult,
+  describe: (list: readonly SlotAction[]) => ExplainedAction[],
+): DecisiveFactor[] {
+  if (!result.learned) return [];
+  const chosen = result.options.indexOf(result.chosen);
+  if (chosen < 0) return [];
+  const scores = result.options.map((option) => option.score);
+  return checkedReasons(scores, result.learned, chosen).flatMap((reason) => {
+    const instead = result.options[reason.instead];
+    return instead
+      ? [{ reason: reasonText(reason.feature), instead: describe(instead.actions) }]
+      : [];
+  });
 }
 
 /** The lead pairs of a doubles preview with their reasons, if it simulated them. */

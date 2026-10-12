@@ -12,7 +12,7 @@ import { dirname } from 'node:path';
 import { parseArgs } from 'node:util';
 import { type BotLevel, isBotLevel } from '@colleja/bot';
 import type { GameMode } from '@colleja/data';
-import { playArenaBattle } from './arena';
+import { parseSearchSettings, playArenaBattle } from './arena';
 
 const USAGE = `Uso: npm run arena:perf -- [opciones]
 
@@ -23,6 +23,7 @@ const USAGE = `Uso: npm run arena:perf -- [opciones]
   --seed <texto>                 Semilla base. Por defecto: perf
   --save <fichero>               Guarda el resultado (JSON)
   --compare <fichero>            Compara con un resultado guardado
+  --a-settings <json>            Ajustes de búsqueda del bot A (nivel 3), como en el arena
   -h, --help                     Esta ayuda`;
 
 interface PerfBattle {
@@ -86,6 +87,7 @@ async function main(): Promise<number> {
       seed: { type: 'string', default: 'perf' },
       save: { type: 'string' },
       compare: { type: 'string' },
+      'a-settings': { type: 'string' },
       help: { type: 'boolean', short: 'h' },
     },
   });
@@ -99,11 +101,15 @@ async function main(): Promise<number> {
     ['singles', count(values.singles, '--singles')],
     ['doubles', count(values.doubles, '--doubles')],
   ];
+  const aSettings = values['a-settings'] ? parseSearchSettings(values['a-settings']) : undefined;
   const result: PerfResult = { a, b, seed: values.seed, battles: [] };
   for (const [mode, battles] of plan) {
     for (let index = 0; index < battles; index++) {
       const cpu = process.cpuUsage();
-      const record = await playArenaBattle({ a, b, mode, battles, seed: values.seed }, index);
+      const record = await playArenaBattle(
+        { a, b, mode, battles, seed: values.seed, ...(aSettings ? { aSettings } : {}) },
+        index,
+      );
       const used = process.cpuUsage(cpu);
       if (record.outcome === 'error') console.warn(`  ⚠ ${mode} #${index}: ${record.error}`);
       result.battles.push({

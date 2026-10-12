@@ -5,14 +5,16 @@
  *
  * `spectatorPosition` builds it from what a spectator sees (a public replay): every set is
  * assumed like the bot assumes the rival's (`OpponentModel`, filtered by what was revealed up
- * to that turn). In a battle the bot knows its own sets exactly: that is the one difference
- * between the positions it learns from and the ones it will value.
+ * to that turn). `ownPosition` (fase 19) builds it from the bot's own `Situation`: its own
+ * sets and HP exactly, the rival's as the bot believes them. That is the one difference
+ * between the positions it learns from and the ones it values.
  */
-import type { BattleView, PokemonSet, SideId, ViewPokemon } from '@colleja/core';
+import type { BattleView, PokemonSet, SideId, ViewPokemon, ViewSide } from '@colleja/core';
 import { type GameMode, getSpecies, type SpeciesId } from '@colleja/data';
 import { type Combatant, makeCombatant, megaSpeciesOf } from '../analysis/combatant';
 import { type FieldState, fieldFromView } from '../analysis/damage';
 import { OpponentModel } from '../analysis/opponent-model';
+import type { Situation } from '../analysis/situation';
 import type { EffectTurns } from './timers';
 
 export interface PositionMember {
@@ -52,29 +54,10 @@ export function spectatorPosition(
 ): Position {
   const side = (id: SideId): PositionSide => {
     const data = view.sides[id];
-    const members: PositionMember[] = data.pokemon.map((pokemon) => ({
-      combatant: seenCombatant(pokemon, model.likelySet(pokemon), id),
-      active: pokemon.position !== null && !pokemon.fainted,
-      fainted: pokemon.fainted,
-      fresh: pokemon.position !== null && !pokemon.movedSinceSwitch,
-      weight: 1,
-    }));
-    const seen = new Set(data.pokemon.map((pokemon) => speciesNum(pokemon.baseSpecies)));
-    const unseen = data.preview.filter((species) => !seen.has(speciesNum(species)));
-    const brought = data.teamSize ?? data.preview.length;
-    const slots = Math.max(0, brought - data.pokemon.length);
-    const weight = unseen.length > 0 ? Math.min(1, slots / unseen.length) : 0;
-    if (weight > 0) {
-      for (const species of unseen) {
-        members.push({
-          combatant: makeCombatant({ side: id, set: model.likelySetForSpecies(species) }),
-          active: false,
-          fainted: false,
-          fresh: true,
-          weight,
-        });
-      }
-    }
+    const members = data.pokemon.map((pokemon) =>
+      seenMember(seenCombatant(pokemon, model.likelySet(pokemon), id), pokemon),
+    );
+    members.push(...unseenMembers(data, id, (species) => model.likelySetForSpecies(species)));
     return { members, megaUsed: data.pokemon.some((pokemon) => pokemon.megaEvolved) };
   };
   return {
@@ -84,6 +67,104 @@ export function spectatorPosition(
     timers,
     sides: { p1: side('p1'), p2: side('p2') },
   };
+}
+
+/**
+ * The position of the bot's own decision (fase 19): its own Pokémon with their exact sets, HP
+ * and state (from the request), the rival's as in `spectatorPosition` but with the set the bot
+ * believes most likely (`Situation.foes`: the deduction of fase 11 at level 3, the opponent
+ * model's order otherwise), or the ones of `assumed` (by name: a search fork's assumption).
+ * Rival Pokémon only seen at team preview weigh like a spectator's.
+ */
+export function ownPosition(
+  situation: Situation,
+  timers: EffectTurns,
+  assumed?: Readonly<Record<string, PokemonSet>>,
+): Position {
+  const { view, me, foe } = situation;
+  const own: PositionSide = {
+    members: situation.own.map((member) => ({
+      combatant: member.combatant,
+      active: member.active && !member.fainted,
+      fainted: member.fainted,
+      fresh: member.active && !member.view?.movedSinceSwitch,
+      weight: 1,
+    })),
+    megaUsed: view.sides[me].pokemon.some((pokemon) => pokemon.megaEvolved),
+  };
+  const data = view.sides[foe];
+  const believed = new Map<ViewPokemon, PokemonSet>();
+  for (const member of situation.foes) {
+    if (member.view && member.candidates[0]) believed.set(member.view, member.candidates[0]);
+  }
+  const preview = new Map<number, PokemonSet>();
+  for (const member of situation.foes) {
+    if (!member.view && member.candidates[0]) {
+      preview.set(speciesNum(member.candidates[0].species), member.candidates[0]);
+    }
+  }
+  const members = data.pokemon.map((pokemon) =>
+    seenMember(
+      seenCombatant(
+        pokemon,
+        assumed?.[pokemon.name] ?? believed.get(pokemon) ?? situation.model.likelySet(pokemon),
+        foe,
+      ),
+      pokemon,
+    ),
+  );
+  members.push(
+    ...unseenMembers(
+      data,
+      foe,
+      (species) => preview.get(speciesNum(species)) ?? situation.model.likelySetForSpecies(species),
+    ),
+  );
+  const theirs: PositionSide = {
+    members,
+    megaUsed: data.pokemon.some((pokemon) => pokemon.megaEvolved),
+  };
+  return {
+    doubles: view.gameType === 'doubles',
+    turn: view.turn,
+    field: situation.field,
+    timers,
+    sides: me === 'p1' ? { p1: own, p2: theirs } : { p1: theirs, p2: own },
+  };
+}
+
+function seenMember(combatant: Combatant, pokemon: ViewPokemon): PositionMember {
+  return {
+    combatant,
+    active: pokemon.position !== null && !pokemon.fainted,
+    fainted: pokemon.fainted,
+    fresh: pokemon.position !== null && !pokemon.movedSinceSwitch,
+    weight: 1,
+  };
+}
+
+/**
+ * The preview species of a side not seen in battle yet, each weighing the share of the side's
+ * unseen slots (if it brought 4 and 2 have come out, each of the other 4 weighs ½).
+ */
+function unseenMembers(
+  data: ViewSide,
+  id: SideId,
+  setFor: (species: SpeciesId) => PokemonSet,
+): PositionMember[] {
+  const seen = new Set(data.pokemon.map((pokemon) => speciesNum(pokemon.baseSpecies)));
+  const unseen = data.preview.filter((species) => !seen.has(speciesNum(species)));
+  const brought = data.teamSize ?? data.preview.length;
+  const slots = Math.max(0, brought - data.pokemon.length);
+  const weight = unseen.length > 0 ? Math.min(1, slots / unseen.length) : 0;
+  if (weight === 0) return [];
+  return unseen.map((species) => ({
+    combatant: makeCombatant({ side: id, set: setFor(species) }),
+    active: false,
+    fainted: false,
+    fresh: true,
+    weight,
+  }));
 }
 
 /** A Pokémon seen in battle with an assumed set and what is known of its state. */

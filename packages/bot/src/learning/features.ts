@@ -20,29 +20,98 @@ export const FEATURES_VERSION = 1;
 export interface FeatureInfo {
   id: string;
   label: string;
+  /**
+   * Why an option that is better on this factor was chosen, from the bot's side ("porque
+   * así …"): game terms, never numbers (fase 19, checked explanations).
+   */
+  reason: string;
 }
 
 export const FEATURES = [
-  { id: 'hp', label: 'PS que le quedan a cada equipo (contando los que no han salido)' },
-  { id: 'alive', label: 'Pokémon que siguen en pie' },
-  { id: 'fieldHp', label: 'PS de los que están en el campo' },
-  { id: 'fieldSpeed', label: 'Quién se mueve antes en el campo' },
-  { id: 'teamSpeed', label: 'Quién es más rápido contando el banquillo' },
-  { id: 'trickRoom', label: 'Turnos de Espacio Raro a favor' },
-  { id: 'tailwind', label: 'Turnos de Viento Afín' },
-  { id: 'screens', label: 'Turnos de pantallas' },
-  { id: 'weather', label: 'Clima puesto por su equipo' },
-  { id: 'koFor', label: 'Rivales en el campo que puede tumbar de un golpe' },
-  { id: 'koAgainst', label: 'Suyos en el campo que el rival puede tumbar de un golpe' },
-  { id: 'koFirstFor', label: 'Rivales que tumba de un golpe antes de que se muevan' },
-  { id: 'koFirstAgainst', label: 'Suyos que el rival tumba de un golpe antes de que se muevan' },
-  { id: 'damageFor', label: 'Daño que hace en el campo' },
-  { id: 'damageAgainst', label: 'Daño que recibe en el campo' },
-  { id: 'answers', label: 'Rivales a los que alguien suyo gana en un duelo' },
-  { id: 'boosts', label: 'Mejoras de características en el campo' },
-  { id: 'status', label: 'Problemas de estado' },
-  { id: 'mega', label: 'Megaevolución aún disponible' },
-  { id: 'fakeOut', label: 'Sorpresa disponible en el campo' },
+  {
+    id: 'hp',
+    label: 'PS que le quedan a cada equipo (contando los que no han salido)',
+    reason: 'le quedan más PS',
+  },
+  { id: 'alive', label: 'Pokémon que siguen en pie', reason: 'le quedan más Pokémon en pie' },
+  {
+    id: 'fieldHp',
+    label: 'PS de los que están en el campo',
+    reason: 'los suyos en el campo quedan con más PS',
+  },
+  {
+    id: 'fieldSpeed',
+    label: 'Quién se mueve antes en el campo',
+    reason: 'se mueve antes que los tuyos en el campo',
+  },
+  {
+    id: 'teamSpeed',
+    label: 'Quién es más rápido contando el banquillo',
+    reason: 'es más rápido que tu equipo contando el banquillo',
+  },
+  {
+    id: 'trickRoom',
+    label: 'Turnos de Espacio Raro a favor',
+    reason: 'el Espacio Raro le favorece más turnos',
+  },
+  {
+    id: 'tailwind',
+    label: 'Turnos de Viento Afín',
+    reason: 'tiene más turnos de Viento Afín que tú',
+  },
+  { id: 'screens', label: 'Turnos de pantallas', reason: 'tiene más turnos de pantallas que tú' },
+  { id: 'weather', label: 'Clima puesto por su equipo', reason: 'el clima que queda es el suyo' },
+  {
+    id: 'koFor',
+    label: 'Rivales en el campo que puede tumbar de un golpe',
+    reason: 'deja a más de los tuyos a tiro de un golpe',
+  },
+  {
+    id: 'koAgainst',
+    label: 'Suyos en el campo que el rival puede tumbar de un golpe',
+    reason: 'deja a menos de los suyos a tiro de un golpe',
+  },
+  {
+    id: 'koFirstFor',
+    label: 'Rivales que tumba de un golpe antes de que se muevan',
+    reason: 'puede tumbar a más de los tuyos antes de que se muevan',
+  },
+  {
+    id: 'koFirstAgainst',
+    label: 'Suyos que el rival tumba de un golpe antes de que se muevan',
+    reason: 'menos de los suyos caen de un golpe antes de moverse',
+  },
+  {
+    id: 'damageFor',
+    label: 'Daño que hace en el campo',
+    reason: 'hace más daño a los tuyos en el campo',
+  },
+  {
+    id: 'damageAgainst',
+    label: 'Daño que recibe en el campo',
+    reason: 'recibe menos daño en el campo',
+  },
+  {
+    id: 'answers',
+    label: 'Rivales a los que alguien suyo gana en un duelo',
+    reason: 'le quedan más duelos ganados uno contra uno',
+  },
+  {
+    id: 'boosts',
+    label: 'Mejoras de características en el campo',
+    reason: 'queda con mejores cambios de características',
+  },
+  {
+    id: 'status',
+    label: 'Problemas de estado',
+    reason: 'tu equipo queda con más problemas de estado',
+  },
+  { id: 'mega', label: 'Megaevolución aún disponible', reason: 'conserva la Megaevolución' },
+  {
+    id: 'fakeOut',
+    label: 'Sorpresa disponible en el campo',
+    reason: 'conserva Sorpresa en el campo',
+  },
 ] as const satisfies readonly FeatureInfo[];
 
 export type FeatureId = (typeof FEATURES)[number]['id'];

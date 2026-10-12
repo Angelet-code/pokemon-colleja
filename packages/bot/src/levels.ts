@@ -6,6 +6,7 @@ import { AggressiveAgent } from './agents/aggressive-agent';
 import { ExpertAgent } from './agents/expert-agent';
 import { TacticalAgent } from './agents/tactical-agent';
 import { RandomAgent } from './random-agent';
+import type { SearchSettings } from './search/lookahead';
 
 export type BotLevel = 0 | 1 | 2 | 3;
 
@@ -50,7 +51,13 @@ export function botLevelInfo(level: BotLevel): BotLevelInfo {
   return BOT_LEVELS.find((info) => info.level === level) as BotLevelInfo;
 }
 
-export function createBot(level: BotLevel, options: { seed?: string } = {}): BattleAgent {
+export interface CreateBotOptions {
+  seed?: string;
+  /** Level 3 only: search settings over `SEARCH_SETTINGS` (to measure variants in the arena). */
+  settings?: Partial<SearchSettings>;
+}
+
+export function createBot(level: BotLevel, options: CreateBotOptions = {}): BattleAgent {
   switch (level) {
     case 0:
       return new RandomAgent(options);

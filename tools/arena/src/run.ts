@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { type BotLevel, botLevelInfo, isBotLevel } from '@colleja/bot';
 import type { GameMode } from '@colleja/data';
-import { type ArenaResult, type BattleRecord, runArena } from './arena';
+import { type ArenaResult, type BattleRecord, parseSearchSettings, runArena } from './arena';
 import { loadPool, SAVED_RIVALS } from './pool';
 
 const OUTPUT = fileURLToPath(new URL('../../../storage/arena/', import.meta.url));
@@ -39,6 +39,8 @@ const USAGE = `Uso: npm run arena -- [opciones]
                                  con salida al azar, la misma en los dos combates del par, y el
                                  par es un espejo (mismos equipos, salidas y suerte; los bots
                                  cambian de asiento)
+  --a-settings <json>            Ajustes de búsqueda del bot A (nivel 3) sobre SEARCH_SETTINGS,
+                                 p. ej. '{"learnedWeight":1}': para medir una variante
   --json <fichero>               Guarda cada combate (par, salidas, resultado) y el resumen
   -h, --help                     Esta ayuda`;
 
@@ -116,6 +118,15 @@ async function main(): Promise<number> {
         ? [values.mode]
         : fail(`--mode debe ser singles, doubles o both (recibido: "${values.mode}").`);
 
+  let aSettings: ReturnType<typeof parseSearchSettings> | undefined;
+  if (values['a-settings']) {
+    if (a !== 3) fail('--a-settings solo vale con --a 3.');
+    try {
+      aSettings = parseSearchSettings(values['a-settings']);
+    } catch (error) {
+      fail(error instanceof Error ? error.message : String(error));
+    }
+  }
   const name = (bot: BotLevel) => `${botLevelInfo(bot).name} (${bot})`;
   let problems = 0;
   const output: { mode: GameMode; result: ArenaResult; battles: BattleRecord[] }[] = [];
@@ -138,6 +149,7 @@ async function main(): Promise<number> {
       teamPreview: !values['no-preview'],
       openTeamSheets: values['open-team-sheets'],
       fixed: values.fixed,
+      ...(aSettings ? { aSettings } : {}),
       ...(pool ? { teams: pool.map((team) => team.members) } : {}),
       onBattle: (record) => {
         const { replay: _replay, ...kept } = record;
@@ -177,6 +189,7 @@ function parse() {
       'open-team-sheets': { type: 'boolean', default: false },
       teams: { type: 'string' },
       fixed: { type: 'boolean', default: false },
+      'a-settings': { type: 'string' },
       json: { type: 'string' },
       help: { type: 'boolean', short: 'h', default: false },
     },

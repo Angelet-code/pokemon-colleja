@@ -26,6 +26,7 @@ export * from './analysis/team-selection';
 export * from './explain';
 export * from './learning/features';
 export * from './learning/position';
+export * from './learning/shipped-model';
 export * from './learning/timers';
 export * from './learning/value-model';
 export * from './levels';

@@ -8,7 +8,7 @@
  * (`fixedLineup`), the same in both battles of the pair, and both battles share the battle
  * seed. A pair is then a mirror: same teams, same leads, same luck stream, only the bots swap.
  */
-import { type BotLevel, createBot } from '@colleja/bot';
+import { type BotLevel, createBot, SEARCH_SETTINGS, type SearchSettings } from '@colleja/bot';
 import { type PokemonSet, SeededRandom, type SideId } from '@colleja/core';
 import type { GameMode } from '@colleja/data';
 import { playBotBattle, type ReplayData } from '@colleja/engine';
@@ -31,6 +31,8 @@ export interface ArenaOptions {
   teams?: readonly PokemonSet[][];
   /** Measuring mode: fixed groups with random leads, each pair a mirror (see above). */
   fixed?: boolean;
+  /** Search settings of bot A (level 3), over `SEARCH_SETTINGS`: to measure a variant. */
+  aSettings?: Partial<SearchSettings>;
   /** Called after every battle (progress). */
   onBattle?: (record: BattleRecord) => void;
 }
@@ -95,6 +97,25 @@ export interface PairSummary {
   interval: [number, number];
 }
 
+/**
+ * `--a-settings` (fase 19): a JSON object of numeric search settings, e.g.
+ * `{"learnedWeight":1,"positionWeight":0}`. Unknown keys are an error.
+ */
+export function parseSearchSettings(text: string): Partial<SearchSettings> {
+  const parsed: unknown = JSON.parse(text);
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new Error('--a-settings debe ser un objeto JSON.');
+  }
+  const known = Object.keys(SEARCH_SETTINGS.doubles);
+  const settings: Record<string, number> = {};
+  for (const [key, value] of Object.entries(parsed)) {
+    if (!known.includes(key)) throw new Error(`--a-settings: opción desconocida "${key}".`);
+    if (typeof value !== 'number') throw new Error(`--a-settings: "${key}" debe ser un número.`);
+    settings[key] = value;
+  }
+  return settings as Partial<SearchSettings>;
+}
+
 /** Wilson score interval for `successes` out of `total` (95 %). */
 export function wilsonInterval(successes: number, total: number, z = 1.96): [number, number] {
   if (total === 0) return [0, 1];
@@ -116,7 +137,10 @@ export async function playArenaBattle(options: ArenaOptions, index: number): Pro
   // A mirror shares the luck stream: both battles of the pair use the same battle seed.
   const battleSeed = options.fixed ? `${seed}:${mode}:fixed:${pair}` : `${seed}:${mode}:${index}`;
   const botSeed = `${seed}:${mode}:${index}`;
-  const a = createBot(options.a, { seed: `${botSeed}:a` });
+  const a = createBot(options.a, {
+    seed: `${botSeed}:a`,
+    ...(options.aSettings ? { settings: options.aSettings } : {}),
+  });
   const b = createBot(options.b, { seed: `${botSeed}:b` });
   let agents = aSide === 'p1' ? { p1: a, p2: b } : { p1: b, p2: a };
   let lineups: BattleRecord['lineups'];

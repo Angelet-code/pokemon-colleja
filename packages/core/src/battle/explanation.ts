@@ -53,6 +53,17 @@ export interface ExpectedReply {
   counter?: boolean;
 }
 
+/**
+ * A factor of the learned value that decided the move (level 3, fase 19): without it, the bot
+ * would have chosen `instead`. Only factors that change the decision are shown.
+ */
+export interface DecisiveFactor {
+  /** Why, in game terms and in Spanish, completing "porque así …". */
+  reason: string;
+  /** What it would have chosen without this factor (one action per slot, passes left out). */
+  instead: ExplainedAction[];
+}
+
 /** One guess of the bot about a set of the other player (level 3). */
 export interface SetGuess {
   /** 0–1. */
@@ -254,6 +265,11 @@ export interface DecisionExplanation {
    * moves). The rest of their options it thought worse for them and did not consider.
    */
   expected?: ExpectedReply[];
+  /**
+   * The factors of the learned value that decided the move, most decisive first (level 3 with
+   * the learned value, when choosing moves): taking any of them away changes the decision.
+   */
+  decisive?: DecisiveFactor[];
   /** What the bot thought of both teams before choosing its own (level 3, team preview). */
   preview?: PreviewAnalysis;
 }
@@ -321,6 +337,12 @@ export function redactExplanation<T extends DecisionExplanation>(
       actions: option.actions.map(redact),
     })),
   };
+  if (explanation.decisive) {
+    redacted.decisive = explanation.decisive.map((factor) => ({
+      ...factor,
+      instead: factor.instead.map(redact),
+    }));
+  }
   if (explanation.preview) redacted.preview = redactPreview(explanation.preview, find);
   return redacted;
 }

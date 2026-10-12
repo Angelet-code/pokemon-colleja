@@ -9,7 +9,13 @@ import type { GameMode } from '@colleja/data';
 import { BattleSession, playOut } from '@colleja/engine';
 import { generateTeam } from '@colleja/teamgen';
 import { describe, expect, it } from 'vitest';
-import { type BotLevel, createBot, EXPLANATION_METHODS, ExpertAgent } from '../src/index';
+import {
+  type BotLevel,
+  createBot,
+  EXPLANATION_METHODS,
+  ExpertAgent,
+  type SearchSettings,
+} from '../src/index';
 import { LIGHT_SEARCH } from './helpers';
 
 function newSession(mode: GameMode, seed: string): BattleSession {
@@ -30,11 +36,17 @@ interface Decision {
 }
 
 /** Plays a battle; when `explain`, asks the p2 bot for an explanation after every choice. */
-async function play(level: BotLevel, mode: GameMode, seed: string, explain: boolean) {
+async function play(
+  level: BotLevel,
+  mode: GameMode,
+  seed: string,
+  explain: boolean,
+  settings: Partial<SearchSettings> = LIGHT_SEARCH,
+) {
   const session = newSession(mode, seed);
   const bot =
     level === 3
-      ? new ExpertAgent({ seed: `${seed}:bot`, settings: LIGHT_SEARCH })
+      ? new ExpertAgent({ seed: `${seed}:bot`, settings })
       : createBot(level, { seed: `${seed}:bot` });
   const agents: Record<SideId, BattleAgent> = {
     p1: createBot(1, { seed: `${seed}:p1` }),
@@ -108,4 +120,25 @@ describe('bot explanations', () => {
       if (level === 3) expect(anticipated).toBeGreaterThan(0);
     },
   );
+
+  it('level 3 with the learned value explains what decided without changing its decisions', async () => {
+    const settings = { ...LIGHT_SEARCH, learnedWeight: 1 };
+    const seed = 'explica-aprendido';
+    const plain = await play(3, 'doubles', seed, false, settings);
+    const explained = await play(3, 'doubles', seed, true, settings);
+    expect(explained.inputLog).toEqual(plain.inputLog);
+    let decided = 0;
+    for (const { explanation } of explained.decisions) {
+      for (const factor of explanation?.decisive ?? []) {
+        decided++;
+        expect(explanation?.kind).toBe('moves');
+        expect(factor.reason).toMatch(/^[a-záéíóúñ]/);
+        expect(factor.instead.length).toBeGreaterThan(0);
+        // What it would have chosen instead is another option, never the chosen one.
+        const chosen = explanation?.options.find((option) => option.chosen);
+        expect(factor.instead).not.toEqual(chosen?.actions);
+      }
+    }
+    expect(decided).toBeGreaterThan(0);
+  });
 });

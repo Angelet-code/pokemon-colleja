@@ -27,6 +27,11 @@ import { planSingles, singlesBaseline } from '../analysis/singles-plan';
 import { Situation } from '../analysis/situation';
 import { teamChainValue } from '../analysis/team-chain';
 import { actionKeys, type StylePrediction } from '../inference/style';
+import { extractFeatures } from '../learning/features';
+import { ownPosition } from '../learning/position';
+import { VALUE_MODEL } from '../learning/shipped-model';
+import { EffectTimers } from '../learning/timers';
+import { contributions, valueLogit } from '../learning/value-model';
 import { type Assumption, rivalAssumptions } from './assumptions';
 import { forkFoeLineup, ownLineup } from './lineups';
 
@@ -44,8 +49,15 @@ export interface SearchSettings {
   turns: number;
   /** Softmax temperature over level 2's scores of the rival's replies (score points). */
   replyTemperature: number;
+  /** Weight of the material balance (HP shares × 100) of each resulting position. */
+  materialWeight: number;
   /** Weight of the change level 2 expects from each resulting position (see `outlook`). */
   positionWeight: number;
+  /**
+   * Weight of the learned value of each resulting position (fase 19, ADR-0021): its log-odds
+   * of winning (`valueLogit`) times `LOGIT_POINTS`. 0 turns it off.
+   */
+  learnedWeight: number;
   /**
    * Weight of the whole-team chain (`teamChainValue`, both benches) in each resulting
    * position, as its change from the material balance. Singles only (0 in doubles).
@@ -78,7 +90,9 @@ export const SEARCH_SETTINGS: Record<'singles' | 'doubles', SearchSettings> = {
     rivalReplies: 3,
     turns: 8,
     replyTemperature: 10,
+    materialWeight: 1,
     positionWeight: 0.5,
+    learnedWeight: 0,
     chainWeight: 0.4,
     loopPenalty: 4,
     counterCandidates: 6,
@@ -91,7 +105,10 @@ export const SEARCH_SETTINGS: Record<'singles' | 'doubles', SearchSettings> = {
     rivalReplies: 4,
     turns: 4,
     replyTemperature: 10,
+    materialWeight: 1,
     positionWeight: 0.5,
+    // Fase 19 (ADR-0021): +2,4 points in the mirrored arena against level 2.
+    learnedWeight: 1,
     chainWeight: 0,
     loopPenalty: 4,
     counterCandidates: 6,
@@ -99,6 +116,13 @@ export const SEARCH_SETTINGS: Record<'singles' | 'doubles', SearchSettings> = {
     pruneMargin: 30,
   },
 };
+
+/**
+ * Score points per log-odd of the learned value: about what a Pokémon is worth in material
+ * (100 points), since in the shipped model one more Pokémon standing, with its HP, adds ≈ 1.5
+ * log-odds.
+ */
+export const LOGIT_POINTS = 65;
 
 /** Extra value of winning (or losing) the battle in the searched turn. */
 const WIN_VALUE = 200;
@@ -114,6 +138,11 @@ export interface ScoredOption {
 export interface SearchResult {
   options: ScoredOption[];
   chosen: ScoredOption;
+  /**
+   * With the learned value: each option's average contribution of every factor to its score
+   * (score points, `FEATURES` order), indexed like `options`. Its counterfactuals are exact.
+   */
+  learned?: number[][];
   /** What the search expected from the rival (with `SearchTools.style`). */
   prediction?: StylePrediction;
   /** The rival's replies it played against, most likely first (to explain the decision). */
@@ -149,6 +178,8 @@ export interface SearchTools {
   replacements: BattleAgent;
   /** Adapts the rival's replies to its style and predicts them (level 3 with a style). */
   style?: StyleAdjustment;
+  /** Timed field effects up to the searched position (set by `searchMoves` when needed). */
+  timers?: EffectTimers;
 }
 
 /** Options for this turn ranked by level 2, best first (`null`: nothing to plan). */
@@ -173,16 +204,25 @@ export function rankedOptions(
 export function searchMoves(
   situation: Situation,
   sandbox: BattleSandbox,
-  tools: SearchTools,
+  input: SearchTools,
 ): SearchResult | null {
-  const { settings, random } = tools;
+  const { settings, random } = input;
+  const tools =
+    settings.learnedWeight > 0 && !input.timers
+      ? { ...input, timers: new EffectTimers().applyAll(situation.context.log) }
+      : input;
   const request = situation.context.request as MoveRequest;
   const own = rankedOptions(situation, request, random)?.slice(0, settings.ownOptions);
   if (!own || own.length === 0) return null;
   if (own.length === 1) return { options: own, chosen: own[0] as ScoredOption };
 
   const seed = String(random.int(2 ** 31));
-  const totals = own.map(() => ({ sum: 0, count: 0 }));
+  const learning = settings.learnedWeight > 0;
+  const totals = own.map(() => ({
+    sum: 0,
+    count: 0,
+    parts: learning ? new Array<number>(VALUE_MODEL.features.length).fill(0) : undefined,
+  }));
   const assumptions = rivalAssumptions(situation, settings.assumptions, random);
   let prediction: StylePrediction | undefined;
   const tally = new Map<string, ReplyTally>();
@@ -223,8 +263,8 @@ export function searchMoves(
         if (!reply.choice || !leaf.choose(situation.foe, reply.choice)) {
           leaf.chooseDefault(situation.foe);
         }
-        const value = positionValue(situation, leaf, assumption, tools);
-        const total = totals[o] as { sum: number; count: number };
+        const total = totals[o] as (typeof totals)[number];
+        const value = positionValue(situation, leaf, assumption, tools, total.parts);
         total.sum += value;
         total.count++;
         const versus = tallies[pick]?.versus[o];
@@ -244,6 +284,12 @@ export function searchMoves(
     option.actions.some((action) => action.type === 'switch') ? loop : 0,
   );
   const kept = own.flatMap((_, o) => ((totals[o] as { count: number }).count > 0 ? [o] : []));
+  const learned = learning
+    ? kept.map((o) => {
+        const total = totals[o] as (typeof totals)[number];
+        return (total.parts as number[]).map((part) => part / total.count);
+      })
+    : undefined;
   const options = kept.map((o) => {
     const total = totals[o] as { sum: number; count: number };
     return {
@@ -257,7 +303,13 @@ export function searchMoves(
     return prediction ? { ...fallback, prediction } : fallback;
   }
   const expected = expectedReplies(tally, assumptions.length, kept, penalty);
-  return { options, chosen, ...(prediction ? { prediction } : {}), expected };
+  return {
+    options,
+    chosen,
+    ...(learned ? { learned } : {}),
+    ...(prediction ? { prediction } : {}),
+    expected,
+  };
 }
 
 /** A rival reply being played, merged over the assumptions by what it does. */
@@ -494,6 +546,7 @@ function positionValue(
   leaf: SandboxBattle,
   assumption: Assumption,
   tools: SearchTools,
+  parts?: number[],
 ): number {
   const { me, foe } = situation;
   for (let round = 0; round < MAX_REPLACEMENT_ROUNDS && !leaf.ended; round++) {
@@ -517,13 +570,25 @@ function positionValue(
   const material = (share(leaf, me) - share(leaf, foe)) * 100;
   if (leaf.ended) {
     const winner = leaf.winner;
-    return material + (winner === me ? WIN_VALUE : winner === foe ? -WIN_VALUE : 0);
+    const result = winner === me ? WIN_VALUE : winner === foe ? -WIN_VALUE : 0;
+    return tools.settings.materialWeight * material + result;
   }
   const request = leaf.request(me);
-  if (!request || requestKind(request) !== 'move') return material;
+  if (!request || requestKind(request) !== 'move') return tools.settings.materialWeight * material;
   const next = new Situation(ownContext(situation, request, leaf.log(me)));
-  const { positionWeight, chainWeight } = tools.settings;
-  let value = material;
+  const { materialWeight, positionWeight, chainWeight, learnedWeight } = tools.settings;
+  let value = materialWeight * material;
+  if (learnedWeight > 0 && tools.timers) {
+    const timers = tools.timers.clone().applyAll(leaf.log(me)).left();
+    const x = extractFeatures(ownPosition(next, timers, assumption.seen), me);
+    const points = learnedWeight * LOGIT_POINTS;
+    value += points * valueLogit(VALUE_MODEL, x);
+    if (parts) {
+      contributions(VALUE_MODEL, x).forEach((part, i) => {
+        parts[i] = (parts[i] as number) + points * part;
+      });
+    }
+  }
   if (positionWeight > 0) {
     value += positionWeight * outlook(next, request as MoveRequest, tools);
   }

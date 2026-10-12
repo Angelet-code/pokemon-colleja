@@ -1,10 +1,12 @@
 /**
  * The bot's train of thought in a few plain Spanish sentences: what it expected the player to
  * do, what it ruled out and why it chose what it chose (level 3, from `expected` and each
- * option's `versus`; at team preview, from `preview`). Pure: the panel only renders them.
+ * option's `versus`, and what really decided from `decisive`; at team preview, from
+ * `preview`). Pure: the panel only renders them.
  */
 import type {
   DecisionExplanation,
+  DecisiveFactor,
   ExpectedReply,
   ExplainedAction,
   ExplainedOption,
@@ -35,7 +37,14 @@ export function explanationStory(
   if (explanation.preview) return previewStory(explanation, explanation.preview, locale);
   const expected = explanation.expected ?? [];
   const chosen = explanation.options.find((option) => option.chosen);
-  if (expected.length === 0 || !chosen) return [];
+  if (!chosen) return [];
+  const decisive = decisiveSentences(
+    explanation.decisive ?? [],
+    explanation.options,
+    chosen,
+    label,
+  );
+  if (expected.length === 0) return decisive;
   const doubles = expected.some((reply) => reply.actions.length > 1);
   const story = doubles
     ? doublesExpectations(expected, locale)
@@ -51,7 +60,33 @@ export function explanationStory(
   }
   story.push('El resto de tus opciones lo descartó: las veía peores para ti.');
   story.push(decisionSentence(explanation.options, chosen, expected, locale, doubles, label));
+  story.push(...decisive);
   return story;
+}
+
+/**
+ * What really decided (checked: without it, the bot would have chosen the other option), one
+ * sentence per alternative: "Frente a «X», eligió «Y» porque así …".
+ */
+function decisiveSentences(
+  decisive: readonly DecisiveFactor[],
+  options: readonly ExplainedOption[],
+  chosen: ExplainedOption,
+  label: (option: ExplainedOption) => string,
+): string[] {
+  const byInstead = new Map<string, { instead: readonly ExplainedAction[]; reasons: string[] }>();
+  for (const factor of decisive) {
+    const key = JSON.stringify(factor.instead);
+    const entry = byInstead.get(key) ?? { instead: factor.instead, reasons: [] };
+    entry.reasons.push(factor.reason);
+    byInstead.set(key, entry);
+  }
+  return [...byInstead.values()].map(({ instead, reasons }) => {
+    const key = JSON.stringify(instead);
+    const option = options.find((candidate) => JSON.stringify(candidate.actions) === key);
+    const other = option ? `«${label(option)}»` : 'otra jugada';
+    return `Frente a ${other}, eligió «${label(chosen)}» porque así ${joinAnd(reasons)}.`;
+  });
 }
 
 /**

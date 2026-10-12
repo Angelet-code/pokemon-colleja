@@ -57,6 +57,11 @@ export function winProbability(model: ValueModel, x: readonly number[]): number 
   return sigmoid(valueLogit(model, x));
 }
 
+/** Each factor's contribution, in the order of `model.features`. */
+export function contributions(model: ValueModel, x: readonly number[]): number[] {
+  return model.weights.map((_, i) => term(model, x, i));
+}
+
 /** Each factor's contribution, largest first; with the bias they add up to `valueLogit`. */
 export function explainValue(model: ValueModel, x: readonly number[]): Contribution[] {
   return model.features

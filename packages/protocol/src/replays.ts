@@ -196,6 +196,15 @@ export const TurnExplanationSchema = z.object({
     )
     .max(8)
     .optional(),
+  decisive: z
+    .array(
+      z.object({
+        reason: z.string().max(200),
+        instead: z.array(ExplainedActionSchema).max(2),
+      }),
+    )
+    .max(4)
+    .optional(),
   preview: PreviewAnalysisSchema.optional(),
 }) satisfies z.ZodType<TurnExplanation>;
 
