@@ -57,4 +57,3 @@ Si te apartas de esto, escribe un ADR (ADR-0025).
 - Elegir el bot su propio grupo de 4 de 6 con lo aprendido (mide antes cuánto vale, como la salida).
 - Los sets del meta en «Calcular» desde el combate (la web no los recibe; posible mejora pequeña aparte).
 - El estilo de un jugador concreto o su historial.
-- El fallo de Plegaria Vital (tarea aparte).
