@@ -49,6 +49,11 @@ export class Narrator {
     return this.parser.locale;
   }
 
+  /** Language of the names inside the messages. */
+  get namesLocale(): Locale {
+    return this.parser.namesLocale;
+  }
+
   /** State after the lines narrated so far. */
   get state(): BattleView {
     return this.view;

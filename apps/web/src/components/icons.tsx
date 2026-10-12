@@ -84,3 +84,9 @@ export const IconCalc = icon(
   </>,
 );
 export const IconMore = icon(<path d="M5 12h.01M12 12h.01M19 12h.01" strokeWidth={3} />);
+/** Motion: a shape with speed lines (battle animations). */
+export const IconMotion = icon(
+  <path d="M3 8h6M2 12h5M3 16h6M14 6a6 6 0 1 1 0 12 6 6 0 0 1 0-12z" />,
+);
+/** Skip forward to the end. */
+export const IconSkip = icon(<path d="M5 6l8 6-8 6V6zM18 5v14" />);

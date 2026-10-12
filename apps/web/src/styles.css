@@ -31,6 +31,8 @@
   --stage: #d9e2e6;
   --stage-floor: #c9d4d1;
   --stage-line: rgb(18 19 22 / 0.07);
+  /* Tint of the stage under Trick Room. */
+  --room: rgb(214 44 120 / 0.22);
   --shadow: 0 1px 0 rgb(255 255 255 / 0.6) inset, 0 12px 32px -18px rgb(18 19 22 / 0.35);
   --scrim: rgb(10 11 13 / 0.45);
 }
@@ -58,6 +60,7 @@
   --stage: #0d1116;
   --stage-floor: #121a1c;
   --stage-line: rgb(237 235 229 / 0.045);
+  --room: rgb(255 79 143 / 0.2);
   --shadow: 0 1px 0 rgb(255 255 255 / 0.03) inset, 0 16px 40px -20px rgb(0 0 0 / 0.9);
   --scrim: rgb(0 0 0 / 0.65);
 }
@@ -251,6 +254,108 @@ input[type="number"].bare {
     color-mix(in oklab, var(--side, var(--accent)) 6%, transparent) 60%,
     transparent
   );
+}
+
+/* Trick Room: the stage edges glow while it lasts. */
+.stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  box-shadow: inset 0 0 90px 10px var(--room);
+  opacity: 0;
+  transition: opacity 400ms var(--ease-out);
+}
+.stage[data-room="trickroom"]::after {
+  opacity: 1;
+}
+
+/*
+ * Battle animations (ADR-0020): the move banner enters from the side of the Pokémon that uses
+ * it, the labels pop over a Pokémon. Both are plain text on a surface (AA in both themes).
+ */
+.fx-banner {
+  position: absolute;
+  top: 50%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: -26px;
+  padding: 6px 14px 7px 12px;
+  background: var(--surface);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  white-space: nowrap;
+}
+.fx-banner::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--fx-type);
+}
+.fx-banner-own {
+  left: 12px;
+  border-left: 3px solid var(--accent);
+}
+.fx-banner-own::before {
+  right: 0;
+}
+.fx-banner-rival {
+  right: 12px;
+  text-align: right;
+  border-right: 3px solid var(--rival);
+}
+.fx-banner-rival::before {
+  left: 0;
+}
+.fx-banner-who {
+  font-family: var(--font-display);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  line-height: 1;
+  color: var(--muted);
+}
+.fx-banner-move {
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+.fx-label {
+  position: absolute;
+  padding: 3px 8px 4px;
+  border-radius: var(--radius-xs);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+}
+.fx-label-strong {
+  background: var(--text);
+  color: var(--bg);
+}
+.fx-label-weak {
+  color: var(--muted);
+}
+.fx-label-good {
+  color: var(--good);
+}
+.fx-label-bad {
+  color: var(--bad);
 }
 
 @keyframes rise {

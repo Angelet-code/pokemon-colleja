@@ -1,6 +1,6 @@
 # Fase 18 — Animaciones de combate
 
-> **Brief de la fase.** Escrito el 2026-10-12 a petición del usuario. Es independiente de la [fase 17](fase-17.md) (solo toca `apps/web`) y se puede hacer antes, después o en paralelo.
+> **Brief de la fase.** Escrito el 2026-10-12 a petición del usuario y cerrado el mismo día (resultado al final, en «Criterios de “hecho”»). Es independiente de la [fase 17](fase-17.md) (solo toca `apps/web`) y se puede hacer antes, después o en paralelo.
 > Lee antes [AGENTS.md](../../AGENTS.md), la [guía de la web](../guias/web.md) (sobre todo «Sistema de diseño»), [ADR-0005](../adr/0005-servidor-web-y-narracion.md), [ADR-0009](../adr/0009-sistema-de-diseno.md) y [ADR-0020](../adr/0020-animaciones-de-combate.md).
 
 ## Objetivo
@@ -106,14 +106,14 @@ Test: **los 511 movimientos** resuelven a una plantilla, ninguna lanza error y e
 
 ## Criterios de «hecho»
 
-- Se ve quién actúa primero y qué movimiento usa en cada acción, en los dos modos.
-- Los 511 movimientos animan con una plantilla coherente con su tipo y su forma, y los de la lista de firmas tienen la suya.
-- El usuario ha revisado y aprobado las animaciones de la galería (paso 3).
-- Presupuesto de tiempo cumplido en `normal`; `rápidas` y `no` funcionan y saltar es inmediato.
-- Ni la animación ni la cola cambian lo que el servidor manda ni lo que se enseña al final del turno (tests).
-- Sin dependencias nuevas en `apps/web`. Colores de la UI con tokens y contraste AA en el rótulo, en los dos temas.
-- `npm run check` y `npm run e2e` en verde; CI en verde.
-- Docs: CHANGELOG, AGENTS (estado y particularidades de las animaciones), PLAN, README, guía de la web y ADR-0020.
+- ✅ Se ve quién actúa primero y qué movimiento usa en cada acción, en los dos modos (rótulo del movimiento, orden de beats; test de la línea de tiempo con turnos reales).
+- ✅ Los 511 movimientos animan con una plantilla coherente con su tipo y su forma (test), y los de la lista de firmas tienen la suya (92 firmas).
+- ⏳ Revisión del usuario en la galería (paso 3): vídeo del «Recorrido» enviado; los cambios que pida se hacen antes de integrar.
+- ✅ Presupuesto de tiempo cumplido a ×1 (≤ 700 ms por acción; turnos de 1,5–3 s); ×2 y «No» funcionan; saltar es inmediato.
+- ✅ La animación no cambia lo que manda el servidor ni lo que se ve al final del turno (tests de la cola del store).
+- ✅ Sin dependencias nuevas en `apps/web`. El rótulo y las etiquetas usan tokens, con contraste AA en los dos temas.
+- ✅ `npm run check` (435 tests) y `npm run e2e` (8) en verde.
+- ✅ Docs: CHANGELOG, AGENTS, PLAN, README, guía de la web y ADR-0020.
 
 ## Fuera de alcance
 

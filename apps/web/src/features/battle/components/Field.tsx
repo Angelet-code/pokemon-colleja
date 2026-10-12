@@ -2,59 +2,78 @@
  * The battlefield as a stage: the rival's active Pokémon at the top right, yours at the bottom
  * left, each on its platform with its HP card; field and side effects; both teams as icons.
  * Everything comes from `BattleView` (p1 perspective) and, for your own Pokémon, the last
- * request (exact HP, item, ability).
+ * request (exact HP, item, ability). With `onAnimator`, it also carries the animation layers
+ * (ADR-0020): each active Pokémon is marked with `data-slot` and its sprite with `data-fx`.
  */
 import type { BattleView, RequestPokemon, SideId, ViewPokemon } from '@colleja/core';
 import { currentTypes, detailsShiny, parseCondition } from '@colleja/core';
 import { type Locale, toId } from '@colleja/data';
 import { abilityName, itemName, speciesName, statusName, statusShort } from '@colleja/narration';
-import type { CSSProperties } from 'react';
+import { type CSSProperties, useRef } from 'react';
 import { ItemIcon } from '../../../components/ItemIcon';
 import { PokemonIcon, PokemonSprite } from '../../../components/PokemonIcon';
 import { TypeBadge } from '../../../components/TypeBadge';
 import { Chip } from '../../../components/ui';
 import { useSettings } from '../../../stores/settings';
+import { FxLayer } from '../animation/FxLayer';
+import type { Animator } from '../animation/player';
 import { boostLabels, fieldEffects, hpPercent, hpTone, sideConditions } from '../format';
 
 const SIDE_COLOR: Record<SideId, string> = { p1: 'var(--accent)', p2: 'var(--rival)' };
 
-/** `own`: your team as in the last request (exact HP, item, ability), in battle order. */
-export function Field({ view, own }: { view: BattleView; own: RequestPokemon[] }) {
+/**
+ * `own`: your team as in the last request (exact HP, item, ability), in battle order.
+ * `onAnimator`: receives the animator of this stage (and `null` when it goes away).
+ */
+export function Field({
+  view,
+  own,
+  onAnimator,
+}: {
+  view: BattleView;
+  own: RequestPokemon[];
+  onAnimator?: (animator: Animator | null) => void;
+}) {
   const locale = useSettings((state) => state.namesLocale);
   const effects = fieldEffects(view.field, locale);
   const doubles = Math.max(view.sides.p1.active.length, view.sides.p2.active.length) > 1;
+  const stageRef = useRef<HTMLElement>(null);
 
   return (
     <section
+      ref={stageRef}
       aria-label="Campo de batalla"
-      className="stage relative isolate flex min-h-[420px] flex-col justify-between overflow-hidden rounded-md border border-line"
+      className="stage relative isolate overflow-hidden rounded-md border border-line"
     >
-      <div className="flex items-start justify-between gap-2 p-3">
-        <Conditions items={sideConditions(view.sides.p2.conditions, locale)} label="Lado rival" />
-        <TeamStrip side="p2" view={view} own={own} locale={locale} />
-      </div>
+      {onAnimator && <FxLayer rootRef={stageRef} onAnimator={onAnimator} />}
+      <div data-fx="content" className="relative z-[1] flex min-h-[420px] flex-col justify-between">
+        <div className="flex items-start justify-between gap-2 p-3">
+          <Conditions items={sideConditions(view.sides.p2.conditions, locale)} label="Lado rival" />
+          <TeamStrip side="p2" view={view} own={own} locale={locale} />
+        </div>
 
-      <ActiveRow side="p2" view={view} own={own} locale={locale} doubles={doubles} />
+        <ActiveRow side="p2" view={view} own={own} locale={locale} doubles={doubles} />
 
-      <div className="flex min-h-6 justify-center px-3">
-        {effects.length > 0 && (
-          <ul className="flex flex-wrap justify-center gap-1.5" aria-label="Efectos del campo">
-            {effects.map((effect) => (
-              <li key={effect}>
-                <Chip tone="warn" className="h-6 px-2.5 text-xs">
-                  {effect}
-                </Chip>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+        <div className="flex min-h-6 justify-center px-3">
+          {effects.length > 0 && (
+            <ul className="flex flex-wrap justify-center gap-1.5" aria-label="Efectos del campo">
+              {effects.map((effect) => (
+                <li key={effect}>
+                  <Chip tone="warn" className="h-6 px-2.5 text-xs">
+                    {effect}
+                  </Chip>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
-      <ActiveRow side="p1" view={view} own={own} locale={locale} doubles={doubles} />
+        <ActiveRow side="p1" view={view} own={own} locale={locale} doubles={doubles} />
 
-      <div className="flex items-end justify-between gap-2 p-3">
-        <TeamStrip side="p1" view={view} own={own} locale={locale} />
-        <Conditions items={sideConditions(view.sides.p1.conditions, locale)} label="Tu lado" />
+        <div className="flex items-end justify-between gap-2 p-3">
+          <TeamStrip side="p1" view={view} own={own} locale={locale} />
+          <Conditions items={sideConditions(view.sides.p1.conditions, locale)} label="Tu lado" />
+        </div>
       </div>
     </section>
   );
@@ -85,6 +104,7 @@ function ActiveRow({
           <Combatant
             // biome-ignore lint/suspicious/noArrayIndexKey: one entry per field position.
             key={index}
+            slot={`${side}${'abc'[index] ?? 'a'}`}
             pokemon={pokemon}
             details={rival ? undefined : own.find((entry) => sameIdent(entry.ident, pokemon.ident))}
             side={side}
@@ -101,12 +121,15 @@ function ActiveRow({
 }
 
 function Combatant({
+  slot,
   pokemon,
   details,
   side,
   locale,
   compact,
 }: {
+  /** Field position (`p2a`), for the animations. */
+  slot: string;
   pokemon: ViewPokemon;
   details: RequestPokemon | undefined;
   side: SideId;
@@ -117,6 +140,7 @@ function Combatant({
   const sprite = compact ? 104 : 136;
   return (
     <div
+      data-slot={slot}
       className={`flex items-center gap-1 ${rival ? 'flex-row' : 'flex-row-reverse'}`}
       style={{ '--side': SIDE_COLOR[side] } as CSSProperties}
     >
@@ -129,12 +153,14 @@ function Combatant({
           aria-hidden="true"
           className="platform absolute -bottom-2 left-1/2 h-12 w-[130%] -translate-x-1/2 rounded-[50%]"
         />
-        <PokemonSprite
-          species={pokemon.species}
-          shiny={detailsShiny(pokemon.details)}
-          size={sprite}
-          className={`relative transition-opacity duration-500 ${pokemon.fainted ? 'opacity-0' : ''} ${rival ? '' : '-scale-x-100'}`}
-        />
+        <div data-fx="sprite" className="relative">
+          <PokemonSprite
+            species={pokemon.species}
+            shiny={detailsShiny(pokemon.details)}
+            size={sprite}
+            className={`transition-opacity duration-500 ${pokemon.fainted ? 'opacity-0' : ''} ${rival ? '' : '-scale-x-100'}`}
+          />
+        </div>
       </div>
     </div>
   );
@@ -236,7 +262,7 @@ export function HpBar({
       aria-hidden="true"
     >
       <div
-        className="h-full transition-[width,background-color] duration-500 ease-out"
+        className="h-full transition-[width,background-color] duration-(--fx-hp-ms,500ms) ease-out"
         style={{ width: `${percent}%`, background: HP_COLOR[tone] }}
       />
       {!thin && (

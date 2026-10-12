@@ -5,10 +5,11 @@
 import { isActionable, requestKind, type TeamPreviewRequest } from '@colleja/core';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { Loading, Notice, Segmented } from '../../components/ui';
+import { IconSkip } from '../../components/icons';
+import { Button, Loading, Notice, Segmented } from '../../components/ui';
 import { botLevelName, useMeta } from '../../lib/use-meta';
 import { useSettings } from '../../stores/settings';
-import { rememberedBattle, useBattle } from './battle-store';
+import { attachAnimator, rememberedBattle, useBattle } from './battle-store';
 import { ActionPanel } from './components/ActionPanel';
 import { BattleLog } from './components/BattleLog';
 import { BattleToolbar } from './components/BattleToolbar';
@@ -37,6 +38,19 @@ export function BattlePage() {
   useEffect(() => {
     useBattle.getState().setNamesLocale(namesLocale);
   }, [namesLocale]);
+
+  // Space skips the animation of the turn.
+  const playing = battle.playing;
+  useEffect(() => {
+    if (!playing) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== ' ' || event.target instanceof HTMLInputElement) return;
+      event.preventDefault();
+      useBattle.getState().skipAnimations();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [playing]);
 
   const { info, status, request, ownSide, screen, busy, error, socketState } = battle;
   const estimate = useMemo(
@@ -71,7 +85,16 @@ export function BattlePage() {
   // During the team preview the field is empty: the preview shows both teams instead.
   const previewing = request !== null && requestKind(request) === 'team' && !ended;
   let controls: ReactNode = null;
-  if (ended && status) {
+  if (playing) {
+    controls = (
+      <div className="flex h-[60px] items-center rounded-md border border-dashed border-line-strong px-2">
+        <Button size="sm" variant="ghost" onClick={battle.skipAnimations} title="Espacio">
+          <IconSkip size={14} />
+          Saltar animación
+        </Button>
+      </div>
+    );
+  } else if (ended && status) {
     controls = (
       <EndPanel
         status={status}
@@ -184,7 +207,13 @@ export function BattlePage() {
         <div
           className={`scroll-thin flex min-h-0 flex-col gap-3 lg:overflow-y-auto lg:pr-1 [&>*]:shrink-0 ${tab === 'field' ? '' : 'hidden lg:flex'}`}
         >
-          {!previewing && <Field view={screen.view} own={ownSide?.pokemon ?? []} />}
+          {!previewing && (
+            // biome-ignore lint/a11y/noStaticElementInteractions: a click on the field is a shortcut of the "Saltar animación" button.
+            // biome-ignore lint/a11y/useKeyWithClickEvents: Space does the same from the keyboard.
+            <div onClick={playing ? battle.skipAnimations : undefined}>
+              <Field view={screen.view} own={ownSide?.pokemon ?? []} onAnimator={attachAnimator} />
+            </div>
+          )}
           {controls}
         </div>
         <div className={`min-h-[60vh] lg:min-h-0 ${tab === 'field' ? 'hidden lg:block' : ''}`}>

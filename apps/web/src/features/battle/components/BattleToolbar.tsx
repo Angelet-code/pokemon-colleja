@@ -1,11 +1,12 @@
 /**
- * Scoreboard of the battle: who plays, the turn, and undo, rewind, calculator, forfeit, replay
- * and exit.
+ * Scoreboard of the battle: who plays, the turn, and undo, rewind, calculator, animation speed,
+ * forfeit, replay and exit.
  */
 import type { BattleStatus } from '@colleja/protocol';
 import { type ReactNode, useState } from 'react';
 import { IconDownload, IconExit, IconFlag, IconRewind, IconUndo } from '../../../components/icons';
 import { ActionSelect, Button, Chip, IconButton } from '../../../components/ui';
+import { AnimationControl } from './AnimationControl';
 
 export function BattleToolbar({
   players,
@@ -82,6 +83,7 @@ export function BattleToolbar({
           onPick={(turn) => onRewind(Number(turn))}
         />
         {calc}
+        <AnimationControl />
         {status?.ended ? (
           <Button size="sm" onClick={onExport} disabled={busy}>
             <IconDownload size={14} />

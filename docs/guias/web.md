@@ -27,6 +27,7 @@ En el combate:
 - **Teclado**: 1–4 movimientos (u objetivos al apuntar), 5–9 cambios, Esc atrás.
 - Marcador superior: los dos jugadores, el turno y **Deshacer**, **Rebobinar** a un turno, **Rendirse**, **Replay** y salir. El replay solo se puede descargar o **guardar** ("Guardar replay", para verlo en [Replays](herramientas.md)) al terminar, porque contiene la información oculta del rival.
 - En la columna derecha, pestañas **Registro** y **Pensamiento del bot**: lo que valoró el bot en la vista previa y en cada turno ya jugado ([herramientas](herramientas.md)). En móvil, las pestañas de arriba son Combate, Registro y Bot.
+- **Animaciones**: cada turno se ve acción a acción, en el orden en que pasa (ver [Animaciones de combate](#animaciones-de-combate)). El control ×1 · ×2 · No del marcador cambia la velocidad; un clic en el campo, Espacio o «Saltar animación» enseñan el turno entero al instante.
 - Pantalla final: revancha (misma configuración, otra semilla), replay o volver al inicio.
 - **Nombres ES/EN** en la cabecera: cambia el idioma de los nombres; la interfaz y el log siguen en español. También se puede cambiar el tema (oscuro o claro).
 - Si recargas la página o se corta la conexión, la web vuelve a engancharse al combate mientras el servidor siga arrancado.
@@ -48,7 +49,7 @@ apps/web (React)  ──REST /api/*──▶  apps/server (Fastify)
 | `@colleja/protocol` | Esquemas zod de los mensajes WebSocket y REST, y sus tipos. `parseClientMessage` valida lo que llega del navegador (errores en español) |
 | `@colleja/narration` | `Narrator`: líneas del protocolo → entradas del log (`turn`, `major`, `minor`, `end`) con las plantillas de Showdown en español o inglés, más un `BattleView` actualizado. Nombres para mostrar (`speciesName`, `moveName`…). Lo usan la web y el CLI |
 | `apps/server` | `buildServer()` (sin escuchar, para los tests) y `main.ts`. REST: `GET /api/meta`, `POST /api/teams/validate`, `POST /api/teams/random` y el CRUD de equipos y rivales guardados (`/api/teams` y `/api/opponents`, ver [teambuilder](teambuilder.md) y [rivales](rivales.md)). WebSocket `/ws`. Sirve `/sprites/*` y, si existe, `apps/web/dist` |
-| `apps/web` | Inicio (`features/setup`), combate (`features/battle`: store Zustand, campo, menús, vista previa, log y barra de herramientas) equipos y rivales (`features/teams`), calculadora (`features/calc`) y replays (`features/replays`) |
+| `apps/web` | Inicio (`features/setup`), combate (`features/battle`: store Zustand, campo, menús, vista previa, log, barra de herramientas y animaciones en `animation/`), equipos y rivales (`features/teams`), calculadora (`features/calc`), replays (`features/replays`) y galería de animaciones (`features/animations`) |
 
 ### Mensajes
 
@@ -69,6 +70,35 @@ apps/web (React)  ──REST /api/*──▶  apps/server (Fastify)
 - El store de la web **solo cambia con mensajes del servidor**: la UI no adivina el resultado de una elección. `busy` bloquea los controles hasta la respuesta.
 - Las cifras que se muestran (tipo, potencia, precisión, PP) salen de la petición y de `@colleja/data`, nunca de memoria.
 - El servidor escucha en `127.0.0.1` (variables `SERVER_PORT` y `SERVER_HOST`). La web usa `WEB_PORT` (por defecto 5173). Con `npm run dev`, el servidor no sirve `apps/web/dist` (podría ser una compilación vieja): redirige las páginas a Vite (`WEB_DEV_URL`).
+
+## Animaciones de combate
+
+Decisión en [ADR-0020](../adr/0020-animaciones-de-combate.md). Animaciones propias, rápidas y sin dependencias: Web Animations para mover sprites y una capa Canvas 2D con un sistema de partículas propio para los efectos.
+
+```
+battle:update ─▶ cola del store ─▶ planBeats(lines) ─▶ Animator.play(beat)
+                                     (timeline.ts)      ├─ animationFor(move) (catalog.ts)
+                                                        ├─ playMove / switch / faint / mega… (templates.ts, player.ts)
+                                                        └─ commit() → Narrator.pushAll → campo y registro
+```
+
+| Pieza | Dónde | Qué hace |
+|---|---|---|
+| Línea de tiempo | `features/battle/animation/timeline.ts` | `planBeats`: líneas de p1 → *beats*. Un `|move|` se agrupa con sus golpes (daño, eficacia, crítico, fallo, Protección, drenaje, retroceso) y con lo que causa sin `[from]` (subidas, estados, clima, campo); los cambios seguidos entran juntos; las líneas sin efecto (`|turn|`, `|upkeep|`…) van con el beat de al lado. Puro |
+| Catálogo | `animation/catalog.ts` | `animationFor(id)`: plantilla y estilo. Firmas (`SIGNATURES`, los ~60 más usados y los que pediste), después por forma (`punch`, `bite`, `slicing`, `sound`, `pulse`, `bullet`, `wind`, `contact`, área) y por tipo y categoría. Puro |
+| Plantillas | `animation/templates.ts` | 18 plantillas (`strike`, `orb`, `stream`, `beam`, `bolt`, `rings`, `wave`, `quake`, `fall`, `burst`, `aura`, `shield`, `hex`, `seed`, `side`, `field`, `support`, `clap`) con anticipación, entrega, impacto y reposo. El impacto compartido pinta lo que pasó a cada objetivo (golpe, fallo, Protección, inmune) y hace el `commit` |
+| Reproductor | `animation/player.ts` | `Animator.play(beat)`: movimientos, cambios, debilitamientos, Mega, subidas, estados, daño residual, clima, campo y habilidades u objetos revelados. Siempre hace el `commit` y deja los sprites en reposo |
+| Escenario | `animation/stage.ts`, `FxLayer.tsx` | Posiciones (`data-slot`), animaciones de sprites, temblor, rótulo del movimiento y etiquetas («Supereficaz», «Atq +2»…). Monta las capas: clima detrás, efectos delante y la capa del rótulo |
+| Efectos | `animation/fx/` | `engine.ts` (partículas y efectos con reloj propio, que se para sin nada que pintar), `effects.ts` (haz, torrente, rayo, tajo, onda, escudo hexagonal, retícula de Espacio Raro…), `weather.ts` (lluvia, sol, arena y nieve de fondo) y `palette.ts` (luz de cada tipo) |
+| Galería | `features/animations/` | `/animaciones`: cualquier movimiento, por cualquiera y contra cualquiera, con el resultado elegido; «Recorrido» reproduce los de la revisión. Usa las mismas piezas que un combate (`gallery-lines.ts` escribe las líneas) |
+
+Reglas:
+
+- **Solo se retrasa lo recibido**: el store aplica las líneas al `Narrator` cuando el beat hace `commit` y la petición al acabar la actualización. Snapshot (deshacer, rebobinar, reconectar), salir y cambiar el idioma vacían la cola.
+- Velocidad: preferencia `animations` de `stores/settings.ts` (`normal`, `fast`, `off`; `off` por defecto con «reducir movimiento» del sistema). Con la pestaña oculta no se anima.
+- Presupuesto a ×1: ≤ 700 ms por acción; un turno de individuales ≈ 1,5 s y de dobles ≈ 2,5–3 s. La barra de PS baja en el impacto (`--fx-hp-ms`).
+- En tema claro las luces se pintan encima (`source-over`) en lugar de sumarse, para que se vean sobre el suelo claro.
+- Para una firma nueva: añádela en `SIGNATURES` (o un estilo en su plantilla), revísala en `/animaciones` en los dos temas y en dobles, y mira que no pase de 700 ms.
 
 ## Añadir una pantalla
 
@@ -107,5 +137,9 @@ Reglas:
 |---|---|
 | `packages/protocol/test/protocol.test.ts` | Ida y vuelta de cada mensaje y rechazo de los mal formados |
 | `packages/narration/test/narration.test.ts` | Plantillas en español con gramática (artículos, "del", Mega), inglés, nombres en otro idioma, fallback y combates completos sin marcadores sin resolver |
+| `apps/web/test/animation-timeline.test.ts` | Beats de turnos reales: orden, golpe en área, Protección, fallo, crítico, drenaje, Mega, ninguna línea perdida |
+| `apps/web/test/animation-catalog.test.ts` | Los 511 movimientos tienen plantilla, las firmas existen y cada plantilla tiene animación |
+| `apps/web/test/animation-gallery.test.ts` | La galería escribe cada movimiento como un beat de movimiento y con el resultado pedido; daño por beat |
+| `apps/web/test/battle-store.test.ts` | La cola de animaciones: beat a beat, la petición al final, saltar, snapshot y sin animaciones |
 | `apps/server/test/server.test.ts` | REST, un combate completo por WebSocket en cada modo contra el nivel 2, información oculta, equipos ilegales, elección rechazada, deshacer, rebobinar, reconexión, rendirse, replay y limpieza |
 | `apps/web/test/*.test.ts(x)` | `ChoiceDraft`, menús de acción en dobles (objetivos, Mega, atrás, teclado, cambios forzados), vista previa, store, reglas de dependencias, el teambuilder ([su guía](teambuilder.md#tests-relevantes)) y los rivales ([su guía](rivales.md#tests-relevantes)) |

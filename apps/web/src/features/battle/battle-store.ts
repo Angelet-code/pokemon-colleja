@@ -2,6 +2,10 @@
  * State of the battle screen. It only changes with server messages: the UI never guesses the
  * outcome of a choice. The field state (`BattleView`) and the log narration are rebuilt from
  * the p1 protocol lines, the same way the bots and the CLI do.
+ *
+ * Animations (ADR-0020) only delay showing what arrived: the lines of an update wait in a queue
+ * and are shown beat by beat as the animator plays them, so the field and the log move
+ * together; the request, status and explanations of the update come when its last beat ends.
  */
 import type {
   BattleRequest,
@@ -23,6 +27,8 @@ import { create } from 'zustand';
 import { BattleSocket, type SocketState } from '../../lib/battle-socket';
 import { downloadJson } from '../../lib/download';
 import { useSettings } from '../../stores/settings';
+import type { Animator } from './animation/player';
+import { planBeats } from './animation/timeline';
 
 const BATTLE_KEY = 'colleja:battle';
 
@@ -58,6 +64,8 @@ interface BattleState {
   savedReplayId: string | null;
   /** A choice or command was sent and the server has not answered yet. */
   busy: boolean;
+  /** Lines received are being animated (the controls wait). */
+  playing: boolean;
   error: BattleError | null;
 
   start(message: StartBattleMessage): Promise<StartResult>;
@@ -77,11 +85,40 @@ interface BattleState {
   receive(message: ServerMessage): void;
   /** Re-narrates the whole log with names in another language. */
   setNamesLocale(locale: Locale): void;
+  /** Ends the running animations and shows everything received. */
+  skipAnimations(): void;
 }
 
 let narrator = new Narrator('p1', { namesLocale: useSettings.getState().namesLocale });
 let pendingStart: ((result: StartResult) => void) | null = null;
 let socket: BattleSocket | null = null;
+
+interface QueuedUpdate {
+  lines: readonly string[];
+  /** Applies what the update brings besides its lines (request, status…). */
+  finish: () => void;
+}
+
+let animator: Animator | null = null;
+let queue: QueuedUpdate[] = [];
+let draining = false;
+/** Bumped on every reset: a running animation of an older state stops touching the store. */
+let generation = 0;
+
+/** The battle field registers its animator while it is on screen (`null` when it leaves). */
+export function attachAnimator(next: Animator | null): void {
+  if (animator && animator !== next) animator.stage.skip();
+  animator = next;
+  next?.syncField(narrator.state, useSettings.getState().animations !== 'off');
+}
+
+/** The animator to use for the next beat, if animations should play now. */
+function activeAnimator(): Animator | null {
+  if (!animator || animator.stage.skipped) return null;
+  if (useSettings.getState().animations === 'off') return null;
+  if (typeof document !== 'undefined' && document.hidden) return null;
+  return animator;
+}
 
 function emptyScreen(): BattleScreen {
   return { view: narrator.state, entries: [] };
@@ -105,6 +142,57 @@ export const useBattle = create<BattleState>()((set, get) => {
     connection().send(message);
   }
 
+  /** Drops queued and running animations (the state is about to be replaced). */
+  function cancelAnimations(): void {
+    generation++;
+    queue = [];
+    draining = false;
+    animator?.stage.skip();
+    if (get().playing) set({ playing: false });
+  }
+
+  function commitLines(lines: readonly string[]): void {
+    const entries = narrator.pushAll(lines);
+    set((state) => ({
+      log: [...state.log, ...lines],
+      screen: { view: narrator.state, entries: [...state.screen.entries, ...entries] },
+    }));
+  }
+
+  function enqueue(update: QueuedUpdate): void {
+    queue.push(update);
+    if (!draining) void drain();
+  }
+
+  /** Plays the queue beat by beat. Without an animator it all happens synchronously. */
+  async function drain(): Promise<void> {
+    draining = true;
+    const current = generation;
+    animator?.stage.resume();
+    while (queue.length > 0 && current === generation) {
+      const update = queue.shift() as QueuedUpdate;
+      for (const beat of planBeats(update.lines)) {
+        if (current !== generation) return;
+        const commit = () => {
+          if (current === generation) commitLines(beat.lines);
+        };
+        const player = activeAnimator();
+        if (player) {
+          if (!get().playing) set({ playing: true });
+          await player.play(beat, { view: narrator.state, commit, locale: narrator.namesLocale });
+        } else commit();
+        if (current === generation) {
+          animator?.syncField(narrator.state, useSettings.getState().animations !== 'off');
+        }
+      }
+      if (current === generation) update.finish();
+    }
+    if (current !== generation) return;
+    draining = false;
+    animator?.stage.resume();
+    if (get().playing) set({ playing: false });
+  }
+
   function withBattle(action: (battleId: string) => void): void {
     const { battleId } = get();
     if (battleId) action(battleId);
@@ -115,6 +203,7 @@ export const useBattle = create<BattleState>()((set, get) => {
       case 'battle:started':
         rememberBattle(message.battleId);
         if (message.battleId !== get().battleId) {
+          cancelAnimations();
           narrator = new Narrator('p1', { namesLocale: useSettings.getState().namesLocale });
           set({
             log: [],
@@ -130,22 +219,23 @@ export const useBattle = create<BattleState>()((set, get) => {
         pendingStart?.({ ok: true });
         pendingStart = null;
         return;
-      case 'battle:update': {
-        const entries = narrator.pushAll(message.lines);
-        set((state) => ({
-          log: [...state.log, ...message.lines],
-          request: message.request,
-          ownSide: message.request?.side ?? state.ownSide,
-          status: message.status,
-          screen: { view: narrator.state, entries: [...state.screen.entries, ...entries] },
-          explanations: [...state.explanations, ...(message.explanations ?? [])],
-          // A new ending (after a rewind) is a different replay.
-          savedReplayId: message.status.ended ? state.savedReplayId : null,
-          busy: false,
-        }));
+      case 'battle:update':
+        enqueue({
+          lines: message.lines,
+          finish: () =>
+            set((state) => ({
+              request: message.request,
+              ownSide: message.request?.side ?? state.ownSide,
+              status: message.status,
+              explanations: [...state.explanations, ...(message.explanations ?? [])],
+              // A new ending (after a rewind) is a different replay.
+              savedReplayId: message.status.ended ? state.savedReplayId : null,
+              busy: false,
+            })),
+        });
         return;
-      }
       case 'battle:snapshot': {
+        cancelAnimations();
         const entries = narrator.reset(message.log);
         set({
           log: [...message.log],
@@ -157,6 +247,7 @@ export const useBattle = create<BattleState>()((set, get) => {
           savedReplayId: message.status.ended ? get().savedReplayId : null,
           busy: false,
         });
+        animator?.syncField(narrator.state, useSettings.getState().animations !== 'off');
         return;
       }
       case 'battle:replay-saved':
@@ -205,6 +296,7 @@ export const useBattle = create<BattleState>()((set, get) => {
     explanations: [],
     savedReplayId: null,
     busy: false,
+    playing: false,
     error: null,
 
     start(message) {
@@ -239,6 +331,7 @@ export const useBattle = create<BattleState>()((set, get) => {
       send({ type: 'battle:resume', battleId });
     },
     leave() {
+      cancelAnimations();
       forgetBattle();
       socket?.close();
       socket = null;
@@ -261,9 +354,19 @@ export const useBattle = create<BattleState>()((set, get) => {
     clearError: () => set({ error: null }),
     receive: handle,
     setNamesLocale(locale) {
+      if (locale === narrator.namesLocale) return;
+      // The lines still queued are shown at once with the new names.
+      const pending = queue.flatMap((update) => update.lines);
+      const finishes = queue.map((update) => update.finish);
+      cancelAnimations();
       narrator = new Narrator('p1', { namesLocale: locale });
-      const entries = narrator.pushAll(get().log);
-      set({ screen: { view: narrator.state, entries } });
+      const log = [...get().log, ...pending];
+      const entries = narrator.pushAll(log);
+      set({ log, screen: { view: narrator.state, entries } });
+      for (const finish of finishes) finish();
+    },
+    skipAnimations() {
+      if (draining) animator?.stage.skip();
     },
   };
 });

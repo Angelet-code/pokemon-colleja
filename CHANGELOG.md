@@ -29,6 +29,22 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 - Con `npm run dev`, abrir la web en el puerto del servidor (3001) mostraba `apps/web/dist`, una compilación que podía ser vieja (por ejemplo, con los iconos Gen 8 pixelados en lugar de los renders de Champions). Ahora el servidor de desarrollo redirige las páginas a Vite (`WEB_DEV_URL`, que pone `npm run dev`).
 
+### Fase 18 — Animaciones de combate (2026-10-12)
+
+#### Añadido
+
+- **Animaciones de combate** ([ADR-0020](docs/adr/0020-animaciones-de-combate.md), [brief](docs/fases/fase-18.md), [guía](docs/guias/web.md#animaciones-de-combate)): cada turno se ve **acción a acción, en el orden en que pasa**. Un rótulo con el nombre del movimiento entra desde el lado de quien lo usa, el ataque viaja con la luz de su tipo y el objetivo reacciona: silueta blanca y temblor proporcional al daño, «Supereficaz», «Poco eficaz», «Crítico», «Falla», «No afecta» o el escudo hexagonal de Protección donde choca. La barra de PS baja en el impacto y el registro avanza al mismo paso.
+- **Los 511 movimientos animados** con 18 plantillas (golpe, proyectil, chorro, haz, rayo, ondas, frente que barre, terremoto, caída, efecto sobre el objetivo, aura, escudo, estado, Drenadoras, efectos de lado y de campo, apoyo y Sorpresa) elegidas por **firma propia** (los ~60 más usados de los sets estándar y los que pediste: Hidrobomba es un torrente con espuma, Surf una ola que cruza el campo, Lanzallamas un chorro de fuego, Drenadoras enredaderas…), por **forma** (puño, mordisco, tajo, sonido, pulso, bala, viento, área) o por **tipo y categoría**.
+- También se animan cambios (con la luz de tu lado o del rival), debilitamientos, Mega Evolución, subidas y bajadas de características (flechas y «Atq +2»), estados, daño residual (veneno, quemadura, Restos, Vidasfera…), habilidades u objetos que se activan, clima y Espacio Raro. **Lluvia, sol, arena y nieve** se ven de fondo mientras duran, y el campo se tiñe con Espacio Raro.
+- **Rápidas**: ≤ 700 ms por acción a ×1 (un turno de dobles ≈ 2,5–3 s). Control **×1 · ×2 · No** en el marcador (preferencia del navegador; «No» por defecto si el sistema pide reducir movimiento) y **Saltar animación** (botón, clic en el campo o Espacio). 60 fps sin tareas largas, sin dependencias nuevas.
+- El **visor de replays** anima el turno al avanzar uno; los saltos son instantáneos.
+- **Galería** `/animaciones` (fuera del menú): cualquier movimiento, por cualquiera y contra cualquiera, con el resultado elegido; «Recorrido» reproduce los de la revisión.
+
+#### Cambiado
+
+- El store del combate aplica las líneas de cada actualización **beat a beat** (una cola) y la petición, el estado y las explicaciones al terminar; sin animaciones, todo a la vez como antes. Sustituye a la decisión de «animaciones mínimas» de la fase 5.
+- Los E2E van con las animaciones apagadas; `tools/e2e/specs/animations.spec.ts` juega un turno con ×2 y la galería.
+
 ### Fase 16 — Por qué esa salida (2026-10-11)
 
 #### Añadido

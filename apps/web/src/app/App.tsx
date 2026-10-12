@@ -1,4 +1,5 @@
 import { createBrowserRouter, RouterProvider } from 'react-router';
+import { AnimationGalleryPage } from '../features/animations/AnimationGalleryPage';
 import { BattlePage } from '../features/battle/BattlePage';
 import { BenchPage } from '../features/bench/BenchPage';
 import { CalculatorPage } from '../features/calc/CalculatorPage';
@@ -29,6 +30,7 @@ const router = createBrowserRouter([
       { path: '/calculadora', element: <CalculatorPage /> },
       { path: '/replays', element: <ReplaysPage /> },
       { path: '/replays/:id', element: <ReplayViewerPage /> },
+      { path: '/animaciones', element: <AnimationGalleryPage /> },
       { path: '*', element: <SetupPage /> },
     ],
   },

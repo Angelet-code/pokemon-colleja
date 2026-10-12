@@ -32,6 +32,14 @@ Hay tres caminos:
 - El panel de acciones aparece al terminar la animación. El bot ya piensa en el servidor mientras tanto ([fase 9](../fases/fase-9.md)), así que no se pierde tiempo.
 - Una regulación nueva no necesita trabajo para animar: sus movimientos caen en una plantilla por forma o por tipo. Una firma propia es opcional.
 
+## Implementación (2026-10-12)
+
+- **Línea de tiempo** (`apps/web/src/features/battle/animation/timeline.ts`): `planBeats` agrupa un `|move|` con sus golpes y con lo que causa sin `[from]`. Un bloque (`|`, `|upkeep|`, `|turn|`) lo cierra, para que el clima de fin de turno no se pegue al último ataque. Los cambios seguidos entran juntos y la Mega va en un beat (`detailschange` + `-mega`).
+- **Escenario**: `Stage` (DOM) y `FxEngine` (canvas) separados. El canvas de efectos va delante y el del clima detrás. Las luces se suman en oscuro (`lighter`) y se pintan encima en claro. Hecho a mano: torrente de agua con espuma, haz, rayo regenerado cada 45 ms, tajos en media luna, onda que barre el campo, escudo hexagonal, retícula de Espacio Raro, enredaderas, grietas y paneles.
+- **Store**: cola de actualizaciones con un contador de generación. Un snapshot, salir o cambiar el idioma invalidan lo que se esté animando. Sin animador (sin campo, «No», pestaña oculta) todo es síncrono como antes, y los tests anteriores no cambiaron.
+- **Medido**: 60 fps (16,7 ms de media y de p95) y ninguna tarea larga con Surf, Terremoto, Lanzallamas, Hidrobomba, Espacio Raro y Rayo, en Chromium sin GPU. Un turno real de individuales dura 1,5–2,4 s (con KO, relevo e Intimidación). Uno de dobles con Mega, Protección, crítico, KO, retroceso y relevo dura 3,1 s.
+- **E2E**: animaciones apagadas por defecto (`storageState`) y un spec propio con ×2.
+
 ## Alternativas descartadas
 
 - **Portar Showdown**: lo más completo desde el primer día, pero acopla la web a código ajeno, choca con ADR-0005 y deja la licencia pendiente.

@@ -27,6 +27,21 @@ export default defineConfig({
     baseURL: `http://127.0.0.1:${PORT}`,
     locale: 'es-ES',
     trace: 'retain-on-failure',
+    // Battle animations off: the flows do not depend on timings (animations.spec.ts turns them on).
+    storageState: {
+      cookies: [],
+      origins: [
+        {
+          origin: `http://127.0.0.1:${PORT}`,
+          localStorage: [
+            {
+              name: 'colleja:settings',
+              value: JSON.stringify({ state: { animations: 'off' }, version: 0 }),
+            },
+          ],
+        },
+      ],
+    },
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
