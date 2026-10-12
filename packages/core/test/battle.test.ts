@@ -169,6 +169,23 @@ describe('request options', () => {
     expect(validateChoice(single, actionsChoice(switchAction(3), PASS))).not.toEqual([]);
   });
 
+  it('offers every fainted Pokémon to Revival Blessing, even an ally still on the field', () => {
+    const side = {
+      ...SIDE,
+      pokemon: [
+        { ...pokemon('Charizard', '155/155', true), reviving: true },
+        pokemon('Incineroar', '0 fnt', true),
+        pokemon('Garchomp', '185/185', false),
+        pokemon('Sinistcha', '0 fnt', false),
+      ],
+    };
+    const request: SwitchRequest = { forceSwitch: [true, false], side };
+    expect(getSlotOptions(request)[0]?.switches).toEqual([2, 4]);
+    expect(validateChoice(request, actionsChoice(switchAction(2), PASS))).toEqual([]);
+    expect(validateChoice(request, actionsChoice(switchAction(3), PASS))).not.toEqual([]);
+    expect(validateChoice(request, actionsChoice(PASS, PASS))).not.toEqual([]);
+  });
+
   it('validates team preview', () => {
     const request: TeamPreviewRequest = { teamPreview: true, maxChosenTeamSize: 3, side: SIDE };
     expect(validateChoice(request, teamChoice([4, 1, 2]))).toEqual([]);
