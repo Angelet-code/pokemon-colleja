@@ -1,6 +1,14 @@
 import { generateTeam } from '@colleja/teamgen';
 import { describe, expect, it } from 'vitest';
-import { pairTeams, playArenaBattle, runArena, wilsonInterval } from '../src/arena';
+import {
+  type BattleRecord,
+  pairTeams,
+  playArenaBattle,
+  runArena,
+  summarizePairs,
+  wilsonInterval,
+} from '../src/arena';
+import { fixedLineup } from '../src/fixed-lineup';
 
 describe('arena', () => {
   it('plays the battles, swaps sides and counts the results', async () => {
@@ -69,5 +77,62 @@ describe('arena', () => {
     const result = await runArena({ a: 2, b: 0, mode, battles: 40, seed: 'strength' });
     expect(result.invalidChoices).toBe(0);
     expect(result.winRate).toBeGreaterThanOrEqual(0.75);
+  });
+});
+
+describe('measuring mode: fixed lineups, mirrored pairs (fase 17)', () => {
+  it('draws the same group and lead with the same seed', () => {
+    const lineup = fixedLineup('doubles', 6, 'seed');
+    expect(lineup).toHaveLength(4);
+    expect(new Set(lineup).size).toBe(4);
+    expect(lineup.every((position) => position >= 1 && position <= 6)).toBe(true);
+    expect(fixedLineup('doubles', 6, 'seed')).toEqual(lineup);
+    expect(fixedLineup('singles', 6, 'seed')).toHaveLength(3);
+    const others = ['a', 'b', 'c', 'd', 'e'].map((seed) => fixedLineup('doubles', 6, seed).join());
+    expect(new Set(others).size).toBeGreaterThan(1);
+  });
+
+  it('brings the fixed lineup and swaps the bots between the two seats of a pair', async () => {
+    const records: BattleRecord[] = [];
+    const options = {
+      a: 2,
+      b: 1,
+      mode: 'doubles',
+      battles: 4,
+      seed: 'mirror',
+      fixed: true,
+    } as const;
+    const result = await runArena({ ...options, onBattle: (record) => records.push(record) });
+    expect(result.wins.error).toBe(0);
+    for (const pair of [0, 1]) {
+      const [first, second] = records.filter((record) => record.pair === pair);
+      if (!first?.lineups || !second?.lineups) throw new Error('sin alineaciones');
+      // Each bot plays each seat with the other's lineup: same teams, same leads.
+      expect(first.aSide).not.toBe(second.aSide);
+      expect(second.lineups.a).toEqual(first.lineups.b);
+      expect(second.lineups.b).toEqual(first.lineups.a);
+      expect(first.lineups.a).toHaveLength(4);
+      expect(first.seed).toBe(second.seed);
+      // The lineup is the team's, drawn from the seed.
+      const [teamX] = pairTeams(options, pair);
+      const order = fixedLineup('doubles', teamX.length, `mirror:doubles:${pair}:x:lineup`);
+      const p1 = first.aSide === 'p1' ? first.lineups.a : first.lineups.b;
+      expect(p1).toEqual(order.map((position) => teamX[position - 1]?.species));
+    }
+    expect(result.pairs.count).toBe(2);
+  });
+
+  it('summarizes each pair of battles', () => {
+    const record = (pair: number, outcome: BattleRecord['outcome']) =>
+      ({ pair, outcome }) as BattleRecord;
+    const summary = summarizePairs([
+      record(0, 'a'),
+      record(0, 'a'),
+      record(1, 'a'),
+      record(1, 'b'),
+      record(2, 'b'),
+      record(2, 'error'),
+    ]);
+    expect(summary).toMatchObject({ count: 2, sweepsA: 1, splits: 1, sweepsB: 0, winRate: 0.75 });
   });
 });
