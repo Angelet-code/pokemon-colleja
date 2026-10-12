@@ -6,6 +6,7 @@
  *   2 vs 2 turns in doubles).
  * - Level 3 `ExpertAgent`: level 2 plus one turn of lookahead with the real simulator, through
  *   the engine's sandbox (`AgentContext.sandbox`).
+ * - `learning/`: factors of a position and the value model learned from replays (fase 17).
  * See docs/guias/bot.md.
  */
 export * from './agents/aggressive-agent';
@@ -23,6 +24,10 @@ export * from './analysis/situation';
 export * from './analysis/team-chain';
 export * from './analysis/team-selection';
 export * from './explain';
+export * from './learning/features';
+export * from './learning/position';
+export * from './learning/timers';
+export * from './learning/value-model';
 export * from './levels';
 export * from './random-agent';
 export * from './search/assumptions';

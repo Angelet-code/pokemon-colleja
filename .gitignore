@@ -32,3 +32,6 @@ Thumbs.db
 # Playwright (npm run e2e)
 test-results/
 playwright-report/
+
+# Replays públicos y posiciones (npm run ladder:*) — local, no versionado
+datasets/

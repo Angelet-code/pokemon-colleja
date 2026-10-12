@@ -1,0 +1,15 @@
+{
+  "name": "@colleja/ladder",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Replays públicos de Champions: descarga, posiciones con sus factores de partida, entrenamiento y evaluación de la valoración aprendida.",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@colleja/bot": "*",
+    "@colleja/core": "*",
+    "@colleja/data": "*"
+  }
+}

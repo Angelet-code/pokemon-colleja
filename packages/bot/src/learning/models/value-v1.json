@@ -1,0 +1,58 @@
+{
+  "featuresVersion": 1,
+  "features": [
+    "hp",
+    "alive",
+    "fieldHp",
+    "fieldSpeed",
+    "teamSpeed",
+    "trickRoom",
+    "tailwind",
+    "screens",
+    "weather",
+    "koFor",
+    "koAgainst",
+    "koFirstFor",
+    "koFirstAgainst",
+    "damageFor",
+    "damageAgainst",
+    "answers",
+    "boosts",
+    "status",
+    "mega",
+    "fakeOut"
+  ],
+  "scale": [
+    0.826013, 0.957404, 0.574715, 2.506619, 0.555342, 0.120514, 0.163187, 0.219242, 0.582528,
+    1.274304, 1.274304, 0.862094, 0.862094, 1.630048, 1.630048, 1.247758, 3.084866, 0.439273,
+    0.472287, 0.445199
+  ],
+  "weights": [
+    0.178866, 1.151455, 0.257446, 0.042548, 0.017129, 0.090343, 0.048343, 0.068311, 0.00559,
+    0.08552, -0.08552, 0.049357, -0.049357, 0.048784, -0.048784, 0.257295, 0.351099, 0.16813,
+    0.058923, -0.034985
+  ],
+  "bias": 0,
+  "meta": {
+    "format": "gen9championsvgc2026regmc",
+    "battles": {
+      "train": 3979,
+      "test": 1020
+    },
+    "positions": {
+      "train": 57618,
+      "test": 14648
+    },
+    "dates": ["2026-09-25", "2026-10-11"],
+    "ratings": [1400, 1879],
+    "split": "s1",
+    "l2": 1,
+    "test": {
+      "logLoss": 0.5465,
+      "accuracy": 0.6997,
+      "calibrationError": 0.0175,
+      "hpBalanceLogLoss": 0.6087,
+      "hpBalanceAccuracy": 0.6464
+    }
+  }
+}
