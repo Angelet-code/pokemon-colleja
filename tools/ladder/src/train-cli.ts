@@ -9,8 +9,8 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { FEATURES, FEATURES_VERSION, type ValueModel } from '@colleja/bot';
+import type { StoredReplay } from '@colleja/metagame';
 import { L2, loadPositions, metrics, predictor, splitByBattle, trainOn } from './dataset';
-import type { StoredReplay } from './fetch';
 import { DATASETS, LADDER_FORMAT, replaysDir } from './paths';
 
 const { values } = parseArgs({ options: { seed: { type: 'string', default: 's1' } } });

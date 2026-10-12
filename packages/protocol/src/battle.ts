@@ -18,6 +18,7 @@ import {
   SideIdSchema,
   TeamTextSchema,
 } from './common';
+import { MetagameSnapshotIdSchema, MetagameTeamIdSchema } from './metagame';
 import { OpponentIdSchema } from './opponents';
 import { TurnExplanationSchema } from './replays';
 import { TeamIdSchema } from './teams';
@@ -36,6 +37,12 @@ export const OpponentSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('team'), team: TeamTextSchema }),
   /** A saved opponent (`/api/opponents`). Its difficulty is applied by the client in `botLevel`. */
   z.object({ kind: z.literal('saved'), opponentId: OpponentIdSchema }),
+  /** A team of a metagame snapshot (`/api/metagame`). The difficulty comes in `botLevel`. */
+  z.object({
+    kind: z.literal('metagame'),
+    snapshotId: MetagameSnapshotIdSchema,
+    teamId: MetagameTeamIdSchema,
+  }),
 ]);
 
 export const StartBattleSchema = z

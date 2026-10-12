@@ -3,6 +3,7 @@
  * `buildServer` does not listen, so tests use `inject` / `injectWS`.
  */
 import { existsSync } from 'node:fs';
+import { FileMetagameStore } from '@colleja/metagame';
 import { API_PREFIX } from '@colleja/protocol';
 import fastifyStatic from '@fastify/static';
 import fastifyWebsocket from '@fastify/websocket';
@@ -14,22 +15,28 @@ import { FileCollectionRepository } from './collection/collection-repository';
 import {
   BENCH_DIR,
   COLLECTION_DIR,
+  METAGAME_DIR,
   OPPONENTS_DIR,
   REPLAYS_DIR,
   SPRITES_DIR,
   TEAMS_DIR,
   WEB_DIST_DIR,
 } from './config';
+import { MetagameManager, type MetagameManagerOptions } from './metagame/metagame-manager';
 import { FileOpponentRepository } from './opponents/opponent-repository';
 import { FileReplayRepository } from './replays/replay-repository';
 import { registerApi } from './routes/api';
 import { registerBattleSocket } from './routes/battle-socket';
 import { registerBenchRoutes } from './routes/bench';
 import { registerBenchSocket } from './routes/bench-socket';
+import { registerMetagameRoutes } from './routes/metagame';
 import type { Repositories } from './storage/repositories';
 import { FileTeamRepository } from './teams/team-repository';
 
-export interface ServerOptions extends BattleManagerOptions, BenchManagerOptions {
+export interface ServerOptions
+  extends BattleManagerOptions,
+    BenchManagerOptions,
+    MetagameManagerOptions {
   logger?: FastifyServerOptions['logger'];
   /** Folder served at `/sprites/` (omitted or missing: 404, the UI falls back to text). */
   spritesDir?: string | null;
@@ -52,6 +59,8 @@ export interface ServerOptions extends BattleManagerOptions, BenchManagerOptions
   benchDir?: string;
   /** Folder of the collection (default `storage/collection/`; tests use a temporary one). */
   collectionDir?: string;
+  /** Folder of the metagame snapshots (default `storage/metagame/`; tests use a temporary one). */
+  metagameDir?: string;
 }
 
 export async function buildServer(options: ServerOptions = {}): Promise<FastifyInstance> {
@@ -66,15 +75,18 @@ export async function buildServer(options: ServerOptions = {}): Promise<FastifyI
     collection: new FileCollectionRepository(options.collectionDir ?? COLLECTION_DIR, {
       onInvalid,
     }),
+    metagame: new FileMetagameStore(options.metagameDir ?? METAGAME_DIR),
   };
   const battles = new BattleManager(repositories, options);
   const bench = new BenchManager(repositories, options);
+  const metagame = new MetagameManager(repositories.metagame, options);
 
   await app.register(fastifyWebsocket);
   registerApi(app, repositories);
   registerBattleSocket(app, battles);
   registerBenchRoutes(app, bench, repositories.bench);
   registerBenchSocket(app, bench);
+  registerMetagameRoutes(app, metagame, repositories.opponents);
 
   const spritesDir = options.spritesDir === undefined ? SPRITES_DIR : options.spritesDir;
   if (spritesDir && existsSync(spritesDir)) {
@@ -113,8 +125,10 @@ export async function buildServer(options: ServerOptions = {}): Promise<FastifyI
   }
   app.addHook('onClose', async () => battles.disposeAll());
   app.addHook('onClose', async () => bench.disposeAll());
+  app.addHook('onClose', async () => metagame.settled());
   app.decorate('battles', battles);
   app.decorate('bench', bench);
+  app.decorate('metagame', metagame);
   return app;
 }
 
@@ -124,5 +138,7 @@ declare module 'fastify' {
     battles: BattleManager;
     /** The team bench (exposed for tests). */
     bench: BenchManager;
+    /** The metagame and its update (exposed for tests). */
+    metagame: MetagameManager;
   }
 }

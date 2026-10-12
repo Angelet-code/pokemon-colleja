@@ -5,6 +5,7 @@
 import type {
   BotLevelValue,
   GameModeValue,
+  MetagameTeamSummary,
   OpponentSummary,
   StartBenchRequest,
   TeamSummary,
@@ -24,6 +25,8 @@ export interface BenchForm {
   versusTeamId: string;
   versusText: string;
   mode: BenchModeChoice;
+  /** Against your saved rivals or against the metagame (every team, weighted by its share). */
+  rivalSource: 'mine' | 'metagame';
   /** Chosen rivals; `null`: every legal rival of the mode. */
   opponentIds: string[] | null;
   teamLevel: BotLevelValue;
@@ -38,6 +41,7 @@ export const DEFAULT_BENCH_FORM: BenchForm = {
   versusTeamId: '',
   versusText: '',
   mode: 'doubles',
+  rivalSource: 'mine',
   opponentIds: null,
   teamLevel: 3,
   opponentLevel: 3,
@@ -74,6 +78,21 @@ export function rivalsForMode(
   );
 }
 
+/** The metagame teams the bench will play: the legal ones of the modes measured. */
+export function metagameRivals(
+  teams: readonly MetagameTeamSummary[],
+  mode: BenchModeChoice,
+): MetagameTeamSummary[] {
+  const modes = modesOf(mode);
+  return teams.filter((team) => team.valid && modes.includes(team.mode));
+}
+
+/** The active metagame as the bench needs it (`null`: none yet). */
+export interface BenchMetagame {
+  snapshotId: string;
+  teams: MetagameTeamSummary[];
+}
+
 /** The rivals the bench will play: the chosen ones still available, or all of the mode. */
 export function selectedRivals(
   form: BenchForm,
@@ -100,12 +119,26 @@ export function toBenchRequest(
   form: BenchForm,
   teams: readonly TeamSummary[],
   opponents: readonly OpponentSummary[],
+  metagame: BenchMetagame | null = null,
 ): { ok: true; request: StartBenchRequest } | { ok: false; reason: string } {
   const team = teams.find((candidate) => candidate.id === form.teamId);
   if (!team) return { ok: false, reason: 'Elige tu equipo.' };
   if (!team.valid) return { ok: false, reason: `«${team.name}» tiene problemas.` };
-  const rivals = selectedRivals(form, opponents);
-  if (rivals.length === 0) return { ok: false, reason: 'Elige al menos un rival.' };
+  const againstMetagame = form.rivalSource === 'metagame';
+  if (againstMetagame && !metagame) {
+    return { ok: false, reason: 'Aún no hay meta: actualízalo en Rivales.' };
+  }
+  const rivals = againstMetagame
+    ? metagameRivals(metagame?.teams ?? [], form.mode)
+    : selectedRivals(form, opponents);
+  if (rivals.length === 0) {
+    return {
+      ok: false,
+      reason: againstMetagame
+        ? 'El meta no tiene equipos de este modo.'
+        : 'Elige al menos un rival.',
+    };
+  }
 
   let versus: StartBenchRequest['versus'];
   if (form.versus === 'saved') {
@@ -119,7 +152,8 @@ export function toBenchRequest(
   }
 
   const modes = modesOf(form.mode);
-  const strata = rivals.length * modes.length;
+  // A metagame team belongs to one mode; a saved rival plays every mode measured.
+  const strata = againstMetagame ? rivals.length : rivals.length * modes.length;
   const budget: StartBenchRequest['budget'] =
     form.precision === 'fixed'
       ? { kind: 'fixed', battles: Math.min(200, Math.max(1, Math.round(form.battles))) }
@@ -134,7 +168,9 @@ export function toBenchRequest(
     request: {
       teamId: team.id,
       ...(versus ? { versus } : {}),
-      opponentIds: rivals.map((opponent) => opponent.id),
+      ...(againstMetagame && metagame
+        ? { metagame: { snapshotId: metagame.snapshotId } }
+        : { opponentIds: rivals.map((opponent) => opponent.id) }),
       modes,
       levels: { team: form.teamLevel, opponent: form.opponentLevel },
       budget,

@@ -12,6 +12,7 @@
     "@colleja/bot": "*",
     "@colleja/core": "*",
     "@colleja/data": "*",
+    "@colleja/metagame": "*",
     "@colleja/protocol": "*",
     "zod": "^4.6.5"
   }

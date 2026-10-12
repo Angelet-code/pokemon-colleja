@@ -1,0 +1,21 @@
+{
+  "name": "@colleja/metagame",
+  "version": "0.0.0",
+  "private": true,
+  "description": "El meta del ladder como rivales: estadísticas mensuales de Smogon (sets) y replays públicos (equipos de seis y su frecuencia), con su instantánea en storage/metagame (solo Node).",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@colleja/bot": "*",
+    "@colleja/core": "*",
+    "@colleja/data": "*",
+    "@colleja/engine": "*",
+    "@colleja/protocol": "*",
+    "@colleja/teamgen": "*"
+  }
+}

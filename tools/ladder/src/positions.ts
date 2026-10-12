@@ -13,7 +13,7 @@ import {
   spectatorPosition,
 } from '@colleja/bot';
 import { BattleView, type SideId } from '@colleja/core';
-import type { StoredReplay } from './fetch';
+import type { StoredReplay } from '@colleja/metagame';
 
 export interface PositionRow {
   /** Replay id. */

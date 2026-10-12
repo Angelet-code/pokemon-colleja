@@ -1,7 +1,7 @@
 /**
  * The team bench. Progress and the result go through the bench WebSocket (`bench:watch`).
  *
- *   POST   /api/bench          starts one ({ teamId, opponentIds, modes, levels, budget… }) → { benchId }
+ *   POST   /api/bench          starts one ({ teamId, opponentIds | metagame, modes, levels, budget… }) → { benchId }
  *   GET    /api/bench          the history (optionally `?teamId=`) and the bench running now
  *   GET    /api/bench/:id      a saved bench
  *   DELETE /api/bench/:id      cancels it if it is running; otherwise deletes it (204)
@@ -75,6 +75,7 @@ function toEntry({ bench, updatedAt }: StoredBench): BenchListEntry {
     modes: setup.modes,
     levels: setup.levels,
     opponents: setup.opponents.length,
+    ...(setup.metagame ? { metagameId: setup.metagame.snapshotId } : {}),
     status: summary.status,
     total: summary.total,
     battles: summary.battles.planned,

@@ -6,7 +6,7 @@
  */
 import { readdirSync } from 'node:fs';
 import { parseArgs } from 'node:util';
-import { fetchReplays, isUntrustedRootError } from './fetch';
+import { fetchReplays, isUntrustedRootError } from '@colleja/metagame';
 import { FolderReplayStore, LADDER_FORMAT, replaysDir } from './paths';
 
 const USAGE = `Uso: npm run ladder:fetch -- [opciones]

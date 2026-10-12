@@ -3,6 +3,7 @@ import {
   API_PREFIX,
   type ApiError,
   type BenchResponse,
+  type BotLevelValue,
   type CalcRequest,
   type CalcResponse,
   type CollectionContent,
@@ -10,10 +11,14 @@ import {
   type GameModeValue,
   type ImportOpponentRequest,
   type ImportTeamRequest,
+  type LatestMetagameResponse,
   type ListBenchesResponse,
   type ListOpponentsResponse,
   type ListReplaysResponse,
   type ListTeamsResponse,
+  type MetagameResponse,
+  type MetagameTeamResponse,
+  type MetagameUpdateStatus,
   type MetaResponse,
   type OpponentContent,
   type OpponentResponse,
@@ -95,6 +100,19 @@ export const api = {
     request<void>(`/opponents/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 
   // The player's collection («PC de Bill»)
+  metagame: () => request<MetagameResponse>('/metagame'),
+  latestMetagame: () => request<LatestMetagameResponse>('/metagame/latest'),
+  updateMetagame: () => request<MetagameUpdateStatus>('/metagame/update', json('POST', {})),
+  getMetagameTeam: (snapshotId: string, teamId: string) =>
+    request<MetagameTeamResponse>(
+      `/metagame/${encodeURIComponent(snapshotId)}/teams/${encodeURIComponent(teamId)}`,
+    ),
+  copyMetagameTeam: (snapshotId: string, teamId: string, botLevel: BotLevelValue) =>
+    request<OpponentResponse>(
+      `/metagame/${encodeURIComponent(snapshotId)}/teams/${encodeURIComponent(teamId)}/copy`,
+      json('POST', { botLevel }),
+    ),
+
   getCollection: () => request<CollectionResponse>('/collection'),
   saveCollection: (collection: CollectionContent) =>
     request<CollectionResponse>('/collection', json('PUT', { collection })),

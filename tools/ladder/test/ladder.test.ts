@@ -1,8 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { FEATURES } from '@colleja/bot';
+import {
+  type FetchLike,
+  fetchReplays,
+  type ReplayStore,
+  type StoredReplay,
+} from '@colleja/metagame';
 import { describe, expect, it } from 'vitest';
 import { splitByBattle } from '../src/dataset';
-import { type FetchLike, fetchReplays, type ReplayStore, type StoredReplay } from '../src/fetch';
 import { type PositionRow, replayPositions } from '../src/positions';
 
 /** A real Champions doubles replay, trimmed and with the players renamed (Ana and Bea). */

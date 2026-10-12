@@ -6,6 +6,7 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import {
   type BenchConfig,
+  type BenchOpponent,
   type BenchSummary,
   type BenchTeam,
   defaultThreads,
@@ -91,14 +92,7 @@ export class BenchManager {
       );
     }
     const versus = request.versus ? await this.versusTeam(request.versus) : undefined;
-    const opponents = await Promise.all(
-      request.opponentIds.map(async (id) => {
-        const stored = await this.storage.opponents.get(id);
-        if (!stored) throw new BenchRequestError(404, 'Ese rival guardado no existe.');
-        const { name, members } = stored.opponent;
-        return { id, name, members };
-      }),
-    );
+    const { opponents, metagame } = await this.opponents(request);
 
     const config: BenchConfig = {
       team,
@@ -117,7 +111,12 @@ export class BenchManager {
     const setup: BenchSetup = {
       team: snapshot(team, true),
       ...(versus ? { versus: snapshot(versus, request.versus?.kind === 'saved') } : {}),
-      opponents: opponents.map(({ id, name }) => ({ id, name })),
+      opponents: opponents.map(({ id, name, weight }) => ({
+        id,
+        name,
+        ...(weight !== undefined ? { weight } : {}),
+      })),
+      ...(metagame ? { metagame } : {}),
       modes: config.modes,
       levels: config.levels,
       budget: config.budget,
@@ -219,6 +218,42 @@ export class BenchManager {
         message: `El banco falló: ${error instanceof Error ? error.message : String(error)}`,
       });
     }
+  }
+
+  /**
+   * The rivals: saved ones (each weighs the same) or every team of a metagame snapshot in the
+   * chosen modes, each with its share of the metagame.
+   */
+  private async opponents(
+    request: StartBenchRequest,
+  ): Promise<{ opponents: BenchOpponent[]; metagame?: BenchSetup['metagame'] }> {
+    if (request.metagame) {
+      const snapshot = this.storage.metagame.get(request.metagame.snapshotId);
+      if (!snapshot) throw new BenchRequestError(404, 'Ese meta no existe. Actualízalo.');
+      const opponents = snapshot.teams
+        .filter((team) => request.modes.includes(team.mode))
+        .map(({ id, name, members, weight, mode }) => ({
+          id,
+          name,
+          members,
+          weight,
+          modes: [mode],
+        }));
+      if (opponents.length === 0) {
+        throw new BenchRequestError(400, 'El meta no tiene equipos de ese modo.');
+      }
+      const { id: snapshotId, month, cutoff } = snapshot;
+      return { opponents, metagame: { snapshotId, month, cutoff } };
+    }
+    const opponents = await Promise.all(
+      (request.opponentIds ?? []).map(async (id) => {
+        const stored = await this.storage.opponents.get(id);
+        if (!stored) throw new BenchRequestError(404, 'Ese rival guardado no existe.');
+        const { name, members } = stored.opponent;
+        return { id, name, members };
+      }),
+    );
+    return { opponents };
   }
 
   private async savedTeam(teamId: string): Promise<BenchTeam> {

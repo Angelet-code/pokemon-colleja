@@ -1,6 +1,7 @@
 /**
  * The table of a bench: the total and one row per rival (and mode) with its win rate, its
  * 95 % interval and, in an A/B comparison, the difference B − A. Weakest rivals first.
+ * Against the metagame, each rival's share of it and where the team loses most points.
  */
 import type {
   BenchSetup,
@@ -30,6 +31,33 @@ export const STOP_LABEL: Record<NonNullable<BenchSummaryValue['stopReason']>, st
   'nothing-to-play': 'Nada que jugar',
 };
 
+/** Share of each row in the total (weights normalised per mode, modes equal). */
+export function rowShares(rows: readonly StratumSummaryValue[]): Map<StratumSummaryValue, number> {
+  const modes = new Set(rows.map((row) => row.mode));
+  const byMode = new Map<string, number>();
+  for (const row of rows) byMode.set(row.mode, (byMode.get(row.mode) ?? 0) + (row.weight ?? 1));
+  return new Map(
+    rows.map((row) => [row, (row.weight ?? 1) / (byMode.get(row.mode) || 1) / modes.size]),
+  );
+}
+
+/**
+ * Where the team loses most of the total: the rivals whose share × losses is largest, in
+ * points of the total (only rivals already played).
+ */
+export function costliest(
+  rows: readonly StratumSummaryValue[],
+  count = 3,
+): { row: StratumSummaryValue; points: number }[] {
+  const shares = rowShares(rows);
+  return rows
+    .filter((row) => row.team.winRate !== null)
+    .map((row) => ({ row, points: (shares.get(row) ?? 0) * (1 - (row.team.winRate ?? 0)) }))
+    .filter((entry) => entry.points > 0)
+    .sort((a, b) => b.points - a.points)
+    .slice(0, count);
+}
+
 /** Rows in the order that helps most: where the team (or version B) does worst first. */
 function sortRows(rows: StratumSummaryValue[], paired: boolean): StratumSummaryValue[] {
   const key = (row: StratumSummaryValue) =>
@@ -48,11 +76,18 @@ export function BenchResults({
 }) {
   const paired = setup.versus !== undefined;
   const showMode = setup.modes.length > 1;
+  const weighted = setup.metagame !== undefined;
+  const shares = rowShares(summary.strata);
+  const costly = weighted && !paired ? costliest(summary.strata) : [];
   const { total } = summary;
   return (
     <div className="flex flex-col gap-4">
       <dl className="grid gap-4 sm:grid-cols-3">
-        <TotalFigure label={setup.team.name} estimate={total.team} kind="rate" />
+        <TotalFigure
+          label={weighted ? `${setup.team.name} · contra el meta` : setup.team.name}
+          estimate={total.team}
+          kind="rate"
+        />
         {paired && (
           <>
             <TotalFigure
@@ -65,10 +100,28 @@ export function BenchResults({
         )}
       </dl>
 
+      {costly.length > 0 && (
+        <p className="text-sm text-muted">
+          Donde más pierdes:{' '}
+          {costly.map(({ row, points }, index) => (
+            <span key={`${row.opponentId}:${row.mode}`}>
+              {index > 0 && ' · '}
+              <span className="font-semibold text-text">{row.opponentName}</span>{' '}
+              <span className="tabular-nums">−{(points * 100).toFixed(1).replace('.', ',')}</span>
+            </span>
+          ))}
+        </p>
+      )}
+
       <table className="w-full text-sm" aria-label="Resultado por rival">
         <thead>
           <tr className="eyebrow border-b border-line text-left text-faint">
             <th className="py-2 pr-3 font-normal">Rival</th>
+            {weighted && (
+              <th className="py-2 pr-3 text-right font-normal" title="Parte del meta">
+                Peso
+              </th>
+            )}
             <th className="py-2 pr-3 font-normal">{paired ? 'A' : 'Victorias'}</th>
             {paired && <th className="py-2 pr-3 font-normal">B</th>}
             {paired && <th className="py-2 pr-3 text-right font-normal">B − A</th>}
@@ -89,6 +142,11 @@ export function BenchResults({
                   {showMode && <Chip>{MODE[row.mode]}</Chip>}
                 </span>
               </th>
+              {weighted && (
+                <td className="py-2 pr-3 text-right text-muted tabular-nums">
+                  {percent(shares.get(row) ?? 0)}
+                </td>
+              )}
               <td className={`${paired ? 'w-[24%]' : 'w-[45%]'} py-2 pr-3`}>
                 <RateBar tally={row.team} compact={paired} />
               </td>

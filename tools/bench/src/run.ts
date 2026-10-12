@@ -4,6 +4,7 @@
  *   npm run bench -- --team "Collejas pingüi"                      # all its mode's rivals, ±5
  *   npm run bench -- --team v1.json --versus v2.json --margin 5    # A/B in pairs
  *   npm run bench -- --team <id> --opponents <id,id> --battles 20  # fixed number of battles
+ *   npm run bench -- --team <id> --opponents meta                  # against the metagame, weighted
  *   npm run bench -- --help
  */
 import { writeFileSync } from 'node:fs';
@@ -26,7 +27,10 @@ const USAGE = `Uso: npm run bench -- --team <equipo> [opciones]
 
   --team <id|nombre|fichero>     Tu equipo (guardado, o un fichero JSON o de texto exportado)
   --versus <id|nombre|fichero>   Versión B para compararla con la A en pares (mismas semillas)
-  --opponents <all|id,nombre…>   Rivales guardados. Por defecto: all (los del modo elegido)
+  --opponents <all|id,nombre…|meta>
+                                 Rivales guardados (all: los del modo elegido) o el meta
+                                 (meta: el último; meta:<id>, otro), cada equipo con su peso.
+                                 Por defecto: all
   --mode singles|doubles|both    Por defecto: el modo preferido del equipo guardado, o both
   --level <0-3>                  Nivel del bot de tu equipo. Por defecto: 3
   --rival-level <0-3>            Nivel del bot de los rivales. Por defecto: 3
@@ -87,11 +91,18 @@ const STOP: Record<string, string> = {
   'nothing-to-play': 'nada que jugar',
 };
 
+/** Rivals that are not all equal (the metagame): the report shows each one's weight. */
+const weighted = (summary: BenchSummary) =>
+  summary.strata.some((row) => row.weight !== summary.strata[0]?.weight);
+
 function report(summary: BenchSummary, paired: boolean): void {
   const width = Math.max(10, ...summary.strata.map((row) => row.opponentName.length));
+  const showWeight = weighted(summary);
+  const totalWeight = summary.strata.reduce((sum, row) => sum + row.weight, 0) || 1;
   console.log();
   for (const row of summary.strata) {
-    const name = `${row.opponentName.padEnd(width)}  ${MODE_LABEL[row.mode]}`;
+    const share = showWeight ? `${percent(row.weight / totalWeight).padStart(7)}  ` : '';
+    const name = `${share}${row.opponentName.padEnd(width)}  ${MODE_LABEL[row.mode]}`;
     if (paired && row.versus && row.difference) {
       console.log(
         `  ${name}  A ${rate(row.team)}  B ${rate(row.versus)}  B−A ${points(row.difference.mean)} ${pm(row.difference)}`,
@@ -103,7 +114,18 @@ function report(summary: BenchSummary, paired: boolean): void {
   }
   const { total } = summary;
   console.log();
-  if (total.team) console.log(`  Total A: ${percent(total.team.mean)} ${pm(total.team)}`);
+  if (total.team) {
+    const label = showWeight ? 'Total A (pesado por el meta)' : 'Total A';
+    console.log(`  ${label}: ${percent(total.team.mean)} ${pm(total.team)}`);
+  }
+  if (!paired) {
+    const worst = worstMatchups(summary);
+    if (worst.length > 0) {
+      console.log(
+        `  Peores enfrentamientos: ${worst.map((row) => `${row.opponentName} ${percent(row.team.winRate ?? 0)}`).join(' · ')}`,
+      );
+    }
+  }
   if (total.versus) console.log(`  Total B: ${percent(total.versus.mean)} ${pm(total.versus)}`);
   if (total.difference) {
     console.log(
@@ -125,6 +147,14 @@ function report(summary: BenchSummary, paired: boolean): void {
   for (const skipped of summary.skipped) {
     console.log(`  Saltado (${MODE_LABEL[skipped.mode]}): ${skipped.name}: ${skipped.problems[0]}`);
   }
+}
+
+/** The three rivals with the lowest win rate (those it has played at least a few times). */
+function worstMatchups(summary: BenchSummary) {
+  return summary.strata
+    .filter((row) => row.team.winRate !== null && row.team.played >= 3)
+    .sort((a, b) => (a.team.winRate ?? 0) - (b.team.winRate ?? 0))
+    .slice(0, 3);
 }
 
 async function main(): Promise<number> {
@@ -150,7 +180,12 @@ async function main(): Promise<number> {
         : fail(`--mode debe ser singles, doubles o both (recibido: "${modeText}").`);
   const opponents = loadOpponents(values.opponents, modes);
   if (opponents.length === 0) fail('No hay rivales guardados para ese modo.');
-  const strata = opponents.length * modes.length;
+  const strata = opponents.reduce(
+    (total, opponent) =>
+      total + modes.filter((mode) => opponent.modes?.includes(mode) ?? true).length,
+    0,
+  );
+  if (strata === 0) fail('Ningún rival juega en ese modo.');
   const budget: BenchBudget = values.battles
     ? { kind: 'fixed', battles: Math.round(positive(values.battles, '--battles')) }
     : {

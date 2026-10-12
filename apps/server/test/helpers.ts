@@ -18,6 +18,7 @@ import {
   type StartBattleMessage,
 } from '@colleja/protocol';
 import type { FastifyInstance } from 'fastify';
+import type { MetagameManagerOptions } from '../src/metagame/metagame-manager';
 import { buildServer } from '../src/server';
 
 export function fixtureText(name: 'equipo-a' | 'equipo-b'): string {
@@ -52,6 +53,11 @@ export function tempCollectionDir(): string {
   return mkdtempSync(join(tmpdir(), 'colleja-collection-'));
 }
 
+/** A temporary folder for the metagame snapshots. */
+export function tempMetagameDir(): string {
+  return mkdtempSync(join(tmpdir(), 'colleja-metagame-'));
+}
+
 /** A server without sprites, web or timers, saving into temporary folders. */
 export function testServer({
   teamsDir = tempTeamsDir(),
@@ -59,15 +65,22 @@ export function testServer({
   replaysDir = tempReplaysDir(),
   benchDir = tempBenchDir(),
   collectionDir = tempCollectionDir(),
+  metagameDir = tempMetagameDir(),
   benchThreads = 0,
+  metagameUpdate,
+  metagameLatest = async () => null,
 }: {
   teamsDir?: string;
   opponentsDir?: string;
   replaysDir?: string;
   benchDir?: string;
   collectionDir?: string;
+  metagameDir?: string;
   /** Worker threads of the bench (default 0: inline, with the fast bot levels of the tests). */
   benchThreads?: number;
+  /** The metagame update (default: one that fails, so no test reaches the network). */
+  metagameUpdate?: MetagameManagerOptions['metagameUpdate'];
+  metagameLatest?: MetagameManagerOptions['metagameLatest'];
 } = {}): Promise<FastifyInstance> {
   return buildServer({
     spritesDir: null,
@@ -78,6 +91,13 @@ export function testServer({
     replaysDir,
     benchDir,
     collectionDir,
+    metagameDir,
+    metagameUpdate:
+      metagameUpdate ??
+      (async () => {
+        throw new Error('Sin red en los tests.');
+      }),
+    metagameLatest,
     benchThreads,
     benchProgressMs: 0,
   });

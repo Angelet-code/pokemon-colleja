@@ -229,7 +229,7 @@ export const ReplayDataSchema = z.object({
 });
 
 /** How the rival was chosen (informative, for the list). */
-export const ReplayOpponentKindSchema = z.enum(['random', 'team', 'saved']);
+export const ReplayOpponentKindSchema = z.enum(['random', 'team', 'saved', 'metagame']);
 
 /** The stored content of a replay (everything but its id). */
 export const ReplayContentSchema = z.object({

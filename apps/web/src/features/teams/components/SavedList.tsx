@@ -50,6 +50,7 @@ export function useSavedList<T extends TeamSummary>(load: () => Promise<T[]>): S
 
 export function SavedListLayout({
   title,
+  kicker,
   newPath,
   newLabel,
   listLabel,
@@ -61,6 +62,8 @@ export function SavedListLayout({
   children,
 }: {
   title: string;
+  /** Above the title (e.g. the sections of the page). */
+  kicker?: ReactNode;
   newPath: string;
   newLabel: string;
   /** Accessible name of the list. */
@@ -80,6 +83,7 @@ export function SavedListLayout({
   return (
     <div className="mx-auto flex max-w-[1280px] flex-col gap-6">
       <PageHeader
+        kicker={kicker}
         title={
           <>
             {title}

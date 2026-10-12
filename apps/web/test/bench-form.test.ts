@@ -4,6 +4,7 @@ import {
   DEFAULT_BENCH_FORM,
   MAX_PER_RIVAL,
   MIN_PER_RIVAL,
+  metagameRivals,
   rivalsForMode,
   selectedRivals,
   toBenchRequest,
@@ -85,6 +86,38 @@ describe('bench form', () => {
     );
     expect(fixed.ok && fixed.request.budget).toEqual({ kind: 'fixed', battles: 2 });
     expect(fixed.ok && fixed.request.versus).toEqual({ kind: 'saved', teamId: 'b' });
+  });
+
+  it('benches against every legal metagame team of the mode', () => {
+    const metagameTeam = (id: string, mode: 'singles' | 'doubles', valid = true) => ({
+      ...team(id, valid),
+      mode,
+      snapshotId: '2026-09-1760',
+      archetype: '',
+      weight: 0.5,
+    });
+    const metagame = {
+      snapshotId: '2026-09-1760',
+      teams: [
+        metagameTeam('doubles-01', 'doubles'),
+        metagameTeam('doubles-02', 'doubles', false),
+        metagameTeam('singles-01', 'singles'),
+      ],
+    };
+    expect(metagameRivals(metagame.teams, 'doubles').map((entry) => entry.id)).toEqual([
+      'doubles-01',
+    ]);
+    expect(metagameRivals(metagame.teams, 'both')).toHaveLength(2);
+    const form = { ...DEFAULT_BENCH_FORM, teamId: 'a', rivalSource: 'metagame' as const };
+    const built = toBenchRequest({ ...form, mode: 'both' }, teams, opponents, metagame);
+    expect(built.ok && built.request).toMatchObject({
+      metagame: { snapshotId: '2026-09-1760' },
+      modes: ['singles', 'doubles'],
+      budget: { maxBattles: MAX_PER_RIVAL * 2 },
+    });
+    expect(built.ok && built.request).not.toHaveProperty('opponentIds');
+    const none = toBenchRequest(form, teams, opponents, null);
+    expect(none.ok ? null : none.reason).toMatch(/Aún no hay meta/);
   });
 
   it('explains what is missing', () => {

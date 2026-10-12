@@ -2,7 +2,12 @@
  * Start screen, as a versus: your team on the left, the rival on the right, and the rules of
  * the battle (difficulty, practice options) in the bar below.
  */
-import type { MetaResponse, OpponentSummary, TeamSummary } from '@colleja/protocol';
+import type {
+  MetagameTeamSummary,
+  MetaResponse,
+  OpponentSummary,
+  TeamSummary,
+} from '@colleja/protocol';
 import { type ReactNode, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { IconArrowRight, IconDice } from '../../components/icons';
@@ -20,6 +25,7 @@ import {
 } from '../../components/ui';
 import { ApiRequestError, api } from '../../lib/api';
 import { type BattleError, useBattle } from '../battle/battle-store';
+import { percent } from '../teams/MetagameSection';
 import { SavedTeamPicker } from './SavedTeamPicker';
 import { toStartMessage, useSetup } from './setup-store';
 import { TeamInput, useTeamCheck } from './TeamInput';
@@ -46,6 +52,7 @@ export function SetupPage() {
   const [generating, setGenerating] = useState<'team' | 'rival' | null>(null);
   const [savedTeams, setSavedTeams] = useState<TeamSummary[] | null>(null);
   const [savedOpponents, setSavedOpponents] = useState<OpponentSummary[] | null>(null);
+  const [metagameTeams, setMetagameTeams] = useState<MetagameTeamSummary[] | null>(null);
 
   const teamCheck = useTeamCheck(form.team, form.mode);
   const rivalCheck = useTeamCheck(form.opponentTeam, form.mode);
@@ -77,6 +84,10 @@ export function SetupPage() {
       .listOpponents()
       .then(({ opponents }) => !cancelled && setSavedOpponents(opponents))
       .catch(() => !cancelled && setSavedOpponents([]));
+    api
+      .metagame()
+      .then(({ teams }) => !cancelled && setMetagameTeams(teams))
+      .catch(() => !cancelled && setMetagameTeams([]));
     return () => {
       cancelled = true;
       clearTimeout(timer);
@@ -89,11 +100,18 @@ export function SetupPage() {
       ? savedTeam?.valid === true
       : teamCheck.sets.length > 0 && teamCheck.problems.length === 0;
   const savedOpponent = savedOpponents?.find((opponent) => opponent.id === form.opponentId) ?? null;
+  const metagameOfMode = metagameTeams?.filter((team) => team.mode === form.mode) ?? null;
+  const metagameTeam =
+    metagameTeams?.find(
+      (team) => team.snapshotId === form.metagameSnapshotId && team.id === form.metagameTeamId,
+    ) ?? null;
   const rivalReady =
     form.opponentKind === 'random' ||
     (form.opponentKind === 'saved'
       ? savedOpponent?.valid === true
-      : rivalCheck.sets.length > 0 && rivalCheck.problems.length === 0);
+      : form.opponentKind === 'metagame'
+        ? metagameTeam?.valid === true && metagameTeam.mode === form.mode
+        : rivalCheck.sets.length > 0 && rivalCheck.problems.length === 0);
   const levelName = (level: number) =>
     meta?.botLevels.find((info) => info.level === level)?.name ?? `Nivel ${level}`;
 
@@ -135,25 +153,36 @@ export function SetupPage() {
   const theirs =
     form.opponentKind === 'random'
       ? { name: 'Aleatorio', species: [], shiny: [], status: null }
-      : form.opponentKind === 'saved'
+      : form.opponentKind === 'metagame'
         ? {
-            name: savedOpponent?.name ?? null,
-            species: savedOpponent?.species ?? [],
-            shiny: savedOpponent?.shiny ?? [],
-            status:
-              savedOpponent &&
-              (savedOpponent.valid ? (
-                <Chip tone="rival">{levelName(savedOpponent.botLevel)}</Chip>
-              ) : (
-                <LegalityChip problems={savedOpponent.problems} />
-              )),
+            name: metagameTeam?.name ?? null,
+            species: metagameTeam?.species ?? [],
+            shiny: metagameTeam?.shiny ?? [],
+            status: metagameTeam && (
+              <Chip tone="rival" title="Parte del meta de su modo">
+                {percent(metagameTeam.weight)}
+              </Chip>
+            ),
           }
-        : {
-            name: rivalCheck.sets.length > 0 ? 'Pegado' : null,
-            species: rivalCheck.sets.map((set) => set.species),
-            shiny: rivalCheck.sets.map((set) => Boolean(set.shiny)),
-            status: rivalCheck.sets.length > 0 && <LegalityChip problems={rivalCheck.problems} />,
-          };
+        : form.opponentKind === 'saved'
+          ? {
+              name: savedOpponent?.name ?? null,
+              species: savedOpponent?.species ?? [],
+              shiny: savedOpponent?.shiny ?? [],
+              status:
+                savedOpponent &&
+                (savedOpponent.valid ? (
+                  <Chip tone="rival">{levelName(savedOpponent.botLevel)}</Chip>
+                ) : (
+                  <LegalityChip problems={savedOpponent.problems} />
+                )),
+            }
+          : {
+              name: rivalCheck.sets.length > 0 ? 'Pegado' : null,
+              species: rivalCheck.sets.map((set) => set.species),
+              shiny: rivalCheck.sets.map((set) => Boolean(set.shiny)),
+              status: rivalCheck.sets.length > 0 && <LegalityChip problems={rivalCheck.problems} />,
+            };
 
   const missing = !teamReady ? 'Falta tu equipo' : !rivalReady ? 'Falta el rival' : null;
 
@@ -270,6 +299,7 @@ export function SetupPage() {
               options={[
                 { value: 'random', label: 'Aleatorio' },
                 { value: 'saved', label: 'Guardado' },
+                { value: 'metagame', label: 'Meta' },
                 { value: 'team', label: 'Pegado' },
               ]}
             />
@@ -292,6 +322,29 @@ export function SetupPage() {
                   Sin rivales guardados.{' '}
                   <Link to="/rivales" className="text-accent-fg hover:underline">
                     Crear uno
+                  </Link>
+                </>
+              }
+            />
+          )}
+          {form.opponentKind === 'metagame' && (
+            <SavedTeamPicker
+              side="p2"
+              teams={metagameOfMode}
+              value={
+                metagameTeam?.snapshotId === form.metagameSnapshotId ? form.metagameTeamId : ''
+              }
+              onChange={(team) =>
+                form.update({ metagameSnapshotId: team.snapshotId, metagameTeamId: team.id })
+              }
+              legend="Equipo del meta"
+              name="metagame-team"
+              detail={(team) => percent(team.weight)}
+              empty={
+                <>
+                  Sin meta de este modo.{' '}
+                  <Link to="/rivales?seccion=meta" className="text-accent-fg hover:underline">
+                    Actualizarlo
                   </Link>
                 </>
               }

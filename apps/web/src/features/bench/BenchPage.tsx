@@ -1,6 +1,7 @@
 /**
  * Team bench (`/banco`): your saved team (and optionally a second version) against your saved
- * rivals, bot against bot, with the table filling in live. The history of the team is below.
+ * rivals or the metagame (each team weighted by its share), bot against bot, with the table
+ * filling in live. The history of the team is below.
  */
 import type {
   BenchListEntry,
@@ -12,7 +13,7 @@ import type {
   TeamSummary,
 } from '@colleja/protocol';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { IconClose, IconPlay, IconTrash } from '../../components/icons';
 import {
   Button,
@@ -34,9 +35,12 @@ import { ApiRequestError, api } from '../../lib/api';
 import { BenchWatcher } from '../../lib/bench-socket';
 import { botLevelName, useMeta } from '../../lib/use-meta';
 import { useSetup } from '../setup/setup-store';
+import { monthName, percent as share } from '../teams/MetagameSection';
 import { BenchResults, STOP_LABEL } from './BenchResults';
 import {
   type BenchForm,
+  type BenchMetagame,
+  metagameRivals,
   rivalsForMode,
   selectedRivals,
   toBenchRequest,
@@ -57,6 +61,7 @@ export function BenchPage() {
   const navigate = useNavigate();
   const [teams, setTeams] = useState<TeamSummary[] | null>(null);
   const [opponents, setOpponents] = useState<OpponentSummary[] | null>(null);
+  const [metagame, setMetagame] = useState<(BenchMetagame & { month: string }) | null>(null);
   const [history, setHistory] = useState<BenchListEntry[] | null>(null);
   const [view, setView] = useState<View | null>(null);
   const [error, setError] = useState<{ title: string; items?: string[] } | null>(null);
@@ -102,6 +107,13 @@ export function BenchPage() {
       .listOpponents()
       .then(({ opponents }) => !cancelled && setOpponents(opponents))
       .catch(() => !cancelled && setOpponents([]));
+    api
+      .metagame()
+      .then(({ snapshot, teams }) => {
+        if (cancelled || !snapshot) return;
+        setMetagame({ snapshotId: snapshot.id, month: snapshot.month, teams });
+      })
+      .catch(() => {});
     // A bench may be running from before (another tab, a reload): follow it.
     api
       .listBenches()
@@ -119,7 +131,7 @@ export function BenchPage() {
 
   async function start() {
     if (!teams || !opponents) return;
-    const built = toBenchRequest(form, teams, opponents);
+    const built = toBenchRequest(form, teams, opponents, metagame);
     if (!built.ok) return setError({ title: built.reason });
     setError(null);
     try {
@@ -151,14 +163,19 @@ export function BenchPage() {
       mode: row.mode,
       teamSource: 'saved',
       teamId: setup.team.teamId ?? form.teamId,
-      opponentKind: 'saved',
-      opponentId: row.opponentId,
+      ...(setup.metagame
+        ? {
+            opponentKind: 'metagame' as const,
+            metagameSnapshotId: setup.metagame.snapshotId,
+            metagameTeamId: row.opponentId,
+          }
+        : { opponentKind: 'saved' as const, opponentId: row.opponentId }),
       botLevel: setup.levels.opponent,
     });
     navigate('/');
   }
 
-  const request = teams && opponents ? toBenchRequest(form, teams, opponents) : null;
+  const request = teams && opponents ? toBenchRequest(form, teams, opponents, metagame) : null;
 
   return (
     <div className="mx-auto flex max-w-[1280px] flex-col gap-6">
@@ -169,7 +186,13 @@ export function BenchPage() {
           {teams === null || opponents === null ? (
             <Loading />
           ) : (
-            <BenchFormFields form={form} teams={teams} opponents={opponents} disabled={running} />
+            <BenchFormFields
+              form={form}
+              teams={teams}
+              opponents={opponents}
+              metagame={metagame}
+              disabled={running}
+            />
           )}
           {running ? (
             <Button
@@ -286,6 +309,7 @@ function HistoryRow({
         <span className="w-28 shrink-0 font-display text-lg tabular-nums">{figure}</span>
         <span className="min-w-0 flex-1 truncate text-sm">
           {entry.versusName ? `contra ${entry.versusName} · ` : ''}
+          {entry.metagameId ? `meta ${entry.metagameId.slice(0, 7)} · ` : ''}
           {entry.opponents} rivales · nivel {entry.levels.team} contra {entry.levels.opponent} ·{' '}
           {entry.battles} combates
         </span>
@@ -310,13 +334,16 @@ function BenchFormFields({
   form,
   teams,
   opponents,
+  metagame,
   disabled,
 }: {
   form: BenchForm & { update(changes: Partial<BenchForm>): void };
   teams: TeamSummary[];
   opponents: OpponentSummary[];
+  metagame: (BenchMetagame & { month: string }) | null;
   disabled: boolean;
 }) {
+  const metagameTeams = metagameRivals(metagame?.teams ?? [], form.mode);
   const rivals = rivalsForMode(opponents, form.mode);
   const chosen = new Set(selectedRivals(form, opponents).map((opponent) => opponent.id));
   const others = teams.filter((team) => team.id !== form.teamId);
@@ -397,37 +424,87 @@ function BenchFormFields({
       </div>
 
       <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <span className="eyebrow text-faint">
-            Rivales {chosen.size}/{rivals.length}
-          </span>
-          <Button size="sm" variant="ghost" onClick={() => form.update({ opponentIds: null })}>
-            Todos
-          </Button>
-        </div>
-        {rivals.length === 0 ? (
-          <p className="text-sm text-muted">No hay rivales legales guardados para este modo.</p>
-        ) : (
-          <ul className="flex max-h-72 flex-col gap-1 overflow-y-auto pr-1" aria-label="Rivales">
-            {rivals.map((rival) => (
-              <li key={rival.id} className="flex items-center gap-2">
-                <Checkbox
-                  className="min-w-0 flex-1"
-                  checked={chosen.has(rival.id)}
-                  onChange={() =>
-                    form.update({ opponentIds: toggleRival(form, opponents, rival.id) })
-                  }
-                  label={
-                    <span className="block truncate" title={rival.name}>
-                      {rival.name}
-                    </span>
-                  }
-                />
-              </li>
-            ))}
-          </ul>
-        )}
+        <span className="eyebrow text-faint">Contra</span>
+        <Segmented
+          label="Contra"
+          stretch
+          value={form.rivalSource}
+          onChange={(rivalSource) => form.update({ rivalSource })}
+          options={[
+            { value: 'mine', label: 'Mis rivales' },
+            {
+              value: 'metagame',
+              label: 'Meta',
+              title: 'Todos los equipos del meta del modo, cada uno con su peso',
+            },
+          ]}
+        />
       </div>
+
+      {form.rivalSource === 'metagame' ? (
+        <div className="flex flex-col gap-2">
+          <span className="eyebrow text-faint">
+            {metagame ? `Meta de ${monthName(metagame.month)} · ${metagameTeams.length}` : 'Meta'}
+          </span>
+          {metagameTeams.length === 0 ? (
+            <p className="text-sm text-muted">
+              {metagame ? 'El meta no tiene equipos de este modo.' : 'Aún no hay meta.'}{' '}
+              <Link to="/rivales?seccion=meta" className="text-accent-fg hover:underline">
+                Actualizarlo
+              </Link>
+            </p>
+          ) : (
+            <ul
+              className="flex max-h-72 flex-col gap-1 overflow-y-auto pr-1 text-sm"
+              aria-label="Equipos del meta"
+            >
+              {metagameTeams.map((team) => (
+                <li key={team.id} className="flex items-center gap-2">
+                  <span className="w-14 shrink-0 text-right text-muted tabular-nums">
+                    {share(team.weight)}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate" title={team.name}>
+                    {team.name}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <span className="eyebrow text-faint">
+              Rivales {chosen.size}/{rivals.length}
+            </span>
+            <Button size="sm" variant="ghost" onClick={() => form.update({ opponentIds: null })}>
+              Todos
+            </Button>
+          </div>
+          {rivals.length === 0 ? (
+            <p className="text-sm text-muted">No hay rivales legales guardados para este modo.</p>
+          ) : (
+            <ul className="flex max-h-72 flex-col gap-1 overflow-y-auto pr-1" aria-label="Rivales">
+              {rivals.map((rival) => (
+                <li key={rival.id} className="flex items-center gap-2">
+                  <Checkbox
+                    className="min-w-0 flex-1"
+                    checked={chosen.has(rival.id)}
+                    onChange={() =>
+                      form.update({ opponentIds: toggleRival(form, opponents, rival.id) })
+                    }
+                    label={
+                      <span className="block truncate" title={rival.name}>
+                        {rival.name}
+                      </span>
+                    }
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-2">

@@ -10,9 +10,12 @@ export interface SetupForm {
   teamSource: 'saved' | 'text';
   teamId: string;
   team: string;
-  /** The bot's team: random, a saved opponent or pasted as text. */
-  opponentKind: 'random' | 'saved' | 'team';
+  /** The bot's team: random, a saved opponent, a metagame team or pasted as text. */
+  opponentKind: 'random' | 'saved' | 'metagame' | 'team';
   opponentId: string;
+  /** The metagame team (`opponentKind: 'metagame'`). */
+  metagameSnapshotId: string;
+  metagameTeamId: string;
   opponentTeam: string;
   botLevel: BotLevelValue;
   teamPreview: boolean;
@@ -32,6 +35,8 @@ export const DEFAULT_FORM: SetupForm = {
   team: '',
   opponentKind: 'random',
   opponentId: '',
+  metagameSnapshotId: '',
+  metagameTeamId: '',
   opponentTeam: '',
   botLevel: 3,
   teamPreview: true,
@@ -68,6 +73,12 @@ function opponentOf(form: SetupForm): StartBattleMessage['opponent'] {
   switch (form.opponentKind) {
     case 'saved':
       return { kind: 'saved', opponentId: form.opponentId };
+    case 'metagame':
+      return {
+        kind: 'metagame',
+        snapshotId: form.metagameSnapshotId,
+        teamId: form.metagameTeamId,
+      };
     case 'team':
       return { kind: 'team', team: form.opponentTeam };
     default:

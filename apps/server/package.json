@@ -15,6 +15,7 @@
     "@colleja/core": "*",
     "@colleja/data": "*",
     "@colleja/engine": "*",
+    "@colleja/metagame": "*",
     "@colleja/protocol": "*",
     "@colleja/teamgen": "*",
     "@fastify/static": "^10.1.5",

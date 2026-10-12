@@ -4,7 +4,7 @@
  *   SERVER_PORT=3001 SERVER_HOST=127.0.0.1 LOG_LEVEL=info STORAGE_DIR=storage
  *
  * (Own variable names: tools that launch dev servers often set `PORT` for the web app.)
- * `STORAGE_DIR` moves the saved teams, opponents, replays, benches and the collection elsewhere
+ * `STORAGE_DIR` moves the saved teams, opponents, replays, benches, the collection and the metagame elsewhere
  * (the E2E tests use a temporary folder). `WEB_DEV_URL` (set by `npm run dev`) sends page
  * requests to Vite instead of serving `apps/web/dist`, which may be an old build.
  */
@@ -16,9 +16,12 @@ const port = Number(process.env.SERVER_PORT ?? DEFAULT_PORT);
 const host = process.env.SERVER_HOST ?? DEFAULT_HOST;
 const storage = process.env.STORAGE_DIR;
 const devWebUrl = process.env.WEB_DEV_URL;
+// `METAGAME_LATEST=off`: never ask Smogon for the newest month (the E2E tests run offline).
+const metagameOffline = process.env.METAGAME_LATEST === 'off';
 const app = await buildServer({
   logger: { level: process.env.LOG_LEVEL ?? 'info' },
   ...(devWebUrl ? { devWebUrl } : {}),
+  ...(metagameOffline ? { metagameLatest: async () => null } : {}),
   ...(storage
     ? {
         teamsDir: join(storage, 'teams'),
@@ -26,6 +29,7 @@ const app = await buildServer({
         replaysDir: join(storage, 'replays'),
         benchDir: join(storage, 'bench'),
         collectionDir: join(storage, 'collection'),
+        metagameDir: join(storage, 'metagame'),
       }
     : {}),
 });
