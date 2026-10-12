@@ -33,8 +33,9 @@ El proyecto avanza **por fases** (PLAN §8). Cuando te pidan *"continúa con la 
 | 14. El nivel 3 piensa en la vista previa | ✅ ([brief](docs/fases/fase-14.md), [ADR-0015](docs/adr/0015-vista-previa-del-nivel-3.md), guías del [bot](docs/guias/bot.md#nivel-3-vista-previa) y de [herramientas](docs/guias/herramientas.md)) |
 | 15. El nivel 3 lee el equipo entero (arquetipos) | ✅ ([brief](docs/fases/fase-15.md), [ADR-0017](docs/adr/0017-arquetipos-en-la-vista-previa.md), guías del [bot](docs/guias/bot.md#nivel-3-vista-previa) y de [herramientas](docs/guias/herramientas.md)) |
 | 16. Por qué esa salida (parejas simuladas, E2) | ✅ ([brief](docs/fases/fase-16.md), [ADR-0018](docs/adr/0018-parejas-de-salida-simuladas.md), guías del [bot](docs/guias/bot.md#nivel-3-vista-previa) y de [herramientas](docs/guias/herramientas.md)) |
-| **17. Medir bien y aprender a valorar con replays** | ⏭️ **Siguiente**: brief en [docs/fases/fase-17.md](docs/fases/fase-17.md) |
+| 17. Medir bien y aprender a valorar con replays | ✅ ([brief](docs/fases/fase-17.md), [ADR-0019](docs/adr/0019-valoracion-aprendida-de-replays.md), [guía](docs/guias/aprendizaje.md)) |
 | 18. Animaciones de combate (independiente de la 17) | ✅ ([brief](docs/fases/fase-18.md), [ADR-0020](docs/adr/0020-animaciones-de-combate.md), [guía](docs/guias/web.md#animaciones-de-combate)) |
+| **19. El nivel 3 valora con lo aprendido** | ⏭️ **Siguiente**: brief en [docs/fases/fase-19.md](docs/fases/fase-19.md) |
 
 ### Protocolo de cierre de fase
 
@@ -102,8 +103,10 @@ npm run dev          # servidor + web: http://127.0.0.1:5173
 | `npm run build` / `npm start` | Compila la web (`apps/web/dist`) / la compila y la sirve desde el servidor en http://127.0.0.1:3001 |
 | `npm run play` | Combate en la terminal contra el bot. Admite `-- --mode doubles --bot 0\|1\|2\|3 --team <fichero> --opponent-team <fichero>\|random --seed X --no-preview --open-team-sheets --auto` ([guía](docs/guias/combate.md)) |
 | `npm run bench` | Banco de pruebas: tu equipo guardado (o un fichero) contra tus rivales guardados, bot contra bot en hilos de trabajo. Admite `-- --team <id\|nombre\|fichero> --versus <…> --opponents all\|<ids> --mode --level --rival-level --margin 5 --battles N --screen <ficheros> --seed --threads --json <fichero>` ([guía](docs/guias/banco.md)). `npm run bench:calc -- --team …` da la matriz de daño sin combatir |
-| `npm run arena` | Torneo bot contra bot con equipos aleatorios. Admite `-- --a 3 --b 2 --mode singles\|doubles\|both --battles N --seed X --teams rivales\|<carpeta>` (`--teams`: tus rivales guardados o los equipos de una carpeta en lugar de aleatorios) ([guía](docs/guias/bot.md)). El nivel 3 tarda ≈ 0,15–0,2 s por decisión en un hilo: para cientos de combates, lanza varios arenas en paralelo con semillas distintas |
+| `npm run arena` | Torneo bot contra bot con equipos aleatorios. Admite `-- --a 3 --b 2 --mode singles\|doubles\|both --battles N --seed X --teams rivales\|<carpeta> --fixed --json <fichero>` (`--teams`: tus rivales guardados o los equipos de una carpeta en lugar de aleatorios; `--fixed`: **modo de medida**, 4 fijos con salida al azar y cada par en espejo; `--json`: cada combate con su par y sus salidas) ([guía](docs/guias/bot.md)). El nivel 3 tarda ≈ 0,15–0,2 s por decisión en un hilo: para cientos de combates, lanza varios arenas en paralelo con semillas distintas |
 | `npm run arena:perf` | Velocidad de un nivel en combates fijos (un hilo) y **huella** de cada combate: `-- --save <fichero>` antes de un cambio y `-- --compare <fichero>` después dice cuánto más rápido va y si cambió alguna decisión ([guía](docs/guias/bot.md#velocidad-npm-run-arenaperf)) |
+| `npm run ladder:fetch` | Descarga replays públicos de dobles de Champions (rating ≥ 1400) a `datasets/ladder/`, a una petición por segundo y reanudable. Admite `-- --limit 5000 --min-rating 1400 --from-newest` ([guía](docs/guias/aprendizaje.md)) |
+| `npm run ladder:positions` / `ladder:train` / `ladder:eval` | Factores de cada turno de cada replay (`positions-v<N>.jsonl`), entrenamiento de la valoración aprendida (`packages/bot/src/learning/models/value-v<N>.json`) y la prueba barata contra el balance de PS (`-- --seeds 5`) ([guía](docs/guias/aprendizaje.md)) |
 | `npm run smoke` | Combates headless de Champions (fixtures + aleatorios). Admite `-- --random N --seed X --verbose` |
 | `npm run data:build` | Regenera `packages/data/generated/` desde Showdown + PokeAPI (determinista). Después, revisa el diff |
 | `npm run data:sprites` | Descarga los sprites a `assets/sprites/` (no versionado). Incluye los shiny (`-- --no-shiny` los omite). Admite `-- --force` |
@@ -118,11 +121,12 @@ npm run dev          # servidor + web: http://127.0.0.1:5173
 ```
 apps/       → aplicaciones (web, server). Pueden depender de packages/*
 packages/   → librerías: showdown (puente al motor), data (datos del juego), core (dominio), engine (sesiones), bot, teamgen, narration (log), protocol (mensajes web ↔ servidor), bench (banco de pruebas)
-tools/      → scripts: setup, smoke, data-pipeline, cli, arena, bench, dev, e2e (Playwright)
+tools/      → scripts: setup, smoke, data-pipeline, cli, arena, bench, ladder (replays y valoración aprendida), dev, e2e (Playwright)
 vendor/pokemon-showdown → submódulo git fijado a un commit (NO editar)
 docs/       → PLAN, research/, adr/, guias/, fases/ (briefs de cada fase)
 storage/    → datos del usuario (teams/, opponents/, replays/, bench/ y collection/: equipos, rivales, replays, bancos guardados y el PC de Bill): local, no versionado
 assets/     → sprites descargados: local, no versionado
+datasets/   → replays públicos descargados y sus posiciones (npm run ladder:*): local, no versionado
 ```
 
 - **Solo `packages/showdown` toca `vendor/`.** El resto importa `@colleja/showdown`. Esto es una regla dura.
@@ -177,6 +181,8 @@ assets/     → sprites descargados: local, no versionado
 - **Clima** ([ADR-0016](docs/adr/0016-clima-en-la-vista-previa.md)): en la vista previa del nivel 3 y en la cadena de equipo completo, el clima lo ponen los setters que entran (`weatherOf`/`weatherAfter` en `analysis/combatant.ts`; el más lento gana). Para valorar algo con otro clima usa `situation.withWeather(clima)`, nunca otra `Situation` ni `field` a mano. Sin esto, un equipo de lluvia nunca traía a Pelipper y el banco salía inflado (95 % → 7,5 %).
 - **Arquetipos** ([ADR-0017](docs/adr/0017-arquetipos-en-la-vista-previa.md)): `analysis/team-read.ts` lee el equipo entero (quién pone y quién aprovecha Espacio Raro, Viento Afín, cada clima y potenciarse con apoyo) para la explicación (`readTeam`). En dobles, los duelos de un grupo se mezclan con los mismos bajo su Espacio Raro o Viento Afín (`fieldShare` en `PREVIEW_SETTINGS`); para preguntar «¿y con Espacio Raro?» usa `situation.withSpeedControl(…)`. Sumar puntos sueltos por arquetipo no ganaba nada: cambia el modelo. **Algo de equipo se mide también con tus rivales** (`npm run arena -- --teams rivales`): los aleatorios casi nunca forman arquetipos.
 - **Salidas simuladas** ([ADR-0018](docs/adr/0018-parejas-de-salida-simuladas.md)): `DoublesSim.evaluateLineup` juega una alineación fuera del combate y `SimTrace` apunta lo que pasa; `search/lead-plan.ts` y `LeadPlanner` (preview) juegan parejas 2 contra 2; `search/lead-reasons.ts` saca las razones. **Solo explican**: elegir la salida así perdía 2–3 puntos con tus rivales, y se calcula perezosamente al explicar (`PreviewPlan.leads`), así que el arena y el banco no lo pagan. Las razones del bot son **de partida** (KO, presión, combo, a quién deja atrás), nunca puntuaciones.
+- **Salida propia, razón real** (fase 17): «Por qué salió con…» sale de `leadChoice` (`search/lead-reasons.ts`), con los **mismos duelos** que ordenaron su grupo (`PreviewOption.duels`). Lo simulado 2 contra 2 de su salida se enseña aparte como «Qué espera que pase». Si cambias cómo elige la salida, cambia también su razón (lo comprueba `packages/bot/test/leads.test.ts`).
+- **Mide en espejo** (fase 17): `npm run arena -- --fixed` fija 4 por equipo con una salida al azar y juega cada par dos veces cambiando los bots de asiento con la misma semilla de combate. El informe «Por pares» da el ± a partir de los pares. Úsalo para variantes de juego (no de vista previa). Referencia del nivel 3 contra el 2: 81,0 % en dobles y 64,2 % en individuales.
 - **Mide con cuidado**: 600 combates dan ±2 puntos de ruido. Compara variantes con la misma semilla y confirma con otra antes de quedarte una (en la fase 10, una mejora de +1 en una semilla fue −3 en otra). El arena puede tardar mucho si dos bots entran en un bucle de cambios: el nivel 3 los penaliza (`loopPenalty`).
 
 ## Particularidades del servidor y la web
@@ -226,6 +232,16 @@ assets/     → sprites descargados: local, no versionado
 - **La explicación es información oculta**: la sala (`BattleRoom`) solo envía las de turnos ya resueltos y, con equipo cerrado, pasadas por `redactExplanation` (core). Si tocas la sala, que siga en verde el test de `apps/server/test/tools.test.ts`. La de la vista previa (turno 0, `kind: 'team'`) llega con el turno 1: sin los Pokémon del bot que no han salido (`hiddenOwn`) ni sus movimientos no usados, y sin la lectura de su propio equipo (`teams.own`, revelaría sus sets). De su salida (`leads.own`) se quitan los planes y movimientos que aún no ha usado y los Pokémon no vistos; lo que lee de tu equipo (y tu salida esperada) no se censura.
 - El panel del bot es la pestaña **«Pensamiento del bot»** de la columna derecha (`BotExplanation`, con `header` para las pestañas; en móvil, «Bot» en las pestañas de arriba). El visor de replays usa `ExplanationList`.
 - **Los replays solo los crea el servidor** a partir de una sala terminada (`battle:save-replay`); no hay `POST /api/replays`. `ReplayDataSchema` (protocol) replica `ReplayData` (engine): si cambias uno, cambia el otro y sube la versión.
+
+## Particularidades de la valoración aprendida
+
+- Todo vive en `packages/bot/src/learning/` (apto para navegador) y `tools/ladder/` (solo Node: red y ficheros). [ADR-0019](docs/adr/0019-valoracion-aprendida-de-replays.md), [guía](docs/guias/aprendizaje.md).
+- **Los factores son situaciones, nunca especies ni nombres de movimiento** (`learning/features.ts`): velocidades, daños (`estimateDamage`), tipos y campo calculados en esa posición. Una mecánica se reconoce por sus datos (Sorpresa: prioridad +3, retroceso seguro, poca potencia), no por su id. Lo comprueba `packages/bot/test/features.test.ts`.
+- Cada factor se ve **desde un lado**: positivo es bueno para él y 0 es neutro. Si cambias o añades uno, **sube `FEATURES_VERSION`** y regenera posiciones y modelo (`ladder:positions`, `ladder:train`); el test del modelo versionado falla si no.
+- El modelo es una **suma** (regresión logística): `explainValue` y `counterfactual` son exactos. No metas factores que no se puedan explicar en términos de partida.
+- **Divide por partida**, nunca por posición (`splitByBattle`). Compara siempre con el balance de PS en las mismas posiciones y con varias divisiones.
+- Las posiciones de los replays son de **espectador**: los sets de los dos lados se suponen con `OpponentModel` y solo con lo revelado hasta ese turno (el test de `tools/ladder` corta el log y exige las mismas posiciones). Nunca uses lo que pasa después.
+- **Nada de red en el check**: los tests usan `tools/ladder/test/fixtures/` (replays recortados y con los jugadores renombrados) y un `fetch` falso. La descarga va a ≤ 1 petición por segundo con `User-Agent` propio; si falla con `SEC_E_UNTRUSTED_ROOT`, es la VPN.
 
 ## Particularidades del banco de pruebas
 

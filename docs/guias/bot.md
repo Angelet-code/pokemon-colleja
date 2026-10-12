@@ -80,6 +80,8 @@ Lo que limita al nivel 3 es, sobre todo, la **información oculta**: con equipo 
 6. **Salidas 2 contra 2** ([ADR-0018](../adr/0018-parejas-de-salida-simuladas.md), solo dobles y solo para explicar): al construir la explicación, `LeadPlanner` juega tus parejas de salida contra las salidas probables del bot (las de sus mejores grupos) con `DoublesSim.evaluateLineup` (`leads` en `PREVIEW_SETTINGS`), predice tu salida y saca por qué la esperaba y por qué eligió la suya (`search/lead-reasons.ts`). Elegir su salida así perdía 2–3 puntos con tus rivales en 8 variantes: sale como antes (los dos de mejor duelo medio). Es perezoso (`PreviewPlan.leads`): el arena y el banco no lo pagan.
 7. **Explica** (`readPreview`): rol, velocidad (intervalo entre tus sets posibles), movimientos de apoyo, peligro y probabilidades de cada Pokémon tuyo; para cada pareja, quién es más rápido y el mejor golpe de cada lado; la lectura de los dos equipos (`teams`; la del suyo se censura con equipo cerrado). Más lo que cree de tus seis sets.
 
+**Por qué salió con su pareja** (fase 17, [ADR-0019](../adr/0019-valoracion-aprendida-de-replays.md)): `leadChoice` cuenta la razón real, con los mismos duelos que ordenaron su grupo (`PreviewOption.duels`): a quién gana y a quién teme cada líder y a quién deja atrás. Lo simulado 2 contra 2 de su salida va aparte («Qué espera que pase»).
+
 Los pesos están en `PREVIEW_SETTINGS` (no en constantes sueltas) y `new ExpertAgent({ preview: { … } })` los cambia para medir variantes. Tarda ≈ 25 ms (individuales) y ≈ 15 ms (dobles).
 
 ### Qué modela la simulación (nivel 2)
@@ -121,11 +123,15 @@ npm run arena -- --a 2 --b 1 --mode doubles --battles 300 --seed otra
 | `--battles N` | Combates por modo (por defecto 100). Cada par de equipos se juega dos veces cambiando qué bot lleva cuál |
 | `--seed X` | Semilla base: mismos parámetros, mismos combates |
 | `--no-preview`, `--open-team-sheets` | Opciones de práctica |
+| `--fixed` | **Modo de medida** (fase 17): cada equipo lleva 4 fijos (3 en individuales) con una salida al azar, la misma en los dos combates del par, y los dos combates comparten la semilla: el par es un espejo y solo cambian los bots de asiento. Añade el informe «Por pares» (gana los dos / reparten / pierde los dos, con el ± de los pares) |
+| `--json <fichero>` | Guarda cada combate (par, salidas de cada bot, resultado) y el resumen |
 | `--teams rivales\|<carpeta>` | Equipos de un conjunto en lugar de aleatorios: tus rivales guardados del modo (`rivales`) o los ficheros de una carpeta (JSON guardado o texto de Showdown). Cada par de combates saca dos distintos al azar, por semilla. Los aleatorios casi nunca forman arquetipos (Espacio Raro, lluvia…): para medir algo de equipo, usa los dos |
 
 Muestra el % de victorias con su intervalo de confianza del 95 % (Wilson), los turnos medios, los ms por combate y por decisión, y las elecciones inválidas (deben ser 0). Los combates que fallen se guardan en `storage/arena/` como replays (`BattleSession.fromReplay`). La lógica está en `runArena()` (`tools/arena/src/arena.ts`).
 
 Resultados de referencia (fases 4, 9 y 10): en el [CHANGELOG](../../CHANGELOG.md). El nivel 3 tarda unas décimas de segundo por decisión: para medirlo con cientos de combates conviene lanzar varios arenas en paralelo con semillas distintas. Con 600 combates el ruido es de ±2 puntos (IC 95 % ≈ ±4): compara variantes con la misma semilla y confirma lo prometedor con otra semilla antes de quedártelo.
+
+Referencia en espejo (fase 17, `--fixed`, 1 200 combates por modo): nivel 3 contra nivel 2, **81,0 % ± 2,1** en dobles (4 contra 4) y **64,2 % ± 2,4** en individuales (3 contra 3). Con tanta diferencia el espejo apenas baja el ruido; rinde al comparar variantes parecidas.
 
 ### Velocidad (`npm run arena:perf`)
 
@@ -144,6 +150,10 @@ Lo que cuesta el nivel 3 ([ADR-0014](../adr/0014-nivel-3-mas-rapido-con-poda.md)
 2. Mira las opciones y sus valores: `planSingles(situation, slot)` devuelve cada acción con su puntuación; `DoublesSim.evaluate(situation, planes)` valora una pareja. `new Situation(session.getAgentContext('p1'))` da la situación de un turno.
 3. Corrige el **modelo** (un efecto que falta en la simulación, un dato mal leído), no añadas pesos sueltos. En el nivel 3, su `explain()` da el valor medio de cada opción tras la búsqueda; compáralo con el del nivel 2 en la misma posición.
 4. Mide con el arena contra el nivel anterior: al menos 300 combates por modo (±5 %) y, para cifras finales, 1000.
+
+## Valoración aprendida (fase 17)
+
+`learning/` tiene los factores de partida de una posición (`extractFeatures`), la posición de espectador (`spectatorPosition`), los turnos de los efectos (`EffectTimers`) y el modelo por factores (`value-model.ts`, pesos en `learning/models/value-v1.json`), entrenado con replays públicos. El nivel 3 aún no lo usa (fase 19). Todo en la [guía de aprendizaje](aprendizaje.md).
 
 ## Explicación de las decisiones
 

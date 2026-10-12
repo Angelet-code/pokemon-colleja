@@ -1,0 +1,64 @@
+# Guía: valoración aprendida de replays
+
+Desde la fase 17 ([ADR-0019](../adr/0019-valoracion-aprendida-de-replays.md), [brief](../fases/fase-17.md)) el proyecto aprende a valorar posiciones de combate a partir de **partidas reales de Champions** (los replays públicos de Showdown), en lugar de sumar más reglas a mano. La valoración es un **modelo por factores de partida**: explicable, con un peso por factor y sin especies.
+
+En la fase 17 solo se mide si merece la pena (la «prueba barata»). El nivel 3 todavía no la usa: eso es la [fase 19](../fases/fase-19.md).
+
+## Flujo
+
+```bash
+npm run ladder:fetch       # descarga replays de dobles (≥ 1400 de rating) a datasets/ladder/
+npm run ladder:positions   # cada turno de cada replay → factores, desde los dos lados
+npm run ladder:train       # entrena el modelo y lo guarda en packages/bot/src/learning/models/
+npm run ladder:eval        # la prueba barata: ¿acierta el ganador mejor que el balance de PS?
+```
+
+- **`datasets/`** es local y no se versiona (como `storage/`, pero no son tus datos: se pueden volver a descargar). El modelo entrenado (`value-v<N>.json`, unos pocos KB) **sí se versiona**.
+- **Nada de red en el check**: los tests usan un replay recortado a mano (`tools/ladder/test/fixtures/`, con los jugadores renombrados) y un `fetch` falso.
+
+### Descarga (`ladder:fetch`)
+
+- Recorre `https://replay.pokemonshowdown.com/search.json?format=…&before=…` (páginas de 51) y baja cada replay de `/<id>.json`, **como mucho una petición por segundo**, con una cabecera `User-Agent` propia.
+- **Reanudable**: no baja lo que ya tiene y guarda en `.cursor` hasta dónde llegó; la siguiente tanda sigue con replays más antiguos (`--from-newest` empieza por los nuevos). Reintenta los fallos pasajeros del servidor.
+- Opciones: `--limit 5000` (por tanda), `--min-rating 1400`, `--format`, `--interval`.
+- Si falla con `SEC_E_UNTRUSTED_ROOT`, es la VPN del equipo: desactívala y vuelve a lanzar.
+- Los replays de individuales (`gen9championsbssregmc`) son aún muy pocos (≈ 3 000–6 000 en total).
+
+### Posiciones (`ladder:positions`)
+
+- `tools/ladder/src/positions.ts`: lee el log de cada replay con `BattleView` y, al empezar cada turno, saca la posición **desde cada lado**, con lo que sabía un espectador hasta ese momento.
+- Los sets de los dos lados se suponen como el bot supone los del rival (`OpponentModel`: el set estándar que encaja con lo revelado hasta ese turno). En combate, el bot conocerá su propio set exacto: es la única diferencia entre las posiciones de las que aprende y las que valorará.
+- Los que solo se vieron en la vista previa cuentan con el peso de los huecos sin ver (si llevó 4 y han salido 2, cada uno de los otros 4 de la vista previa pesa ½).
+- Salida: `datasets/ladder/positions-v<FEATURES_VERSION>.jsonl`, una línea por posición y lado (`id`, `turn`, `side`, `rating`, `won`, `x`).
+
+### Entrenar y medir (`ladder:train`, `ladder:eval`)
+
+- **División por partida** (80/20, sembrada): nunca se entrena con un turno y se evalúa con otro de la misma partida.
+- `ladder:eval` compara con las mismas posiciones: siempre 50 %, **solo el balance de PS** (lo que domina hoy `positionValue`), PS y vivos, y todos los factores. Da log-loss, acierto y calibración en varias divisiones (`--seeds`), por tramo de turno y de rating, la tabla de calibración y los pesos.
+- `ladder:train` entrena con la división `--seed` (por defecto `s1`) y guarda el modelo con sus metadatos: partidas, fechas, ratings, métricas de prueba y la referencia.
+
+## Factores (`packages/bot/src/learning/features.ts`)
+
+Reglas:
+
+- **Situaciones, nunca especies ni nombres de movimiento**: un Pokémon entra solo por lo que significa en esa posición (su velocidad con el campo actual, su daño con `estimateDamage`, sus tipos). Si un update cambia stats o el meta, los factores se recalculan con los datos nuevos y el modelo sigue valiendo. Incluso Sorpresa se reconoce por lo que hace (prioridad +3, retroceso seguro y poca potencia). Lo comprueba `packages/bot/test/features.test.ts` (Meowstic y Meowstic-F con el mismo set dan los mismos factores; subir la Velocidad cambia quién se mueve antes).
+- **Desde un lado**: positivo es bueno para ese lado y **0 es neutro**. Visto desde el otro lado, los factores simétricos cambian de signo y los «a favor»/«en contra» se intercambian.
+- **Con versión** (`FEATURES_VERSION`): si cambias un factor, súbela; las posiciones y el modelo se regeneran con su número.
+- Apto para navegador: **el bot usará la misma función en combate**.
+
+| Factor | Qué mide |
+|---|---|
+| `hp`, `alive`, `fieldHp` | PS y Pokémon en pie de cada equipo (con los que no han salido) y PS en el campo |
+| `fieldSpeed`, `teamSpeed` | Quién se mueve antes, en el campo y contando el banquillo, con el campo actual (Espacio Raro, Viento Afín, clima, parálisis, mejoras, Pañuelo Elección) |
+| `trickRoom`, `tailwind`, `screens` | Turnos que quedan de Espacio Raro (a favor de quien sea más lento), Viento Afín y pantallas (`EffectTimers`, `learning/timers.ts`) |
+| `weather` | El clima actual lo puso alguien de su equipo |
+| `koFor`, `koAgainst`, `koFirstFor`, `koFirstAgainst` | Rivales en el campo que tumba de un golpe (≥ 50 %) y suyos que el rival tumba; y lo mismo moviéndose antes |
+| `damageFor`, `damageAgainst` | Parte de los PS de cada rival en el campo que se lleva su mejor golpe, y al revés |
+| `answers` | Rivales a los que alguien suyo gana en un duelo rápido (golpes para tumbar y quién se mueve antes) |
+| `boosts`, `status`, `mega`, `fakeOut` | Mejoras de características en el campo, problemas de estado, Mega aún disponible y Sorpresa disponible |
+
+## Modelo (`packages/bot/src/learning/value-model.ts`)
+
+- **Regresión logística** con regularización L2, entrenada con el método de Newton: unas decenas de factores convergen en pocos pasos y siempre igual.
+- La valoración es una **suma**: `explainValue` da la contribución exacta de cada factor y `counterfactual` cuánto cambia la valoración sin uno (llevado a 0). Son la base de las explicaciones comprobadas: una razón solo se enseña si quitarla cambia la decisión.
+- Los pesos se guardan en `packages/bot/src/learning/models/value-v<N>.json` con su versión de factores.

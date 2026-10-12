@@ -29,6 +29,24 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 - Con `npm run dev`, abrir la web en el puerto del servidor (3001) mostraba `apps/web/dist`, una compilación que podía ser vieja (por ejemplo, con los iconos Gen 8 pixelados en lugar de los renders de Champions). Ahora el servidor de desarrollo redirige las páginas a Vite (`WEB_DEV_URL`, que pone `npm run dev`).
 
+### Fase 17 — Medir bien y aprender a valorar con replays (2026-10-12)
+
+Cambio de método ([ADR-0019](docs/adr/0019-valoracion-aprendida-de-replays.md), [brief](docs/fases/fase-17.md), [guía](docs/guias/aprendizaje.md)): en lugar de más reglas a mano, el bot aprenderá a valorar posiciones con partidas reales de Champions. Esta fase prepara la base y comprueba que merece la pena.
+
+#### Añadido
+
+- **«Por qué salió con…» dice la razón real**: de su grupo, sus dos líderes son los que mejor rinden **uno a uno** contra tu equipo (a quién gana y a quién teme cada uno, y a quién deja atrás), con los mismos duelos que lo decidieron (`leadChoice`, `PreviewAnalysis.leads.choice`; opcional, los replays viejos siguen valiendo). Lo simulado 2 contra 2 de su salida se enseña aparte como **«Qué espera que pase»**.
+- **Arena en espejo** (`npm run arena -- --fixed`): cada equipo lleva 4 fijos (3 en individuales) con una salida al azar, y cada par se juega dos veces con las mismas salidas y la misma semilla, cambiando los bots de asiento. Informe «Por pares» y `--json` con cada combate.
+- **Replays públicos** (`npm run ladder:fetch`): descarga los de dobles de Champions con rating ≥ 1400 a `datasets/ladder/` (no versionado), a una petición por segundo y reanudable.
+- **Factores de partida** (`packages/bot/src/learning/`): 20 factores de cada posición en situaciones, **nunca especies ni nombres de movimiento** (PS, vivos, quién se mueve antes, KO de un golpe en los dos sentidos, daño, duelos, turnos de Espacio Raro, Viento Afín y pantallas, clima, mejoras, estados, Mega, Sorpresa), `EffectTimers` y la posición de espectador. `npm run ladder:positions`.
+- **Modelo por factores** (`value-model.ts`, `npm run ladder:train`): regresión logística en TypeScript; contribución exacta de cada factor (`explainValue`) y cuánto cambia la valoración sin uno (`counterfactual`). Pesos en `packages/bot/src/learning/models/value-v1.json`.
+- **La prueba barata** (`npm run ladder:eval`): división por partida, varias divisiones, por turno y por rating, calibración y comparación con el balance de PS.
+
+#### Medido
+
+- **4 999 partidas** (72 266 posiciones por lado): log-loss **0,566** con todos los factores frente a **0,619** del balance de PS (mejora 0,053, entre 0,041 y 0,062 según la división) y **68,4 %** de acierto frente a 63,7 %; calibrado. En los turnos 1–2 casi nada predice al ganador: ahí decide el emparejamiento. **Criterio para seguir cumplido**: la [fase 19](docs/fases/fase-19.md) mete la valoración en el nivel 3.
+- Referencia en espejo, nivel 3 contra nivel 2, 1 200 combates por modo: **81,0 % ± 2,1** en dobles (4 contra 4) y **64,2 % ± 2,4** en individuales (3 contra 3).
+
 ### Fase 18 — Animaciones de combate (2026-10-12)
 
 #### Añadido
