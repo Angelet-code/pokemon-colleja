@@ -1,5 +1,7 @@
 # Fase 23 — Qué trae el rival (lo que se trae en el meta)
 
+> **Cerrada el 2026-10-12, parada en el techo** ([ADR-0025](../adr/0025-que-trae-el-rival-no-importa.md)): el nivel 3 que sabe qué trajo el rival gana 51,1 % y 49,7 % al de hoy (dos tandas): ≈ 0. La prueba barata sí predice mejor los 2 de atrás tras la salida (61,7 % frente a 51,7 %), pero no sirve al bot. El usuario decidió no cambiarlo. La siguiente es la [fase 24](fase-24.md).
+
 > **Brief de la fase.** Escrito el 2026-10-12 al cerrar la fase 22. Sigue la prioridad del usuario: que el bot **prediga al rival** (qué hará, a quién cambiará, **qué Pokémon y sets tiene**). Con la fase 22 el bot ya supone los sets que se juegan; falta adivinar **qué 4 de los 6** de la vista previa trae el rival en dobles (3 de 6 en individuales). Lee antes [AGENTS.md](../../AGENTS.md), la [guía del bot](../guias/bot.md), [ADR-0015](../adr/0015-vista-previa-del-nivel-3.md) (vista previa), [ADR-0023](../adr/0023-la-salida-no-se-aprende.md) (techo de la salida) y [ADR-0024](../adr/0024-sets-del-meta-para-predecir-al-rival.md) (sets del meta).
 
 ## Objetivo

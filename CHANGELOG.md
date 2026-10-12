@@ -31,6 +31,21 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 - Con `npm run dev`, abrir la web en el puerto del servidor (3001) mostraba `apps/web/dist`, una compilación que podía ser vieja (por ejemplo, con los iconos Gen 8 pixelados en lugar de los renders de Champions). Ahora el servidor de desarrollo redirige las páginas a Vite (`WEB_DEV_URL`, que pone `npm run dev`).
 
+### Fase 23 — Qué trae el rival: parada en el techo (2026-10-12)
+
+[ADR-0025](docs/adr/0025-que-trae-el-rival-no-importa.md), [brief](docs/fases/fase-23.md), guías del [bot](docs/guias/bot.md#arena-npm-run-arena) y de [aprendizaje](docs/guias/aprendizaje.md#qué-trae-el-rival-ladderbringeval).
+
+#### Añadido
+
+- Gancho de medida `BotOptions.rivalBrought` (niveles 1–3): `Situation` deja en la vista previa del rival solo las especies que trajo. Arena: `--a-oracle` (con `--fixed` o `--fixed-group`) se lo da al bot A con el grupo real del B. Sin él, las mismas decisiones (huellas de `arena:perf`). Tests: `packages/bot/test/rival-brought.test.ts` y el del arena.
+- `npm run ladder:bring:eval`: la prueba barata de qué trae el rival con los replays.
+
+#### Medidas
+
+- **Techo**: nivel 3 que sabe qué trajo el rival contra el nivel 3 de hoy (los dos con los sets del meta, dobles, espejo, equipos del meta, 600 pares por tanda): **51,1 % ± 2,4** y **49,7 % ± 2,4**. Saberlo no le da nada medible.
+- Prueba barata (3 598 lados de ajuste antes del 1 de octubre, 6 097 de prueba después): los 4 de 6 antes del combate, 71,3 % por especie frente a 68,8 % uniforme; los 2 de atrás tras la salida, **61,7 %** frente a 51,7 % (con los compañeros de salida, log-loss 0,635 frente a 0,693).
+- Decisión del usuario: **parar**; el bot no cambia.
+
 ### Fase 22 — Sets del meta para predecir al rival (2026-10-12)
 
 [ADR-0024](docs/adr/0024-sets-del-meta-para-predecir-al-rival.md), [brief](docs/fases/fase-22.md), guías del [bot](docs/guias/bot.md#nivel-3-qué-deduce-del-rival), de [rivales](docs/guias/rivales.md#meta), del [banco](docs/guias/banco.md#contra-el-meta) y de [aprendizaje](docs/guias/aprendizaje.md#sets-del-meta-laddersetseval).

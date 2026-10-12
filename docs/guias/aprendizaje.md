@@ -76,6 +76,10 @@ Fase 21 ([ADR-0023](../adr/0023-la-salida-no-se-aprende.md)):
 
 Fase 22 ([ADR-0024](../adr/0024-sets-del-meta-para-predecir-al-rival.md)): `npm run ladder:sets:eval` (`-- --min-rating 1500 --after 2026-10-01`) compara, sin haber visto nada de cada rival, lo que suponen los sets estándar y los del meta activo (`MetagameSnapshot.sets`) con lo que acaba revelado en los replays: objeto, habilidad y movimientos, con el primer candidato y con la probabilidad que el modelo da a lo visto. Usa replays posteriores al mes de las estadísticas para que no haya fuga. Resultado con el meta de 2026-09: objeto 78,6 % frente a 34,5 %, movimientos 81,7 % frente a 62,2 %, habilidad igual.
 
+## Qué trae el rival (`ladder:bring:eval`)
+
+Fase 23 ([ADR-0025](../adr/0025-que-trae-el-rival-no-importa.md)): `npm run ladder:bring:eval` (`-- --split 2026-10-01 --min-rating 1500`) toma de cada replay la vista previa de seis de cada lado y los cuatro que trajo (solo los lados cuyos cuatro llegaron a salir). Ajusta los predictores con los replays anteriores a `--split` y los prueba con los posteriores: uniforme, por especie (lo que se trae cada una), por posición en la vista previa, especie + posición y especie + compañeros de salida. Dos preguntas: los 4 de 6 antes del combate y los 2 de atrás una vez vista la salida. Resultado: antes del combate casi nada (71,3 % frente a 68,8 %); tras la salida, 61,7 % frente a 51,7 %. Pero el techo en el arena (`--a-oracle`) es ≈ 0, así que el bot no lo usa.
+
 ## ¿Más datos?
 
 Curva de aprendizaje (fase 19, misma división de prueba): log-loss 0,559 con 500 partidas, 0,551 con 1 000, 0,550 con 2 000 y 0,546 con 4 000 (`s1`; igual en `s2` y `s3`). Con estos 20 factores **el modelo está saturado desde ≈ 1 000 partidas**: descargar más replays no lo mejora. Lo que puede mejorarlo son factores nuevos que la prueba barata justifique o posiciones de autojuego del propio bot.
