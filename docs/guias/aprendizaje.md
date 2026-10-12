@@ -64,6 +64,14 @@ Reglas:
 - Los pesos se guardan en `packages/bot/src/learning/models/value-v<N>.json` con su versión de factores. El bot usa el de `learning/shipped-model.ts` (`VALUE_MODEL`): si subes `FEATURES_VERSION`, regenera el modelo y cambia esa importación, y vuelve a medir el nivel 3 en espejo.
 - Cada factor tiene su `reason` (`FEATURES`): la frase de partida que se enseña cuando ese factor decide una jugada.
 
+## Salidas (`ladder:leads`)
+
+Fase 21 ([ADR-0023](../adr/0023-la-salida-no-se-aprende.md)):
+
+- `npm run ladder:leads` saca de cada replay la **posición de salida** de cada lado: las dos parejas al empezar el turno 1, el grupo propio conocido (del replay entero) y del rival su salida y su vista previa. Los factores son los de `learning/lead-features.ts` y van a `datasets/ladder/leads-v<N>.jsonl`.
+- `npm run ladder:leads:eval` (`-- --seeds 10 --min-rating 1500`) entrena cuatro modelos (duelos de la salida, grupos, grupos más duelos y todos) y los compara con el 50 %, con varias divisiones por partida y curva de aprendizaje.
+- **Resultado**: nada predice al ganador en el turno 1 (log-loss 0,6930 frente a 0,6931). Por eso la salida del bot no se aprende de replays.
+
 ## ¿Más datos?
 
 Curva de aprendizaje (fase 19, misma división de prueba): log-loss 0,559 con 500 partidas, 0,551 con 1 000, 0,550 con 2 000 y 0,546 con 4 000 (`s1`; igual en `s2` y `s3`). Con estos 20 factores **el modelo está saturado desde ≈ 1 000 partidas**: descargar más replays no lo mejora. Lo que puede mejorarlo son factores nuevos que la prueba barata justifique o posiciones de autojuego del propio bot.

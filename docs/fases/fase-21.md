@@ -1,5 +1,7 @@
 # Fase 21 — La salida con lo aprendido
 
+> **Cerrada el 2026-10-12, parada en la prueba barata** ([ADR-0023](../adr/0023-la-salida-no-se-aprende.md)): nada predice al ganador en el turno 1 y, para el bot, elegir la salida vale ≈ 1,5 puntos. El usuario decidió no cambiar la salida; la siguiente es la [fase 22](fase-22.md).
+
 > **Brief de la fase.** Escrito el 2026-10-12 al cerrar la fase 19 como fase 20; pasó a ser la 21 cuando el usuario adelantó el meta ([fase 20](fase-20.md)). Es el paso 2 del orden del usuario: jugar bien el 4 contra 4 (fases 17–19) ✅, **después la salida**, y por último elegir 4 de 6. Lee antes [AGENTS.md](../../AGENTS.md), la [guía de aprendizaje](../guias/aprendizaje.md), la [guía del bot](../guias/bot.md#nivel-3-vista-previa), [ADR-0015](../adr/0015-vista-previa-del-nivel-3.md), [ADR-0018](../adr/0018-parejas-de-salida-simuladas.md), [ADR-0019](../adr/0019-valoracion-aprendida-de-replays.md) y [ADR-0021](../adr/0021-valoracion-aprendida-en-la-busqueda.md).
 
 ## Objetivo

@@ -30,6 +30,25 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 - Con `npm run dev`, abrir la web en el puerto del servidor (3001) mostraba `apps/web/dist`, una compilación que podía ser vieja (por ejemplo, con los iconos Gen 8 pixelados en lugar de los renders de Champions). Ahora el servidor de desarrollo redirige las páginas a Vite (`WEB_DEV_URL`, que pone `npm run dev`).
 
+### Fase 21 — La salida no se aprende (2026-10-12)
+
+[ADR-0023](docs/adr/0023-la-salida-no-se-aprende.md), [brief](docs/fases/fase-21.md), guías de [aprendizaje](docs/guias/aprendizaje.md#salidas-ladderleads) y del [bot](docs/guias/bot.md#arena-npm-run-arena).
+
+#### Añadido
+
+- **Factores de salida** (`learning/lead-features.ts`): 12 situaciones de las dos parejas al empezar el turno 1, sin especies. Dos de ellos solo miran los grupos, para separar el emparejamiento de grupos de lo que aporta la salida. `withOwnBack` ve la posición desde un lado con su grupo conocido.
+- `npm run ladder:leads` (posiciones de salida de los replays) y `npm run ladder:leads:eval` (la prueba barata: 10 divisiones y curva de aprendizaje).
+- **`npm run arena -- --fixed-group`**: grupos fijos como `--fixed`, pero cada bot elige su salida; `--a-leads`/`--b-leads random` la sortea. El bot gana la opción de medida `BotOptions.fixedGroup` (niveles 2 y 3). Sin ella las decisiones son idénticas (huellas de `arena:perf`).
+
+#### Cifras
+
+- **La salida no predice al ganador en los replays**: log-loss 0,6930 con todos los factores frente a 0,6931 del 50 %, en 5 996 partidas. El emparejamiento de grupos tampoco predice nada.
+- **Para el bot, elegir la salida vale ≈ 1,5 puntos**. En espejo, con 600 pares por medida:
+  - nivel 3 con salida al azar contra nivel 3 eligiéndola: 48,4 % ± 2,4;
+  - lo mismo con el nivel 2: 48,7 % ± 2,5;
+  - nivel 3 contra nivel 2, los dos eligiendo su salida: 81,1 % ± 2,1.
+- Decisión del usuario: **no se cambia cómo elige la salida el nivel 3**, y **desde ahora las variantes del bot se miden nivel 3 contra nivel 3**.
+
 ### Fase 20 — El meta: rivales que se actualizan solos y un banco sin sesgo (2026-10-12)
 
 [ADR-0022](docs/adr/0022-meta-del-ladder-como-rivales.md), [brief](docs/fases/fase-20.md), guías de [rivales](docs/guias/rivales.md#meta) y del [banco](docs/guias/banco.md#contra-el-meta).
