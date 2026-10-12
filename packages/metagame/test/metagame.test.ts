@@ -1,11 +1,13 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { checkSetIssues } from '@colleja/core';
 import { getItem, getSpecies } from '@colleja/data';
 import { teamProblems } from '@colleja/engine';
 import type { MetagameSnapshot } from '@colleja/protocol';
 import { describe, expect, it } from 'vitest';
 import {
   buildSet,
+  buildSetPriors,
   buildSnapshot,
   clusterTeams,
   FileMetagameStore,
@@ -116,6 +118,46 @@ describe('sets from the stats', () => {
     const second = buildSet('rillaboom', usage, 'doubles', new Set([first?.item ?? '']));
     expect(second?.item).not.toBe(first?.item);
     expect(buildSet('salamencemega', usage, 'doubles', new Set(['salamencite']))).toBeNull();
+  });
+});
+
+describe('sets that are played (fase 22)', () => {
+  const usage = new UsageIndex(doubles);
+  const priors = buildSetPriors(usage, 'doubles');
+
+  it('gives several legal sets per species with weights adding up to 1', () => {
+    expect(Object.keys(priors).length).toBeGreaterThan(20);
+    for (const [species, list] of Object.entries(priors)) {
+      expect(list.length).toBeGreaterThan(0);
+      expect(list.reduce((sum, prior) => sum + prior.weight, 0)).toBeCloseTo(1, 9);
+      for (const { set } of list) {
+        expect(set.species).toBe(species);
+        expect(checkSetIssues(set, 'doubles')).toEqual([]);
+      }
+      // Most likely first.
+      const weights = list.map((prior) => prior.weight);
+      expect(weights).toEqual([...weights].sort((a, b) => b - a));
+    }
+  });
+
+  it('keys a Mega by its base species, with its stone and as often as it is brought', () => {
+    const salamence = priors.salamence ?? [];
+    const stone = salamence.filter((prior) => prior.set.item === 'salamencite');
+    expect(stone.length).toBeGreaterThan(0);
+    const share = stone.reduce((sum, prior) => sum + prior.weight, 0);
+    expect(share).toBeGreaterThan(0.5);
+    expect(priors.salamencemega).toBeUndefined();
+  });
+
+  it('is deterministic and goes into the snapshot by mode', () => {
+    expect(buildSetPriors(new UsageIndex(doubles), 'doubles')).toEqual(priors);
+    const snapshot = buildSnapshot([{ mode: 'doubles', stats: doubles, samples: [] }], {
+      month: '2026-09',
+      cutoff: 1760,
+      createdAt: '2026-10-12T00:00:00.000Z',
+      teams: 2,
+    });
+    expect(snapshot.sets?.doubles).toEqual(priors);
   });
 });
 

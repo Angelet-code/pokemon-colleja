@@ -2,7 +2,8 @@
  * A metagame snapshot from its inputs (pure and deterministic: the same stats and replays give
  * the same snapshot). Per mode: the teams (archetypes of replays, or grown from teammates when
  * there are not enough replays), their sets from the stats, a Spanish name, their weight and
- * only legal ones (Showdown's validator).
+ * only legal ones (Showdown's validator); and the sets that are played with their probability,
+ * the bot's prior about a rival (`buildSetPriors`, fase 22).
  */
 import type { PokemonSet } from '@colleja/core';
 import type { GameMode } from '@colleja/data';
@@ -14,6 +15,7 @@ import {
   metagameSnapshotId,
 } from '@colleja/protocol';
 import { archetypeLabel, teamArchetype, teamName, uniqueNames } from './naming';
+import { buildSetPriors } from './priors';
 import type { PreviewTeam } from './replay-store';
 import { UsageIndex } from './sets';
 import type { ChaosStats } from './smogon';
@@ -56,10 +58,12 @@ export function buildSnapshot(
 ): MetagameSnapshot {
   const sources: MetagameSource[] = [];
   const teams: MetagameTeam[] = [];
+  const sets: NonNullable<MetagameSnapshot['sets']> = {};
   for (const input of inputs) {
     const built = buildMode(input, options);
     sources.push(built.source);
     teams.push(...built.teams);
+    sets[input.mode] = buildSetPriors(new UsageIndex(input.stats), input.mode);
   }
   return {
     id: metagameSnapshotId(options.month, options.cutoff),
@@ -68,6 +72,7 @@ export function buildSnapshot(
     createdAt: options.createdAt,
     sources,
     teams,
+    sets,
   };
 }
 

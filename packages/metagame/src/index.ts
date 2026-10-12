@@ -5,6 +5,7 @@
  * docs/guias/rivales.md#meta.
  */
 export * from './naming';
+export * from './priors';
 export * from './replay-fetch';
 export * from './replay-store';
 export * from './sets';

@@ -52,6 +52,11 @@ export class UsageIndex {
     return [...this.byId.keys()];
   }
 
+  /** Data ids of the Megas of a base species in the stats, most used first. */
+  megaIds(base: string): string[] {
+    return (this.megasOf.get(base) ?? []).map((entry) => toId(entry.name));
+  }
+
   /** Usage of a species counting its Megas (0–1). */
   totalUsage(base: string): number {
     return (

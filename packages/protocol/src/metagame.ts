@@ -51,6 +51,15 @@ export const MetagameSourceSchema = z.object({
   discarded: z.number().int().min(0),
 });
 
+/** A set that is played and its probability among its species' sets (fase 22, ADR-0024). */
+export const MetagameSetPriorSchema = z.object({
+  set: PokemonSetSchema,
+  weight: z.number().min(0).max(1),
+});
+
+/** The sets of each species (base species id → most likely first, weights adding up to 1). */
+export const MetagameSetPriorsSchema = z.record(z.string(), z.array(MetagameSetPriorSchema));
+
 export const MetagameSnapshotSchema = z.object({
   /** `2026-09-1760`: also the file name. */
   id: MetagameSnapshotIdSchema,
@@ -60,8 +69,18 @@ export const MetagameSnapshotSchema = z.object({
   createdAt: z.string(),
   sources: z.array(MetagameSourceSchema),
   teams: z.array(MetagameTeamSchema),
+  /**
+   * The bot's prior about a rival's set, by mode (fase 22). Snapshots built before have none:
+   * then the bot assumes the standard sets.
+   */
+  sets: z
+    .object({ doubles: MetagameSetPriorsSchema, singles: MetagameSetPriorsSchema })
+    .partial()
+    .optional(),
 });
 
+export type MetagameSetPrior = z.infer<typeof MetagameSetPriorSchema>;
+export type MetagameSetPriors = z.infer<typeof MetagameSetPriorsSchema>;
 export type MetagameTeam = z.infer<typeof MetagameTeamSchema>;
 export type MetagameSource = z.infer<typeof MetagameSourceSchema>;
 export type MetagameSnapshot = z.infer<typeof MetagameSnapshotSchema>;
@@ -109,7 +128,8 @@ export interface MetagameUpdateStatus {
 
 /** `GET /api/metagame`: the active snapshot and its teams. */
 export interface MetagameResponse {
-  snapshot: Omit<MetagameSnapshot, 'teams'> | null;
+  /** Without its teams (listed apart) nor its sets (only the bot uses them). */
+  snapshot: Omit<MetagameSnapshot, 'teams' | 'sets'> | null;
   teams: MetagameTeamSummary[];
   /** Ids of the older snapshots kept (for the bench history). */
   older: string[];
