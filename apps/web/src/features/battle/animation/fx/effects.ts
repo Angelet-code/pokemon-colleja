@@ -870,3 +870,67 @@ export function vines(options: {
     },
   };
 }
+
+/**
+ * The stage darkens around a point for a big move's charge, as if the light were drawn into
+ * it: a dark veil with a hole of light that shrinks onto the user.
+ */
+export function dim(options: {
+  at: Vec;
+  duration: number;
+  strength?: number;
+  delay?: number;
+}): Effect {
+  return {
+    duration: options.duration,
+    delay: options.delay,
+    z: 0,
+    draw(ctx, t, engine) {
+      const alpha = (options.strength ?? 0.45) * Math.sin(Math.PI * Math.min(1, t * 1.05));
+      const radius = Math.max(engine.width, engine.height) * (0.9 - 0.65 * easeOutCubic(t));
+      const gradient = ctx.createRadialGradient(
+        options.at.x,
+        options.at.y,
+        radius * 0.15,
+        options.at.x,
+        options.at.y,
+        radius,
+      );
+      gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+      gradient.addColorStop(1, `rgba(0, 0, 0, ${alpha})`);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, engine.width, engine.height);
+    },
+  };
+}
+
+/** Light pouring down from the top onto a point (Solar Beam's charge, sunlight). */
+export function sunbeam(options: {
+  at: Vec;
+  palette: FxPalette;
+  duration: number;
+  width: number;
+}): Effect {
+  return {
+    duration: options.duration,
+    draw(ctx, t, engine) {
+      const alpha = Math.sin(Math.PI * t);
+      const { x, y } = options.at;
+      const gradient = ctx.createLinearGradient(x, 0, x, y);
+      gradient.addColorStop(0, withAlpha(options.palette.hot, 0));
+      gradient.addColorStop(1, withAlpha(options.palette.hot, 0.55));
+      ctx.globalCompositeOperation = engine.blend;
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = gradient;
+      const w = options.width * (0.6 + 0.4 * t);
+      ctx.beginPath();
+      ctx.moveTo(x - w * 0.3, 0);
+      ctx.lineTo(x + w * 0.3, 0);
+      ctx.lineTo(x + w / 2, y);
+      ctx.lineTo(x - w / 2, y);
+      ctx.closePath();
+      ctx.fill();
+    },
+  };
+}

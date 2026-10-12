@@ -5,12 +5,14 @@
  */
 import type { SideId } from '@colleja/core';
 import type { MoveAnimation, TemplateId } from './catalog';
+import { elementalImpact, elementalTrail } from './elements';
 import {
   beam,
   bloom,
   bolt,
   charge,
   cracks,
+  dim,
   flash,
   lattice,
   panel,
@@ -20,12 +22,14 @@ import {
   sparks,
   spotlight,
   starburst,
+  sunbeam,
   sweep,
   torrent,
   vines,
 } from './fx/effects';
 import { easeOut, lerp, pick, rand, type Vec } from './fx/engine';
 import { type FxPalette, NEUTRAL_FX, TYPE_FX } from './fx/palette';
+import { isMotion, playMotion } from './motions';
 import type { SlotGeometry, Stage } from './stage';
 import type { HitCue, MoveCue, SlotId } from './timeline';
 
@@ -198,8 +202,11 @@ function hitReaction(
 ): number {
   const { stage, palette, animation } = ctx;
   const effectiveness = hit?.effectiveness ?? 'normal';
-  const scale = effectiveness === 'super' ? 1.35 : effectiveness === 'resisted' ? 0.65 : 1;
+  const scale =
+    (effectiveness === 'super' ? 1.35 : effectiveness === 'resisted' ? 0.65 : 1) *
+    (animation.epic ? 1.25 : 1);
   const power = (0.6 + animation.power * 0.6) * scale;
+  if (animation.epic) stage.fx.add(flash({ color: palette.glow, alpha: 0.18, duration: 200 }));
   stage.fx.add(
     bloom({
       at: target.center,
@@ -318,11 +325,18 @@ function dodge(ctx: MoveContext, target: SlotGeometry): void {
 async function aftermath(ctx: MoveContext): Promise<void> {
   const { stage, cue, user } = ctx;
   let longest = 0;
-  if (cue.drained) {
-    for (const target of ctx.targets.filter((entry) => outcome(ctx, entry.slot) === 'hit')) {
-      drainOrbs(stage, target.center, user.center, NEUTRAL_FX.heal);
+  if (cue.drained || ctx.animation.drain) {
+    const hits = ctx.targets.filter((entry) => outcome(ctx, entry.slot) === 'hit');
+    for (const target of hits) {
+      drainOrbs(
+        stage,
+        target.center,
+        user.center,
+        drainPalette(ctx),
+        ctx.animation.style === 'kiss',
+      );
     }
-    longest = Math.max(longest, 380);
+    if (hits.length > 0) longest = Math.max(longest, 460);
   }
   if (cue.recoil) {
     void stage.hitFlash(user.sprite, 120);
@@ -348,10 +362,24 @@ async function aftermath(ctx: MoveContext): Promise<void> {
   await stage.wait(longest);
 }
 
-/** Green orbs flowing from one point to another (drain, Leech Seed). */
-export function drainOrbs(stage: Stage, from: Vec, to: Vec, palette: FxPalette): void {
+/** The colour of what a draining move takes: life (green), unless its type says otherwise. */
+function drainPalette(ctx: MoveContext): FxPalette {
+  const type = ctx.animation.type;
+  return type === 'Grass' || type === 'Bug' || type === 'Fighting'
+    ? NEUTRAL_FX.heal
+    : TYPE_FX[type];
+}
+
+/** Orbs flowing from one point to another (drain, Leech Seed); hearts for a kiss. */
+export function drainOrbs(
+  stage: Stage,
+  from: Vec,
+  to: Vec,
+  palette: FxPalette,
+  hearts = false,
+): void {
   const travel = 360;
-  stage.fx.burst(9, (i) => {
+  stage.fx.burst(hearts ? 7 : 9, (i) => {
     const delay = i * 28;
     const spread = { x: rand(-14, 14), y: rand(-14, 14) };
     return {
@@ -362,10 +390,10 @@ export function drainOrbs(stage: Stage, from: Vec, to: Vec, palette: FxPalette):
       ay: 240,
       life: travel,
       delay,
-      size: rand(5, 9),
-      sizeEnd: 3,
+      size: hearts ? rand(5, 7) : rand(5, 9),
+      sizeEnd: hearts ? undefined : 3,
       color: pick([palette.core, palette.glow]),
-      shape: 'glow',
+      shape: hearts ? 'heart' : 'glow',
       fadeIn: 0.15,
     };
   });
@@ -558,6 +586,18 @@ const strike: Template = {
         ];
     const dash = quick ? 80 : jump ? 230 : 140;
     trail(ctx, offset, dash);
+    elementalTrail(stage, user.center, offset, animation.type, dash);
+    if (quick) {
+      for (const t of [0.25, 0.5, 0.75]) {
+        stage.afterimage(
+          user.sprite,
+          { x: offset.x * t, y: offset.y * t },
+          palette.glow,
+          t * dash,
+          260,
+        );
+      }
+    }
     if (animation.style === 'flame' || animation.style === 'dive') {
       stage.fx.add(
         charge({ at: user.center, palette, radius: user.size * 0.55, duration: dash + 60 }),
@@ -566,9 +606,10 @@ const strike: Template = {
     await stage.animate(user.sprite, frames, dash, {
       easing: jump ? 'cubic-bezier(0.4, 0, 0.9, 0.6)' : 'cubic-bezier(0.55, 0, 1, 0.45)',
     });
-    if (animation.style === 'flurry') {
-      // A flurry of blows before the last one.
-      for (let i = 0; i < 3; i++) {
+    if (animation.style === 'flurry' || animation.multihit) {
+      // A flurry of blows before the last one (as many as the protocol counted).
+      const blows = animation.multihit ? Math.min(4, Math.max(1, ctx.cue.hitCount - 1)) : 3;
+      for (let i = 0; i < blows; i++) {
         const at = { x: target.center.x + rand(-22, 22), y: target.center.y + rand(-22, 22) };
         stage.fx.add(
           starburst({ at, rays: 6, length: target.size * 0.3, width: 2.2, palette, duration: 160 }),
@@ -733,6 +774,10 @@ const strike: Template = {
         );
         break;
     }
+    // Fire Punch, Ice Fang, Thunder Punch…: the impact bursts in the type.
+    if (!['flame', 'splash', 'spark'].includes(animation.style) && animation.type !== 'Fighting') {
+      elementalImpact(stage, target.center, target.size, animation.type);
+    }
   },
 };
 
@@ -826,51 +871,58 @@ const orb: Template = {
       animation.style === 'moon' ? { x: user.center.x, y: user.top.y - 30 } : user.center;
     const size =
       user.size * (animation.style === 'fireblast' || animation.style === 'focus' ? 0.26 : 0.17);
-    stage.fx.add({
-      duration: travel,
-      z: 1,
-      draw(context, t, engine) {
-        const x = lerp(from.x, target.center.x, t);
-        const y = lerp(from.y, target.center.y, t) - (arc ? Math.sin(Math.PI * t) * 70 : 0);
-        context.globalCompositeOperation = engine.blend;
-        const core = animation.style === 'shadow' ? palette.dark : palette.hot;
-        context.drawImage(
-          engine.glow(palette.core),
-          x - size * 2,
-          y - size * 2,
-          size * 4,
-          size * 4,
-        );
-        context.drawImage(engine.glow(core), x - size, y - size, size * 2, size * 2);
-        engine.emit({
-          x: x + rand(-size * 0.4, size * 0.4),
-          y: y + rand(-size * 0.4, size * 0.4),
-          vx: rand(-30, 30),
-          vy: rand(-30, 30),
-          life: 240,
-          size: size * 0.9,
-          sizeEnd: 1,
-          color: pick([palette.core, palette.glow]),
-          shape: animation.style === 'sludge' ? 'smoke' : 'glow',
-          alpha: animation.style === 'sludge' ? 0.8 : 1,
-        });
-        if (animation.style === 'focus' || animation.style === 'shadow') {
-          const angle = engine.now / 40;
+    const shots = animation.multihit ? Math.min(5, Math.max(2, ctx.cue.hitCount)) : 1;
+    for (let shot = 0; shot < shots; shot++) {
+      stage.fx.add({
+        duration: travel,
+        delay: shot * 90,
+        z: 1,
+        draw(context, t, engine) {
+          const x = lerp(from.x, target.center.x, t);
+          const y = lerp(from.y, target.center.y, t) - (arc ? Math.sin(Math.PI * t) * 70 : 0);
+          context.globalCompositeOperation = engine.blend;
+          const core = animation.style === 'shadow' ? palette.dark : palette.hot;
+          context.drawImage(
+            engine.glow(palette.core),
+            x - size * 2,
+            y - size * 2,
+            size * 4,
+            size * 4,
+          );
+          context.drawImage(engine.glow(core), x - size, y - size, size * 2, size * 2);
           engine.emit({
-            x: x + Math.cos(angle) * size * 1.4,
-            y: y + Math.sin(angle) * size * 1.4,
-            life: 160,
-            size: 2,
-            color: palette.glow,
-            shape: 'glow',
+            x: x + rand(-size * 0.4, size * 0.4),
+            y: y + rand(-size * 0.4, size * 0.4),
+            vx: rand(-30, 30),
+            vy: rand(-30, 30),
+            life: 240,
+            size: size * 0.9,
+            sizeEnd: 1,
+            color: pick([palette.core, palette.glow]),
+            shape: animation.style === 'sludge' ? 'smoke' : 'glow',
+            alpha: animation.style === 'sludge' ? 0.8 : 1,
           });
-        }
-      },
-    });
-    await stage.wait(travel);
+          if (animation.style === 'focus' || animation.style === 'shadow') {
+            const angle = engine.now / 40;
+            engine.emit({
+              x: x + Math.cos(angle) * size * 1.4,
+              y: y + Math.sin(angle) * size * 1.4,
+              life: 160,
+              size: 2,
+              color: palette.glow,
+              shape: 'glow',
+            });
+          }
+        },
+      });
+    }
+    await stage.wait(travel + (shots - 1) * 90);
   },
   onImpact(ctx, target) {
     const { stage, palette, animation } = ctx;
+    if (animation.type !== 'Normal' && animation.style !== 'fireblast') {
+      elementalImpact(stage, target.center, target.size * 0.8, animation.type);
+    }
     if (animation.style === 'fireblast') {
       // The five-armed flame of Fire Blast.
       for (let arm = 0; arm < 5; arm++) {
@@ -1089,11 +1141,17 @@ const beamTemplate: Template = {
   async deliver(ctx) {
     const { stage, user, palette, animation } = ctx;
     const target = aim(ctx);
+    const solar = animation.style === 'solar';
+    const light = solar ? SOLAR : palette;
+    if (solar) {
+      stage.fx.add(
+        sunbeam({ at: user.center, palette: SOLAR, duration: 420, width: user.size * 1.1 }),
+      );
+    }
     await chargeUp(ctx, 130);
-    const duration = 340;
-    stage.fx.add(
-      beam({ from: user.center, to: target.center, width: user.size * 0.1, palette, duration }),
-    );
+    const duration = solar || animation.style === 'hyper' ? 420 : 340;
+    const width = user.size * (animation.style === 'hyper' ? 0.19 : solar ? 0.16 : 0.1);
+    stage.fx.add(beam({ from: user.center, to: target.center, width, palette: light, duration }));
     if (animation.style === 'ice') {
       stage.fx.add({
         duration: duration * 0.7,
@@ -1466,6 +1524,23 @@ const fall: Template = {
     const { stage, palette, animation } = ctx;
     const targets = ctx.targets.length > 0 ? ctx.targets : [aim(ctx)];
     await chargeUp(ctx, 100);
+    const spout = animation.style === 'eruption' || animation.style === 'spout';
+    if (spout) {
+      // Up from the user first.
+      stage.fx.burst(12, (i) => ({
+        x: ctx.user.center.x + rand(-ctx.user.size * 0.25, ctx.user.size * 0.25),
+        y: ctx.user.top.y,
+        vx: rand(-60, 60),
+        vy: -rand(900, 1200),
+        life: 320,
+        delay: i * 14,
+        size: animation.style === 'spout' ? rand(4, 7) : rand(8, 13),
+        color: pick([palette.hot, palette.glow, palette.core]),
+        shape: animation.style === 'spout' ? 'drop' : 'glow',
+        stretch: 30,
+      }));
+      await stage.wait(220);
+    }
     const drop = animation.style === 'meteors' ? 300 : 260;
     for (const target of targets) {
       const count = animation.style === 'coins' ? 12 : animation.style === 'meteors' ? 3 : 4;
@@ -1473,7 +1548,30 @@ const fall: Template = {
         const delay = i * (animation.style === 'coins' ? 18 : 55);
         const x = target.center.x + rand(-target.size * 0.4, target.size * 0.4);
         const height = target.center.y + 40;
-        if (animation.style === 'meteors') {
+        if (spout) {
+          stage.fx.emit({
+            x,
+            y: -30,
+            vy: ((height + 30) / drop) * 1000,
+            life: drop,
+            delay,
+            size: animation.style === 'spout' ? 7 : 11,
+            color: animation.style === 'spout' ? palette.glow : palette.hot,
+            shape: animation.style === 'spout' ? 'drop' : 'glow',
+            stretch: 40,
+          });
+          stage.fx.emit({
+            x,
+            y: -30,
+            vy: ((height + 30) / drop) * 1000,
+            life: drop,
+            delay,
+            size: 4,
+            color: palette.core,
+            shape: 'streak',
+            stretch: 90,
+          });
+        } else if (animation.style === 'meteors') {
           stage.fx.emit({
             x: x - 160,
             y: -30,
@@ -1523,6 +1621,9 @@ const fall: Template = {
   },
   onImpact(ctx, target) {
     const { stage, palette, animation } = ctx;
+    if (animation.style === 'eruption' || animation.style === 'spout') {
+      elementalImpact(stage, target.center, target.size, animation.type);
+    }
     if (animation.style === 'meteors') {
       stage.fx.add(
         bloom({ at: target.center, radius: target.size * 0.9, color: palette.core, duration: 360 }),
@@ -1660,7 +1761,130 @@ const burst: Template = {
   },
 };
 
+/** Solar Beam's light: green turned gold by the sun. */
+const SOLAR: FxPalette = { core: '#b8f04a', glow: '#fff3a0', hot: '#ffffff', dark: '#3a7a10' };
+
+/**
+ * A big move gathers power first: the stage darkens around the user, light streaks into it and
+ * it trembles. Then the move comes out with a bigger impact (`hitReaction`).
+ */
+async function bigCharge(ctx: MoveContext): Promise<void> {
+  const { stage, user, palette } = ctx;
+  const ms = 300;
+  stage.fx.add(dim({ at: user.center, duration: ms + 160, strength: 0.4 }));
+  stage.fx.add(
+    ring({
+      at: user.center,
+      from: user.size * 0.9,
+      to: user.size * 0.15,
+      width: 3,
+      color: palette.glow,
+      duration: ms,
+    }),
+  );
+  stage.fx.burst(22, (i) => {
+    const angle = rand(0, Math.PI * 2);
+    const radius = user.size * rand(0.8, 1.3);
+    return {
+      x: user.center.x + Math.cos(angle) * radius,
+      y: user.center.y + Math.sin(angle) * radius,
+      vx: -Math.cos(angle) * radius * 3.6,
+      vy: -Math.sin(angle) * radius * 3.6,
+      life: 260,
+      delay: (i / 22) * (ms - 200),
+      size: rand(1.8, 3),
+      color: pick([palette.glow, palette.hot]),
+      shape: 'streak',
+      stretch: 40,
+    };
+  });
+  void stage.animate(
+    user.sprite,
+    [
+      { filter: 'none' },
+      { filter: `drop-shadow(0 0 14px ${palette.core}) brightness(1.25)` },
+      { filter: `drop-shadow(0 0 22px ${palette.glow}) brightness(1.45)` },
+      { filter: 'none' },
+    ],
+    ms + 120,
+    { channel: 'filter' },
+  );
+  const steps = 8;
+  const frames: Keyframe[] = Array.from({ length: steps }, (_, i) => ({
+    transform: `translate(${i % 2 === 0 ? -2 : 2}px, 0) scale(${1 + (i / steps) * 0.06}, ${1 - (i / steps) * 0.05})`,
+  }));
+  void stage.animate(user.sprite, [...frames, { transform: 'translate(0, 0) scale(1)' }], ms, {
+    easing: 'linear',
+  });
+  await stage.wait(ms);
+}
+
+/**
+ * Draining moves start at the target: its light is pulled out of it into a knot, which then
+ * flows to the user (`aftermath` sends the orbs).
+ */
+const drain: Template = {
+  async deliver(ctx) {
+    const { stage, user, animation } = ctx;
+    const targets = ctx.targets.length > 0 ? ctx.targets : [aim(ctx)];
+    const light = drainPalette(ctx);
+    void anticipate(ctx, targets[0]?.center ?? user.center, 80).then(() =>
+      recover(ctx, { x: 0, y: 0 }, 200),
+    );
+    for (const target of targets) {
+      stage.fx.add(
+        ring({
+          at: target.center,
+          from: target.size * 0.8,
+          to: 6,
+          width: 3,
+          color: light.glow,
+          duration: 320,
+        }),
+      );
+      stage.fx.burst(18, (i) => {
+        const angle = (i / 18) * Math.PI * 2;
+        const radius = target.size * rand(0.45, 0.7);
+        return {
+          x: target.center.x + Math.cos(angle) * radius,
+          y: target.center.y + Math.sin(angle) * radius,
+          vx: -Math.cos(angle) * radius * 3.4,
+          vy: -Math.sin(angle) * radius * 3.4,
+          life: 300,
+          delay: rand(0, 60),
+          size: animation.style === 'kiss' ? rand(4, 6) : rand(3, 5),
+          sizeEnd: 2,
+          color: pick([light.glow, light.hot]),
+          shape: animation.style === 'kiss' ? 'heart' : 'glow',
+        };
+      });
+      void stage.animate(
+        target.sprite,
+        [
+          { filter: 'none' },
+          { filter: `drop-shadow(0 0 10px ${light.core}) saturate(0.6)` },
+          { filter: 'none' },
+        ],
+        420,
+        { channel: 'filter' },
+      );
+    }
+    await stage.wait(300);
+  },
+  onImpact(ctx, target) {
+    ctx.stage.fx.add(
+      bloom({
+        at: target.center,
+        radius: target.size * 0.45,
+        color: drainPalette(ctx).glow,
+        duration: 280,
+      }),
+    );
+  },
+};
+
 const DAMAGING: Partial<Record<TemplateId, Template>> = {
+  drain,
   strike,
   orb,
   stream,
@@ -1714,6 +1938,13 @@ const DAMAGING: Partial<Record<TemplateId, Template>> = {
 async function aura(ctx: MoveContext): Promise<void> {
   const { stage, user, palette, animation } = ctx;
   const style = animation.style;
+  if (isMotion(style)) {
+    const length = playMotion(stage, user, style, palette);
+    await stage.wait(length * 0.85);
+    ctx.commit();
+    await aftermath(ctx);
+    return;
+  }
   void stage.animate(
     user.sprite,
     [
@@ -1735,44 +1966,7 @@ async function aura(ctx: MoveContext): Promise<void> {
       squash: 0.28,
     }),
   );
-  if (style === 'blades') {
-    for (let i = 0; i < 6; i++) {
-      const angle0 = (i / 6) * Math.PI * 2;
-      stage.fx.add({
-        duration: 420,
-        delay: i * 20,
-        z: 1,
-        draw(context, t, engine) {
-          const angle = angle0 + t * Math.PI * 2;
-          const radius = user.size * (0.55 - 0.15 * t);
-          const x = user.center.x + Math.cos(angle) * radius;
-          const y = user.center.y + Math.sin(angle) * radius * 0.45;
-          context.globalCompositeOperation = engine.blend;
-          context.globalAlpha = Math.sin(Math.PI * t);
-          context.translate(x, y);
-          context.rotate(angle + Math.PI / 2);
-          context.fillStyle = TYPE_FX.Steel.hot;
-          context.beginPath();
-          context.moveTo(0, -16);
-          context.lineTo(4, 6);
-          context.lineTo(-4, 6);
-          context.closePath();
-          context.fill();
-        },
-      });
-    }
-    stage.fx.add(
-      starburst({
-        at: user.top,
-        rays: 4,
-        length: 30,
-        width: 2.5,
-        palette: NEUTRAL_FX.white,
-        duration: 220,
-        delay: 380,
-      }),
-    );
-  } else if (style === 'mind') {
+  if (style === 'mind') {
     for (let i = 0; i < 3; i++) {
       stage.fx.add(
         ring({
@@ -1786,25 +1980,6 @@ async function aura(ctx: MoveContext): Promise<void> {
         }),
       );
     }
-  } else if (style === 'dance') {
-    stage.fx.add({
-      duration: 440,
-      draw(_context, t, engine) {
-        for (let i = 0; i < 2; i++) {
-          const angle = engine.now / 60 + i * Math.PI;
-          engine.emit({
-            x: user.center.x + Math.cos(angle) * user.size * 0.42,
-            y: user.feet.y - t * user.size,
-            vy: -60,
-            life: 360,
-            size: rand(6, 10),
-            sizeEnd: 2,
-            color: pick([palette.glow, palette.core, TYPE_FX.Fire.glow]),
-            shape: 'glow',
-          });
-        }
-      },
-    });
   } else if (style === 'shine') {
     stage.animate(
       user.sprite,
@@ -1899,6 +2074,204 @@ async function shieldMove(ctx: MoveContext): Promise<void> {
   await stage.wait(120);
 }
 
+/** Status moves told with movement: Roar, Charm, Glare, Confuse Ray, Trick, Yawn… */
+function hexMotion(ctx: MoveContext, target: SlotGeometry): boolean {
+  const { stage, user, palette, animation } = ctx;
+  const away = towards(user.center, target.center, 1);
+  switch (animation.style) {
+    case 'push': {
+      // A roar or a gust that pushes the target back.
+      for (let i = 0; i < 3; i++) {
+        stage.fx.add(
+          ring({
+            at: user.center,
+            from: user.size * 0.3,
+            to: user.size * 1.6,
+            width: 4,
+            color: palette.hot,
+            duration: 300,
+            delay: i * 70,
+            squash: 0.8,
+          }),
+        );
+      }
+      void stage.animate(
+        target.sprite,
+        [
+          { transform: 'translate(0, 0)' },
+          {
+            transform: `translate(${away.x * 46}px, ${away.y * 46}px) rotate(${away.x > 0 ? 8 : -8}deg)`,
+            offset: 0.45,
+          },
+          { transform: `translate(${away.x * 40}px, ${away.y * 40}px)`, offset: 0.7 },
+          { transform: 'translate(0, 0)' },
+        ],
+        520,
+        { delay: 120 },
+      );
+      return true;
+    }
+    case 'charm': {
+      stage.fx.burst(8, (i) => {
+        const travel = 380;
+        return {
+          x: user.center.x + rand(-10, 10),
+          y: user.center.y + rand(-10, 10),
+          vx: ((target.center.x - user.center.x) / travel) * 1000 + rand(-30, 30),
+          vy: ((target.center.y - user.center.y) / travel) * 1000 - 60,
+          ay: 300,
+          life: travel,
+          delay: i * 40,
+          size: rand(6, 9),
+          color: pick([TYPE_FX.Fairy.core, TYPE_FX.Fairy.glow, '#ff5c8a']),
+          shape: 'heart',
+          spin: rand(-2, 2),
+        };
+      });
+      void stage.animate(
+        target.sprite,
+        [
+          { filter: 'none' },
+          { filter: 'drop-shadow(0 0 10px #ff8ad8) brightness(1.15)' },
+          { filter: 'none' },
+        ],
+        460,
+        { channel: 'filter', delay: 300 },
+      );
+      void stage.animate(
+        target.sprite,
+        [{ transform: 'scale(1)' }, { transform: 'scale(0.94, 1.04)' }, { transform: 'scale(1)' }],
+        300,
+        { delay: 360 },
+      );
+      return true;
+    }
+    case 'glare': {
+      // The user's eyes flash and the target shudders.
+      for (const dx of [-0.12, 0.12]) {
+        stage.fx.add(
+          starburst({
+            at: { x: user.center.x + dx * user.size, y: user.top.y + user.size * 0.3 },
+            rays: 4,
+            length: 30,
+            width: 3,
+            palette: { ...palette, hot: '#ffffff' },
+            duration: 300,
+          }),
+        );
+      }
+      stage.fx.add(flash({ color: palette.core, alpha: 0.12, duration: 260, delay: 150 }));
+      void stage.animate(
+        target.sprite,
+        [
+          { transform: 'translate(0, 0)' },
+          { transform: 'translate(-3px, 1px)' },
+          { transform: 'translate(3px, -1px)' },
+          { transform: 'translate(-2px, 0)' },
+          { transform: 'translate(2px, 0)' },
+          { transform: 'translate(0, 0)' },
+        ],
+        360,
+        { delay: 200, easing: 'linear' },
+      );
+      void stage.animate(
+        target.sprite,
+        [{ filter: 'none' }, { filter: 'brightness(0.7) saturate(0.6)' }, { filter: 'none' }],
+        460,
+        { channel: 'filter', delay: 200 },
+      );
+      return true;
+    }
+    case 'confuse':
+      // Orbs spinning around its head, and it wobbles.
+      for (let i = 0; i < 3; i++) {
+        const phase = (i / 3) * Math.PI * 2;
+        stage.fx.add({
+          duration: 520,
+          z: 1,
+          draw(context, t, engine) {
+            const angle = phase + t * Math.PI * 4;
+            const x = target.center.x + Math.cos(angle) * target.size * 0.35;
+            const y = target.top.y + target.size * 0.15 + Math.sin(angle) * target.size * 0.12;
+            const size = 16 * Math.sin(Math.PI * t);
+            context.globalCompositeOperation = engine.blend;
+            context.drawImage(engine.glow(palette.glow), x - size, y - size, size * 2, size * 2);
+            context.drawImage(
+              engine.glow(palette.hot),
+              x - size / 3,
+              y - size / 3,
+              size / 1.5,
+              size / 1.5,
+            );
+          },
+        });
+      }
+      void stage.animate(
+        target.sprite,
+        [
+          { transform: 'rotate(0deg)' },
+          { transform: 'rotate(-7deg)' },
+          { transform: 'rotate(7deg)' },
+          { transform: 'rotate(0deg)' },
+        ],
+        520,
+        { easing: 'ease-in-out' },
+      );
+      return true;
+    case 'swap':
+      // Trick: two things cross between the user and the target.
+      for (const [from, to] of [
+        [user.center, target.center],
+        [target.center, user.center],
+      ] as const) {
+        const travel = 380;
+        stage.fx.emit({
+          x: from.x,
+          y: from.y,
+          vx: ((to.x - from.x) / travel) * 1000,
+          vy: ((to.y - from.y) / travel) * 1000 - 420,
+          ay: (2 * 420 * 1000) / travel,
+          life: travel,
+          size: 13,
+          color: '#ffffff',
+          shape: 'star',
+          spin: 10,
+        });
+        stage.fx.emit({
+          x: from.x,
+          y: from.y,
+          vx: ((to.x - from.x) / travel) * 1000,
+          vy: ((to.y - from.y) / travel) * 1000 - 420,
+          ay: (2 * 420 * 1000) / travel,
+          life: travel,
+          size: 20,
+          color: palette.glow,
+          shape: 'glow',
+        });
+      }
+      return true;
+    case 'sleep':
+      stage.fx.burst(6, (i) => {
+        const travel = 420;
+        return {
+          x: user.center.x,
+          y: user.center.y,
+          vx: ((target.center.x - user.center.x) / travel) * 1000,
+          vy: ((target.center.y - user.center.y) / travel) * 1000 + Math.sin(i) * 60,
+          life: travel,
+          delay: i * 50,
+          size: 4 + i,
+          color: TYPE_FX.Psychic.glow,
+          accent: '#ffffff',
+          shape: 'bubble',
+        };
+      });
+      return true;
+    default:
+      return false;
+  }
+}
+
 async function hex(ctx: MoveContext): Promise<void> {
   const { stage, user, palette, animation } = ctx;
   const targets = ctx.targets.length > 0 ? ctx.targets : [aim(ctx)];
@@ -1907,6 +2280,7 @@ async function hex(ctx: MoveContext): Promise<void> {
   const style = animation.style;
   const travel = 260;
   for (const target of targets) {
+    if (hexMotion(ctx, target)) continue;
     if (style === 'taunt' || style === 'encore') {
       void stage.animate(
         target.sprite,
@@ -2139,6 +2513,21 @@ async function side(ctx: MoveContext): Promise<void> {
 export async function fieldEffect(stage: Stage, style: string, palette: FxPalette): Promise<void> {
   const center = { x: stage.width / 2, y: stage.height / 2 };
   switch (style) {
+    case 'fog':
+      stage.fx.burst(26, (i) => ({
+        x: rand(0, stage.width),
+        y: rand(stage.height * 0.2, stage.height),
+        vx: rand(-40, 40) + (i % 2 === 0 ? 60 : -60),
+        vy: -rand(5, 25),
+        life: 760,
+        size: rand(30, 50),
+        sizeEnd: 70,
+        color: '#c9d2dc',
+        alpha: 0.28,
+        fadeIn: 0.3,
+        shape: 'smoke',
+      }));
+      break;
     case 'trickroom':
       stage.fx.add(lattice({ palette: TYPE_FX.Psychic, duration: 620 }));
       stage.fx.add(flash({ color: TYPE_FX.Psychic.glow, alpha: 0.15, duration: 300 }));
@@ -2308,6 +2697,7 @@ export async function playMove(ctx: MoveContext): Promise<void> {
     await ctx.stage.wait(120);
     return;
   }
+  if (ctx.animation.epic) await bigCharge(ctx);
   await template.deliver(ctx);
   await impact(ctx, template);
   await aftermath(ctx);

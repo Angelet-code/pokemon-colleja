@@ -42,7 +42,9 @@ export type TemplateId =
   /** Help for an ally or drawing attacks (Helping Hand, Follow Me). */
   | 'support'
   /** Fake Out. */
-  | 'clap';
+  | 'clap'
+  /** Draining moves: the energy is pulled out of the target and flows to the user. */
+  | 'drain';
 
 export const TEMPLATE_IDS: readonly TemplateId[] = [
   'strike',
@@ -63,6 +65,7 @@ export const TEMPLATE_IDS: readonly TemplateId[] = [
   'field',
   'support',
   'clap',
+  'drain',
 ];
 
 export interface MoveAnimation {
@@ -77,6 +80,10 @@ export interface MoveAnimation {
   drain: boolean;
   /** The user leaves after the hit (U-turn, Volt Switch…). */
   selfSwitch: boolean;
+  /** A big move: the user charges first and the impact is stronger. */
+  epic: boolean;
+  /** It hits several times (Bullet Seed, Rock Blast…). */
+  multihit: boolean;
 }
 
 type Signature = { template: TemplateId; style?: string };
@@ -112,12 +119,33 @@ const SIGNATURES: Record<string, Signature> = {
   stealthrock: { template: 'side', style: 'rocks' },
   spikes: { template: 'side', style: 'spikes' },
   // Boosts and healing
-  swordsdance: { template: 'aura', style: 'blades' },
-  nastyplot: { template: 'aura', style: 'rise' },
+  swordsdance: { template: 'aura', style: 'spin' },
+  tidyup: { template: 'aura', style: 'spin' },
+  nastyplot: { template: 'aura', style: 'plot' },
   calmmind: { template: 'aura', style: 'mind' },
+  amnesia: { template: 'aura', style: 'mind' },
   dragondance: { template: 'aura', style: 'dance' },
-  bulkup: { template: 'aura', style: 'rise' },
+  quiverdance: { template: 'aura', style: 'dance' },
+  bulkup: { template: 'aura', style: 'flex' },
+  bellydrum: { template: 'aura', style: 'flex' },
+  focusenergy: { template: 'aura', style: 'flex' },
+  noretreat: { template: 'aura', style: 'flex' },
+  clangoroussoul: { template: 'aura', style: 'flex' },
   irondefense: { template: 'aura', style: 'shine' },
+  acidarmor: { template: 'aura', style: 'shine' },
+  cosmicpower: { template: 'aura', style: 'shine' },
+  shiftgear: { template: 'aura', style: 'shine' },
+  cottonguard: { template: 'aura', style: 'grow' },
+  agility: { template: 'aura', style: 'agility' },
+  rockpolish: { template: 'aura', style: 'agility' },
+  doubleteam: { template: 'aura', style: 'afterimage' },
+  minimize: { template: 'aura', style: 'shrink' },
+  growth: { template: 'aura', style: 'grow' },
+  coil: { template: 'aura', style: 'grow' },
+  stockpile: { template: 'aura', style: 'grow' },
+  shellsmash: { template: 'aura', style: 'shell' },
+  charge: { template: 'aura', style: 'spark' },
+  magnetrise: { template: 'aura', style: 'spark' },
   roost: { template: 'aura', style: 'heal' },
   recover: { template: 'aura', style: 'heal' },
   // Status on a target
@@ -127,6 +155,29 @@ const SIGNATURES: Record<string, Signature> = {
   taunt: { template: 'hex', style: 'taunt' },
   encore: { template: 'hex', style: 'encore' },
   sleeppowder: { template: 'hex', style: 'powder' },
+  roar: { template: 'hex', style: 'push' },
+  whirlwind: { template: 'hex', style: 'push' },
+  charm: { template: 'hex', style: 'charm' },
+  babydolleyes: { template: 'hex', style: 'charm' },
+  sweetkiss: { template: 'hex', style: 'charm' },
+  attract: { template: 'hex', style: 'charm' },
+  faketears: { template: 'hex', style: 'charm' },
+  tearfullook: { template: 'hex', style: 'charm' },
+  glare: { template: 'hex', style: 'glare' },
+  scaryface: { template: 'hex', style: 'glare' },
+  meanlook: { template: 'hex', style: 'glare' },
+  block: { template: 'hex', style: 'glare' },
+  partingshot: { template: 'hex', style: 'glare' },
+  nobleroar: { template: 'hex', style: 'glare' },
+  confuseray: { template: 'hex', style: 'confuse' },
+  swagger: { template: 'hex', style: 'confuse' },
+  flatter: { template: 'hex', style: 'confuse' },
+  trick: { template: 'hex', style: 'swap' },
+  switcheroo: { template: 'hex', style: 'swap' },
+  skillswap: { template: 'hex', style: 'swap' },
+  yawn: { template: 'hex', style: 'sleep' },
+  sing: { template: 'hex', style: 'sleep' },
+  hypnosis: { template: 'hex', style: 'sleep' },
   leechseed: { template: 'seed', style: 'leech' },
   // Water
   hydropump: { template: 'stream', style: 'water' },
@@ -134,16 +185,29 @@ const SIGNATURES: Record<string, Signature> = {
   surf: { template: 'wave', style: 'water' },
   liquidation: { template: 'strike', style: 'splash' },
   flipturn: { template: 'strike', style: 'splash' },
+  muddywater: { template: 'wave', style: 'water' },
+  waterspout: { template: 'fall', style: 'spout' },
+  hydrocannon: { template: 'stream', style: 'water' },
+  aquajet: { template: 'strike', style: 'quick' },
+  jetpunch: { template: 'strike', style: 'quick' },
+  wavecrash: { template: 'strike', style: 'splash' },
   // Fire
   flamethrower: { template: 'stream', style: 'fire' },
   fireblast: { template: 'orb', style: 'fireblast' },
   heatwave: { template: 'wave', style: 'heat' },
   flareblitz: { template: 'strike', style: 'flame' },
   overheat: { template: 'stream', style: 'fire' },
+  eruption: { template: 'fall', style: 'eruption' },
+  blastburn: { template: 'orb', style: 'fireblast' },
   // Electric
   thunderbolt: { template: 'bolt', style: 'bolt' },
   thunder: { template: 'bolt', style: 'thunder' },
   voltswitch: { template: 'bolt', style: 'bolt' },
+  discharge: { template: 'bolt', style: 'bolt' },
+  zapcannon: { template: 'orb', style: 'plain' },
+  volttackle: { template: 'strike', style: 'dive' },
+  wildcharge: { template: 'strike', style: 'dive' },
+  paraboliccharge: { template: 'drain', style: 'spark' },
   // Ice
   icebeam: { template: 'beam', style: 'ice' },
   icywind: { template: 'wave', style: 'wind' },
@@ -156,6 +220,10 @@ const SIGNATURES: Record<string, Signature> = {
   stoneedge: { template: 'quake', style: 'spikes' },
   // Fighting
   closecombat: { template: 'strike', style: 'flurry' },
+  superpower: { template: 'strike', style: 'flurry' },
+  machpunch: { template: 'strike', style: 'quick' },
+  aurasphere: { template: 'orb', style: 'focus' },
+  vacuumwave: { template: 'rings', style: 'pulse' },
   drainpunch: { template: 'strike', style: 'punch' },
   bodypress: { template: 'strike', style: 'slam' },
   focusblast: { template: 'orb', style: 'focus' },
@@ -164,6 +232,8 @@ const SIGNATURES: Record<string, Signature> = {
   suckerpunch: { template: 'strike', style: 'quick' },
   crunch: { template: 'strike', style: 'bite' },
   darkpulse: { template: 'rings', style: 'pulse' },
+  shadowsneak: { template: 'strike', style: 'quick' },
+  phantomforce: { template: 'strike', style: 'quick' },
   shadowball: { template: 'orb', style: 'shadow' },
   poltergeist: { template: 'burst', style: 'ghost' },
   hex: { template: 'burst', style: 'ghost' },
@@ -173,33 +243,76 @@ const SIGNATURES: Record<string, Signature> = {
   moonblast: { template: 'orb', style: 'moon' },
   dazzlinggleam: { template: 'wave', style: 'gleam' },
   playrough: { template: 'burst', style: 'scuffle' },
+  drainingkiss: { template: 'drain', style: 'kiss' },
+  futuresight: { template: 'burst', style: 'psychic' },
   // Dragon
   dracometeor: { template: 'fall', style: 'meteors' },
+  dragonpulse: { template: 'rings', style: 'pulse' },
+  outrage: { template: 'strike', style: 'flurry' },
+  dragondarts: { template: 'orb', style: 'plain' },
   // Poison
   sludgebomb: { template: 'orb', style: 'sludge' },
   gunkshot: { template: 'orb', style: 'sludge' },
   // Flying
   bravebird: { template: 'strike', style: 'dive' },
   hurricane: { template: 'wave', style: 'wind' },
+  skyattack: { template: 'strike', style: 'dive' },
   airslash: { template: 'rings', style: 'blades' },
   // Normal
   hypervoice: { template: 'rings', style: 'sound' },
   bodyslam: { template: 'strike', style: 'slam' },
   doubleedge: { template: 'strike', style: 'dash' },
+  hyperbeam: { template: 'beam', style: 'hyper' },
+  gigaimpact: { template: 'strike', style: 'dive' },
+  boomburst: { template: 'rings', style: 'sound' },
+  extremespeed: { template: 'strike', style: 'quick' },
+  quickattack: { template: 'strike', style: 'quick' },
   // Steel
   ironhead: { template: 'strike', style: 'head' },
   heavyslam: { template: 'strike', style: 'slam' },
   makeitrain: { template: 'fall', style: 'coins' },
+  flashcannon: { template: 'beam', style: 'plain' },
+  steelbeam: { template: 'beam', style: 'hyper' },
+  bulletpunch: { template: 'strike', style: 'quick' },
+  meteormash: { template: 'strike', style: 'punch' },
   // Grass
   energyball: { template: 'orb', style: 'energy' },
   powerwhip: { template: 'strike', style: 'whip' },
-  gigadrain: { template: 'burst', style: 'drain' },
+  gigadrain: { template: 'drain', style: 'leaf' },
+  matchagotcha: { template: 'drain', style: 'leaf' },
   leafstorm: { template: 'stream', style: 'leaves' },
+  solarbeam: { template: 'beam', style: 'solar' },
+  solarblade: { template: 'strike', style: 'slash' },
+  frenzyplant: { template: 'quake', style: 'eruption' },
+  woodhammer: { template: 'strike', style: 'slam' },
+  hornleech: { template: 'strike', style: 'head' },
   // Bug
   uturn: { template: 'strike', style: 'dash' },
+  leechlife: { template: 'strike', style: 'bite' },
+  bugbuzz: { template: 'rings', style: 'sound' },
+  // Rock and Ground
+  headsmash: { template: 'strike', style: 'dash' },
+  meteorbeam: { template: 'beam', style: 'hyper' },
+  // Field and status without a target
+  haze: { template: 'field', style: 'fog' },
+  defog: { template: 'field', style: 'fog' },
 };
 
 const PROTECT_LIKE = new Set(['endure', 'obstruct', 'maxguard', 'matblock', 'craftyshield']);
+
+/** Big moves that charge even below 120 of power: the ones a battle remembers. */
+const EPIC = new Set([
+  'heatwave',
+  'hurricane',
+  'blizzard',
+  'thunder',
+  'fireblast',
+  'hydropump',
+  'focusblast',
+  'dracometeor',
+  'surf',
+  'earthquake',
+]);
 
 /** The animation of a move (any id: an unknown one gets a plain hit of type Normal). */
 export function animationFor(moveId: string): MoveAnimation {
@@ -214,6 +327,13 @@ export function animationFor(moveId: string): MoveAnimation {
     power: Math.min(1, Math.max(0, (data.basePower - 40) / 110)),
     drain: data.drain !== null,
     selfSwitch: data.selfSwitch,
+    epic:
+      data.category !== 'Status' &&
+      (data.basePower >= 120 ||
+        EPIC.has(data.id) ||
+        data.flags.includes('charge') ||
+        data.flags.includes('recharge')),
+    multihit: data.multihit !== null,
   };
 }
 
@@ -226,6 +346,8 @@ function fallbackAnimation(move: string): MoveAnimation {
     power: 0.3,
     drain: false,
     selfSwitch: false,
+    epic: false,
+    multihit: false,
   };
 }
 
@@ -239,10 +361,9 @@ function byShape(move: MoveData): Signature {
       case 'self':
       case 'adjacentAllyOrSelf':
       case 'allies':
-        return {
-          template: 'aura',
-          style: flags.has('heal') ? 'heal' : flags.has('dance') ? 'dance' : 'rise',
-        };
+        if (flags.has('heal')) return { template: 'aura', style: 'heal' };
+        if (flags.has('dance')) return { template: 'aura', style: 'dance' };
+        return { template: 'aura', style: SELF_STYLE[move.type] ?? 'rise' };
       case 'allySide':
       case 'foeSide':
       case 'allyTeam':
@@ -258,7 +379,7 @@ function byShape(move: MoveData): Signature {
     }
   }
 
-  if (move.drain && !flags.has('contact')) return { template: 'burst', style: 'drain' };
+  if (move.drain && !flags.has('contact')) return { template: 'drain', style: 'plain' };
   if (flags.has('sound')) return { template: 'rings', style: 'sound' };
   if (flags.has('contact')) {
     if (flags.has('punch')) return { template: 'strike', style: 'punch' };
@@ -315,6 +436,28 @@ function byShape(move: MoveData): Signature {
       return { template: 'beam', style: 'plain' };
   }
 }
+
+/** Self status moves without a signature: how each type powers up. */
+const SELF_STYLE: Partial<Record<TypeName, string>> = {
+  Psychic: 'mind',
+  Dark: 'plot',
+  Fighting: 'flex',
+  Dragon: 'dance',
+  Steel: 'shine',
+  Rock: 'shine',
+  Flying: 'agility',
+  Grass: 'grow',
+  Bug: 'dance',
+  Electric: 'spark',
+  Normal: 'grow',
+  Fairy: 'dance',
+  Ghost: 'plot',
+  Poison: 'shine',
+  Water: 'grow',
+  Ice: 'shine',
+  Ground: 'flex',
+  Fire: 'flex',
+};
 
 /** Ids with a signature of their own (for the gallery and the tests). */
 export const SIGNATURE_MOVES: readonly string[] = Object.keys(SIGNATURES);

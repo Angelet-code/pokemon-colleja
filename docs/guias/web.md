@@ -86,7 +86,8 @@ battle:update ─▶ cola del store ─▶ planBeats(lines) ─▶ Animator.play
 |---|---|---|
 | Línea de tiempo | `features/battle/animation/timeline.ts` | `planBeats`: líneas de p1 → *beats*. Un `|move|` se agrupa con sus golpes (daño, eficacia, crítico, fallo, Protección, drenaje, retroceso) y con lo que causa sin `[from]` (subidas, estados, clima, campo); los cambios seguidos entran juntos; las líneas sin efecto (`|turn|`, `|upkeep|`…) van con el beat de al lado. Puro |
 | Catálogo | `animation/catalog.ts` | `animationFor(id)`: plantilla y estilo. Firmas (`SIGNATURES`, los ~60 más usados y los que pediste), después por forma (`punch`, `bite`, `slicing`, `sound`, `pulse`, `bullet`, `wind`, `contact`, área) y por tipo y categoría. Puro |
-| Plantillas | `animation/templates.ts` | 18 plantillas (`strike`, `orb`, `stream`, `beam`, `bolt`, `rings`, `wave`, `quake`, `fall`, `burst`, `aura`, `shield`, `hex`, `seed`, `side`, `field`, `support`, `clap`) con anticipación, entrega, impacto y reposo. El impacto compartido pinta lo que pasó a cada objetivo (golpe, fallo, Protección, inmune) y hace el `commit` |
+| Elementos y gestos | `animation/elements.ts`, `animation/motions.ts` | El toque de cada tipo en los golpes (estela en el puño o el colmillo e impacto en su materia) y los gestos del cuerpo de los de estado (`agility`, `afterimage`, `shrink`, `grow`, `shell`, `dance`, `flex`, `spin`, `plot`, `spark`) |
+| Plantillas | `animation/templates.ts` | 19 plantillas (`strike`, `orb`, `stream`, `beam`, `bolt`, `rings`, `wave`, `quake`, `fall`, `burst`, `aura`, `shield`, `hex`, `seed`, `side`, `field`, `support`, `clap`, `drain`) con anticipación, entrega, impacto y reposo. El impacto compartido pinta lo que pasó a cada objetivo (golpe, fallo, Protección, inmune) y hace el `commit` |
 | Reproductor | `animation/player.ts` | `Animator.play(beat)`: movimientos, cambios, debilitamientos, Mega, subidas, estados, daño residual, clima, campo y habilidades u objetos revelados. Siempre hace el `commit` y deja los sprites en reposo |
 | Escenario | `animation/stage.ts`, `FxLayer.tsx` | Posiciones (`data-slot`), animaciones de sprites, temblor, rótulo del movimiento y etiquetas («Supereficaz», «Atq +2»…). Monta las capas: clima detrás, efectos delante y la capa del rótulo |
 | Efectos | `animation/fx/` | `engine.ts` (partículas y efectos con reloj propio, que se para sin nada que pintar), `effects.ts` (haz, torrente, rayo, tajo, onda, escudo hexagonal, retícula de Espacio Raro…), `weather.ts` (lluvia, sol, arena y nieve de fondo) y `palette.ts` (luz de cada tipo) |
@@ -96,7 +97,8 @@ Reglas:
 
 - **Solo se retrasa lo recibido**: el store aplica las líneas al `Narrator` cuando el beat hace `commit` y la petición al acabar la actualización. Snapshot (deshacer, rebobinar, reconectar), salir y cambiar el idioma vacían la cola.
 - Velocidad: preferencia `animations` de `stores/settings.ts` (`normal`, `fast`, `off`; `off` por defecto con «reducir movimiento» del sistema). Con la pestaña oculta no se anima.
-- Presupuesto a ×1: ≤ 700 ms por acción; un turno de individuales ≈ 1,5 s y de dobles ≈ 2,5–3 s. La barra de PS baja en el impacto (`--fx-hp-ms`).
+- Presupuesto a ×1: ≤ 700 ms por acción y ≈ 1 s los épicos (`epic` en el catálogo: potencia ≥ 120, carga o recarga, o la lista `EPIC`), que cargan antes (`bigCharge`); un turno de individuales ≈ 1,5 s y de dobles ≈ 2,5–3 s. La barra de PS baja en el impacto (`--fx-hp-ms`).
+- Los que absorben (`drain` en los datos) siempre devuelven la energía al usuario, aunque no cure (con los PS al máximo no hay línea `-heal`).
 - En tema claro las luces se pintan encima (`source-over`) en lugar de sumarse, para que se vean sobre el suelo claro.
 - Para una firma nueva: añádela en `SIGNATURES` (o un estilo en su plantilla), revísala en `/animaciones` en los dos temas y en dobles, y mira que no pase de 700 ms.
 

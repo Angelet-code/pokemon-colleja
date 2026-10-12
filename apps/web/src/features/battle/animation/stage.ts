@@ -232,6 +232,38 @@ export class Stage {
     );
   }
 
+  /**
+   * A fading copy of a sprite left behind (Agility, Double Team, quick attacks), shifted by
+   * `offset` and tinted with `color`.
+   */
+  afterimage(
+    sprite: HTMLElement | null,
+    offset: Vec,
+    color: string,
+    delay = 0,
+    duration = 360,
+  ): void {
+    const image = sprite?.querySelector('img');
+    if (!sprite || !image || this.skipping) return;
+    const base = this.root.getBoundingClientRect();
+    const box = image.getBoundingClientRect();
+    const ghost = image.cloneNode(true) as HTMLImageElement;
+    ghost.dataset.fx = 'label';
+    ghost.removeAttribute('class');
+    ghost.style.cssText = `position:absolute;left:${box.left - base.left + offset.x}px;top:${box.top - base.top + offset.y}px;width:${box.width}px;height:${box.height}px;object-fit:contain;filter:drop-shadow(0 0 4px ${color}) brightness(1.25) saturate(0.7);transform:${getComputedStyle(image).transform};scale:${getComputedStyle(image).scale};`;
+    this.overlay.append(ghost);
+    const animation = ghost.animate([{ opacity: 0.6 }, { opacity: 0 }], {
+      duration: duration / this.speedFactor,
+      delay: delay / this.speedFactor,
+      easing: 'ease-out',
+      fill: 'both',
+    });
+    animation.finished.then(
+      () => ghost.remove(),
+      () => ghost.remove(),
+    );
+  }
+
   wait(ms: number): Promise<void> {
     return this.fx.wait(ms);
   }

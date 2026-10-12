@@ -146,6 +146,10 @@ export function galleryMove(setup: GallerySetup, chosen: GalleryMove): string[] 
     const max = slot.startsWith('p1') ? 200 : 100;
     lines.push(`|-damage|${target}|${Math.round(max * (1 - lost))}/${max}`);
   });
+  if (data.multihit !== null && targets[0]) {
+    const hits = Array.isArray(data.multihit) ? data.multihit[1] : data.multihit;
+    lines.push(`|-hitcount|${ident(setup, targets[0])}|${Math.min(hits, 4)}`);
+  }
   if (data.drain) lines.push(`|-heal|${user}|200/200|[from] drain|[of] ${ident(setup, main)}`);
   if (data.recoil) lines.push(`|-damage|${user}|170/200|[from] Recoil|[of] ${ident(setup, main)}`);
   return lines;

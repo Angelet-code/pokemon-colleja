@@ -43,6 +43,29 @@ export const REVIEW_MOVES: MoveId[] = [
   'trickroom',
 ] as MoveId[];
 
+/** The second round: elements, draining, big charges, body motions and status with movement. */
+export const VARIATION_MOVES: MoveId[] = [
+  'firepunch',
+  'icefang',
+  'thunderpunch',
+  'gigadrain',
+  'drainingkiss',
+  'solarbeam',
+  'heatwave',
+  'hyperbeam',
+  'eruption',
+  'bulletseed',
+  'extremespeed',
+  'agility',
+  'doubleteam',
+  'bulkup',
+  'shellsmash',
+  'swordsdance',
+  'roar',
+  'charm',
+  'trick',
+] as MoveId[];
+
 const OUTCOMES: { value: GalleryOutcome; label: string }[] = [
   { value: 'hit', label: 'Golpe' },
   { value: 'super', label: 'Supereficaz' },
@@ -155,12 +178,13 @@ export function AnimationGalleryPage() {
   );
 
   const current: GalleryMove = { move, user, target, outcome };
-  const review = REVIEW_MOVES.map((id) => ({
-    move: id,
-    user: 'p1a' as SlotId,
-    target: 'p2a' as SlotId,
-    outcome: 'hit' as GalleryOutcome,
-  }));
+  const tour = (moves: MoveId[]) =>
+    moves.map((id) => ({
+      move: id,
+      user: 'p1a' as SlotId,
+      target: 'p2a' as SlotId,
+      outcome: 'hit' as GalleryOutcome,
+    }));
 
   return (
     <div className="flex flex-col gap-4">
@@ -231,8 +255,11 @@ export function AnimationGalleryPage() {
             <Button variant="primary" onClick={() => void play([current])}>
               Reproducir
             </Button>
-            <Button onClick={() => void play(review)} disabled={playing}>
+            <Button onClick={() => void play(tour(REVIEW_MOVES))} disabled={playing}>
               Recorrido
+            </Button>
+            <Button onClick={() => void play(tour(VARIATION_MOVES))} disabled={playing}>
+              Variaciones
             </Button>
           </div>
           <details className="mt-1">

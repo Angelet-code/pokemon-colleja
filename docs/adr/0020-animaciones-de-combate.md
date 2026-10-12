@@ -39,6 +39,14 @@ Hay tres caminos:
 - **Store**: cola de actualizaciones con un contador de generación. Un snapshot, salir o cambiar el idioma invalidan lo que se esté animando. Sin animador (sin campo, «No», pestaña oculta) todo es síncrono como antes, y los tests anteriores no cambiaron.
 - **Medido**: 60 fps (16,7 ms de media y de p95) y ninguna tarea larga con Surf, Terremoto, Lanzallamas, Hidrobomba, Espacio Raro y Rayo, en Chromium sin GPU. Un turno real de individuales dura 1,5–2,4 s (con KO, relevo e Intimidación). Uno de dobles con Mega, Protección, crítico, KO, retroceso y relevo dura 3,1 s.
 - **E2E**: animaciones apagadas por defecto (`storageState`) y un spec propio con ×2.
+- **Segunda ronda** (revisión del usuario: «van por muy buen camino, pero pueden ser más específicas»):
+  - Capa de **elemento** en golpes y proyectiles (`elements.ts`).
+  - Plantilla **`drain`**, que empieza en el objetivo.
+  - **Carga de los épicos** (`epic`, `bigCharge`: oscurece, converge y tiembla).
+  - **Gestos del cuerpo** para los de estado (`motions.ts`, con copias del sprite en la capa del rótulo).
+  - Estados sobre el rival con movimiento (empujar, corazones, mirada, confusión, intercambio, sueño).
+  - Golpes múltiples con su número real.
+  - 60 fps también en Estallido, Rayo Solar, Doble Equipo y Semilladora.
 
 ## Alternativas descartadas
 

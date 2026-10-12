@@ -32,7 +32,9 @@ export type ParticleShape =
   /** Teardrop pointing along its velocity (water). */
   | 'drop'
   /** Chevron (stat changes): points up, or down when `rot` is π. */
-  | 'chevron';
+  | 'chevron'
+  /** Heart (Charm, Attract, Draining Kiss). */
+  | 'heart';
 
 export interface ParticleSpec {
   x: number;
@@ -450,6 +452,18 @@ export class FxEngine {
         ctx.beginPath();
         ctx.arc(p.x - size * 0.35, p.y - size * 0.35, size * 0.22, 0, Math.PI * 2);
         ctx.fill();
+        break;
+      case 'heart':
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.moveTo(0, size * 0.9);
+        ctx.bezierCurveTo(-size * 1.4, -size * 0.1, -size * 0.6, -size * 1.2, 0, -size * 0.45);
+        ctx.bezierCurveTo(size * 0.6, -size * 1.2, size * 1.4, -size * 0.1, 0, size * 0.9);
+        ctx.fill();
+        this.resetTransform();
         break;
       case 'chevron':
         ctx.globalCompositeOperation = 'source-over';

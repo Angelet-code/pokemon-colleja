@@ -108,11 +108,11 @@ Test: **los 511 movimientos** resuelven a una plantilla, ninguna lanza error y e
 
 - ✅ Se ve quién actúa primero y qué movimiento usa en cada acción, en los dos modos (rótulo del movimiento, orden de beats; test de la línea de tiempo con turnos reales).
 - ✅ Los 511 movimientos animan con una plantilla coherente con su tipo y su forma (test), y los de la lista de firmas tienen la suya (92 firmas).
-- ⏳ Revisión del usuario en la galería (paso 3): vídeo del «Recorrido» enviado; los cambios que pida se hacen antes de integrar.
+- ✅ Revisión del usuario (paso 3): le gustaron y pidió más variedad. Se añadieron golpes elementales, absorber desde el rival, carga de los épicos y gestos del cuerpo en los de estado (recorrido «Variaciones» de la galería).
 - ✅ Presupuesto de tiempo cumplido a ×1 (≤ 700 ms por acción; turnos de 1,5–3 s); ×2 y «No» funcionan; saltar es inmediato.
 - ✅ La animación no cambia lo que manda el servidor ni lo que se ve al final del turno (tests de la cola del store).
 - ✅ Sin dependencias nuevas en `apps/web`. El rótulo y las etiquetas usan tokens, con contraste AA en los dos temas.
-- ✅ `npm run check` (435 tests) y `npm run e2e` (8) en verde.
+- ✅ `npm run check` (437 tests) y `npm run e2e` (8) en verde.
 - ✅ Docs: CHANGELOG, AGENTS, PLAN, README, guía de la web y ADR-0020.
 
 ## Fuera de alcance
