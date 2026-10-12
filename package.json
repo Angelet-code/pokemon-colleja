@@ -35,6 +35,7 @@
     "ladder:leads": "tsx tools/ladder/src/leads-cli.ts",
     "ladder:leads:eval": "tsx tools/ladder/src/leads-eval-cli.ts",
     "ladder:sets:eval": "tsx tools/ladder/src/sets-eval-cli.ts",
+    "ladder:bring:eval": "tsx tools/ladder/src/bring-eval-cli.ts",
     "meta:update": "tsx tools/metagame/src/update-cli.ts",
     "data:build": "tsx tools/data-pipeline/src/build.ts",
     "data:sprites": "tsx tools/data-pipeline/src/sprites.ts",
