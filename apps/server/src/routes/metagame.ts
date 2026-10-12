@@ -45,7 +45,7 @@ export function registerMetagameRoutes(
     const snapshot = metagame.active();
     const older = metagame.store.ids().filter((id) => id !== snapshot?.id);
     if (!snapshot) return { snapshot: null, teams: [], older, update: metagame.update };
-    const { teams: _teams, ...info } = snapshot;
+    const { teams: _teams, sets: _sets, ...info } = snapshot;
     return {
       snapshot: info,
       teams: metagame.teamSummaries(snapshot),

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { type BenchConfig, type BenchOpponent, type BenchSummary, runBench } from '../src/index';
+import {
+  type BenchConfig,
+  type BenchOpponent,
+  type BenchSummary,
+  jobPriors,
+  runBench,
+} from '../src/index';
 import { randomOpponents, TEAM_A, TEAM_B } from './helpers';
 
 const base: BenchConfig = {
@@ -125,5 +131,18 @@ describe('team bench', () => {
     expect(summary.status).toBe('cancelled');
     expect(summary.stopReason).toBe('cancelled');
     expect(summary.battles.played).toBeLessThan(100);
+  });
+});
+
+describe('sets that are played (fase 22)', () => {
+  it('sends each battle only the priors of the species in it', () => {
+    const [first, second] = TEAM_A.members;
+    if (!first || !second) throw new Error('Equipo vacío');
+    const prior = { set: first, weight: 1 };
+    const priors = { [first.species]: [prior], zzzz: [prior] };
+    expect(jobPriors(priors, [first, second])).toEqual({
+      setPriors: { [first.species]: [prior] },
+    });
+    expect(jobPriors(undefined, [first])).toEqual({});
   });
 });

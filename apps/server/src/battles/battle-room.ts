@@ -35,6 +35,8 @@ export interface BattleRoomInfo {
   botLevel: BotLevelValue;
   /** How the rival was chosen (kept in saved replays). */
   opponentKind: z.infer<typeof ReplayOpponentKindSchema>;
+  /** Metagame snapshot whose sets the bot assumes for the player (fase 22), if any. */
+  metagameSets?: string;
 }
 
 export class BattleRoom {

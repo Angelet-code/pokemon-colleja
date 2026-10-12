@@ -199,6 +199,8 @@ export const BenchSetupSchema = z.object({
   metagame: z
     .object({ snapshotId: MetagameSnapshotIdSchema, month: z.string(), cutoff: z.number() })
     .optional(),
+  /** Snapshot whose sets the bots assumed for their rivals (fase 22), if any. */
+  metagameSets: MetagameSnapshotIdSchema.optional(),
   modes: z.array(GameModeSchema),
   levels: BenchLevelsSchema,
   budget: BenchBudgetSchema,

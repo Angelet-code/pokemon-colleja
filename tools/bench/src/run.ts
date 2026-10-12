@@ -21,7 +21,7 @@ import {
 } from '@colleja/bench';
 import { type BotLevel, isBotLevel } from '@colleja/bot';
 import type { GameMode } from '@colleja/data';
-import { loadOpponents, loadTeam } from './load';
+import { loadMetagameSets, loadOpponents, loadTeam } from './load';
 
 const USAGE = `Uso: npm run bench -- --team <equipo> [opciones]
 
@@ -206,6 +206,11 @@ async function main(): Promise<number> {
     budget,
     seed: values.seed,
   };
+  const metagameSets = loadMetagameSets();
+  if (metagameSets) {
+    config.setPriors = metagameSets.sets;
+    console.log(`Los bots suponen los sets del meta ${metagameSets.id}.`);
+  }
   const threads = values.threads === undefined ? defaultThreads() : Number(values.threads);
 
   if (values.screen) {

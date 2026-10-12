@@ -60,10 +60,20 @@ export class BattleManager {
       throw error;
     }
 
+    const metagame = this.storage.metagame.active();
+    const setPriors = metagame?.sets?.[mode];
     const room = new BattleRoom(
-      { id: randomUUID(), seed, botLevel, opponentKind: message.opponent.kind },
+      {
+        id: randomUUID(),
+        seed,
+        botLevel,
+        opponentKind: message.opponent.kind,
+        ...(metagame && setPriors ? { metagameSets: metagame.id } : {}),
+      },
       session,
-      createBot(botLevel, { seed: `${seed}:bot` }),
+      // The sets that are played (fase 22): the bot assumes them for the player first. Without
+      // a snapshot (or one built before), the standard sets.
+      createBot(botLevel, { seed: `${seed}:bot`, ...(setPriors ? { setPriors } : {}) }),
       this.storage.replays,
     );
     this.rooms.set(room.id, room);

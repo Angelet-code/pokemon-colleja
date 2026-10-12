@@ -3,7 +3,7 @@
  * saved rivals, bot against bot, with early stopping, adaptive allocation and A/B comparison
  * in pairs. See docs/guias/banco.md and ADR-0013.
  */
-export { battleSeed, planStrata, type RunBenchOptions, runBench } from './bench';
+export { battleSeed, jobPriors, planStrata, type RunBenchOptions, runBench } from './bench';
 export {
   bestHit,
   type DamageCell,

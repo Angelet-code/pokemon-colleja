@@ -1,5 +1,5 @@
 /** What a bench receives and what it reports. See docs/guias/banco.md. */
-import type { BotLevel } from '@colleja/bot';
+import type { BotLevel, SetPriors } from '@colleja/bot';
 import type { PokemonSet, SideId } from '@colleja/core';
 import type { GameMode } from '@colleja/data';
 import type { Estimate, StopReason } from './stats';
@@ -51,6 +51,11 @@ export interface BenchConfig {
   seed: string;
   /** Default: team preview, closed team sheets (like a normal battle). */
   options?: { teamPreview?: boolean; openTeamSheets?: boolean };
+  /**
+   * The sets that are played, by mode (fase 22): both bots assume them for their rival first,
+   * as in a battle of the web. Default: the standard sets.
+   */
+  setPriors?: Partial<Record<GameMode, SetPriors>>;
 }
 
 /** A rival and mode (a stratum of the statistics). */
@@ -80,6 +85,8 @@ export interface BattleJob {
   opponent: PokemonSet[];
   levels: { team: BotLevel; opponent: BotLevel };
   options: { teamPreview: boolean; openTeamSheets: boolean };
+  /** The sets that are played of the species of both teams (`BenchConfig.setPriors`). */
+  setPriors?: SetPriors;
 }
 
 /** Result of a battle, from the measured team's point of view. */

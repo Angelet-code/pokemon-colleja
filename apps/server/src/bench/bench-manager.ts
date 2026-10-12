@@ -93,6 +93,9 @@ export class BenchManager {
     }
     const versus = request.versus ? await this.versusTeam(request.versus) : undefined;
     const { opponents, metagame } = await this.opponents(request);
+    // The sets that are played (fase 22): both bots assume them, as in a battle of the web.
+    const active = this.storage.metagame.active();
+    const setPriors = active?.sets;
 
     const config: BenchConfig = {
       team,
@@ -102,6 +105,7 @@ export class BenchManager {
       levels: request.levels,
       budget: request.budget,
       seed: request.seed ?? randomBytes(4).toString('hex'),
+      ...(setPriors ? { setPriors } : {}),
     };
     const snapshot = (version: BenchTeam, saved: boolean) => ({
       ...(saved ? { teamId: version.id } : {}),
@@ -117,6 +121,7 @@ export class BenchManager {
         ...(weight !== undefined ? { weight } : {}),
       })),
       ...(metagame ? { metagame } : {}),
+      ...(active && setPriors ? { metagameSets: active.id } : {}),
       modes: config.modes,
       levels: config.levels,
       budget: config.budget,

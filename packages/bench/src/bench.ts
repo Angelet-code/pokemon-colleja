@@ -4,7 +4,9 @@
  * bot against bot, until the numbers are precise enough. The scheduler decides which battle
  * comes next; the runner (worker threads) plays them; the summary turns them into the table.
  */
-import type { GameMode } from '@colleja/data';
+import type { SetPriors } from '@colleja/bot';
+import type { PokemonSet } from '@colleja/core';
+import { type GameMode, getSpecies } from '@colleja/data';
 import { teamProblems } from '@colleja/engine';
 import { type BattleRunner, defaultThreads, InlineRunner, WorkerPool } from './pool';
 import { BenchScheduler, type ScheduledJob } from './scheduler';
@@ -165,6 +167,7 @@ export async function runBench(
         teamPreview: config.options?.teamPreview ?? true,
         openTeamSheets: config.options?.openTeamSheets ?? false,
       },
+      ...jobPriors(config.setPriors?.[mode], [...team.members, ...opponent.members]),
     };
   };
 
@@ -248,4 +251,22 @@ function maxUsefulThreads(config: BenchConfig): number {
     0,
   );
   return Math.max(1, strata * perStratum * versions);
+}
+
+/** Only the priors of the species in the battle: each job travels to a thread. */
+export function jobPriors(
+  priors: SetPriors | undefined,
+  members: readonly PokemonSet[],
+): { setPriors?: SetPriors } {
+  if (!priors) return {};
+  const species = [...new Set(members.map((member) => baseSpeciesOf(member.species)))].sort();
+  const kept = Object.fromEntries(
+    species.flatMap((id) => (priors[id] ? [[id, priors[id]]] : [])),
+  ) as SetPriors;
+  return { setPriors: kept };
+}
+
+function baseSpeciesOf(species: string): string {
+  const data = getSpecies(species);
+  return data?.changesFrom ?? data?.id ?? species;
 }

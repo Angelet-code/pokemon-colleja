@@ -75,6 +75,48 @@ function withSnapshot(): string {
   return dir;
 }
 
+describe('the bot assumes the sets that are played (fase 22)', () => {
+  let app: FastifyInstance;
+  afterEach(async () => {
+    await app.close();
+  });
+
+  it('with the active snapshot, and none without one', async () => {
+    const [first] = members('equipo-b');
+    if (!first) throw new Error('Equipo vacío');
+    const dir = tempMetagameDir();
+    new FileMetagameStore(dir).save({
+      ...snapshot(),
+      sets: { singles: { [first.species]: [{ set: first, weight: 1 }] } },
+    });
+    for (const [metagameDir, expected] of [
+      [dir, '2026-09-1760'],
+      [tempMetagameDir(), undefined],
+    ] as const) {
+      app = await testServer({ metagameDir });
+      await app.ready();
+      const client = await TestClient.connect(app);
+      client.send(startMessage('singles'));
+      const started = await client.until('battle:started');
+      expect(app.battles.get(started.battleId)?.info.metagameSets).toBe(expected);
+      client.close();
+      await app.close();
+    }
+  });
+
+  it('never sends the sets to the web', async () => {
+    const dir = tempMetagameDir();
+    const [first] = members('equipo-b');
+    new FileMetagameStore(dir).save({
+      ...snapshot(),
+      sets: { singles: first ? { [first.species]: [{ set: first, weight: 1 }] } : {} },
+    });
+    app = await testServer({ metagameDir: dir });
+    const body = (await app.inject({ method: 'GET', url: '/api/metagame' })).json();
+    expect(body.snapshot).not.toHaveProperty('sets');
+  });
+});
+
 describe('/api/metagame', () => {
   let app: FastifyInstance;
   afterEach(async () => {
@@ -200,6 +242,8 @@ describe('/api/metagame', () => {
     const player = new SocketPlayer(client, 'metagame');
     const started = await client.until('battle:started');
     expect(started.opponentTeam).toEqual(members('equipo-a'));
+    // The snapshot has no sets: the bot assumes the standard ones.
+    expect(app.battles.get(started.battleId)?.info.metagameSets).toBeUndefined();
     await player.handle(started);
     const end = await player.playToEnd();
     expect(end.status.ended).toBe(true);
