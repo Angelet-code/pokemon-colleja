@@ -11,10 +11,13 @@ export type Theme = 'dark' | 'light';
 /** Battle animations: `fast` plays them at double speed, `off` shows every turn at once. */
 export type AnimationSpeed = 'normal' | 'fast' | 'off';
 
-/** Speed factor of each setting (`off` has none). */
+/**
+ * Speed factor of each setting (`off` has none) over the durations written in the templates.
+ * `normal` plays them at half speed (the user found them too fast); `fast` at the written speed.
+ */
 export const ANIMATION_FACTOR: Record<Exclude<AnimationSpeed, 'off'>, number> = {
-  normal: 1,
-  fast: 2,
+  normal: 0.5,
+  fast: 1,
 };
 
 interface SettingsState {

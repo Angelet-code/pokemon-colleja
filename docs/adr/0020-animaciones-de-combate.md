@@ -47,6 +47,7 @@ Hay tres caminos:
   - Estados sobre el rival con movimiento (empujar, corazones, mirada, confusión, intercambio, sueño).
   - Golpes múltiples con su número real.
   - 60 fps también en Estallido, Rayo Solar, Doble Equipo y Semilladora.
+- **Duración doble** (2026-10-12, el usuario las veía muy rápidas): ×1 reproduce las plantillas a la mitad de su velocidad escrita (`ANIMATION_FACTOR.normal = 0.5`) y ×2 es la duración original. Las plantillas no cambian; el presupuesto de 700 ms se cuenta en tiempo escrito.
 
 ## Alternativas descartadas
 

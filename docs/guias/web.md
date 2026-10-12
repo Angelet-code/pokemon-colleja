@@ -97,10 +97,11 @@ Reglas:
 
 - **Solo se retrasa lo recibido**: el store aplica las líneas al `Narrator` cuando el beat hace `commit` y la petición al acabar la actualización. Snapshot (deshacer, rebobinar, reconectar), salir y cambiar el idioma vacían la cola.
 - Velocidad: preferencia `animations` de `stores/settings.ts` (`normal`, `fast`, `off`; `off` por defecto con «reducir movimiento» del sistema). Con la pestaña oculta no se anima.
-- Presupuesto a ×1: ≤ 700 ms por acción y ≈ 1 s los épicos (`epic` en el catálogo: potencia ≥ 120, carga o recarga, o la lista `EPIC`), que cargan antes (`bigCharge`); un turno de individuales ≈ 1,5 s y de dobles ≈ 2,5–3 s. La barra de PS baja en el impacto (`--fx-hp-ms`).
+- Las duraciones se escriben en las plantillas a la velocidad de ×2; ×1 las reproduce a la mitad (`ANIMATION_FACTOR`: 0,5 y 1).
+- Presupuesto escrito: ≤ 700 ms por acción y ≈ 1 s los épicos (`epic` en el catálogo: potencia ≥ 120, carga o recarga, o la lista `EPIC`), que cargan antes (`bigCharge`). A ×1 se ve el doble: ≤ 1,4 s por acción, un turno de individuales ≈ 3–5 s y de dobles ≈ 5–6 s. La barra de PS baja en el impacto (`--fx-hp-ms`).
 - Los que absorben (`drain` en los datos) siempre devuelven la energía al usuario, aunque no cure (con los PS al máximo no hay línea `-heal`).
 - En tema claro las luces se pintan encima (`source-over`) en lugar de sumarse, para que se vean sobre el suelo claro.
-- Para una firma nueva: añádela en `SIGNATURES` (o un estilo en su plantilla), revísala en `/animaciones` en los dos temas y en dobles, y mira que no pase de 700 ms.
+- Para una firma nueva: añádela en `SIGNATURES` (o un estilo en su plantilla), revísala en `/animaciones` en los dos temas y en dobles, y mira que no pase de 700 ms escritos.
 
 ## Añadir una pantalla
 

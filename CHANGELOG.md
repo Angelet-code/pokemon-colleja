@@ -15,6 +15,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ### Cambiado
 
+- Las **animaciones de combate duran el doble** a ×1 (el usuario las veía muy rápidas): `normal` va a la mitad de la velocidad escrita en las plantillas y ×2 es la duración de antes. Un turno de individuales ≈ 3–5 s y de dobles ≈ 5–6 s; saltar sigue siendo inmediato.
 - Los equipos aleatorios (`teamgen`) pueden llevar **hasta dos megapiedras** (antes una). El formato no limita las megapiedras (solo prohíbe repetir objeto); solo se megaevoluciona una vez por combate. Decisión de producto del 2026-10-09.
 - Los nombres de equipos y rivales admiten como mucho 48 caracteres (antes 60).
 

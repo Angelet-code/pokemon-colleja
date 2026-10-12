@@ -50,7 +50,7 @@ export class Stage {
     this.resize();
   }
 
-  /** 1 = normal, 2 = fast. */
+  /** Factor over the written durations (`ANIMATION_FACTOR`): 0.5 = normal, 1 = fast. */
   set speed(factor: number) {
     this.speedFactor = factor;
     this.fx.speed = factor;
