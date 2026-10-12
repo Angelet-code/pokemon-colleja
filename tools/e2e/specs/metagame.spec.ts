@@ -35,7 +35,9 @@ test('lists the metagame and copies a team to «Mis rivales»', async ({ page })
   );
 
   await page.goto('/rivales');
-  await page.getByRole('radio', { name: 'Meta' }).check({ force: true });
+  // Switching section mounts the other one (with its own selector): click, then follow the URL.
+  await page.getByRole('radio', { name: 'Meta' }).click({ force: true });
+  await expect(page).toHaveURL(/seccion=meta/);
   const list = page.getByRole('list', { name: 'Meta de individuales' });
   await expect(list.getByText('Meta E2E')).toBeVisible();
   await expect(list.getByText('100,0 %')).toBeVisible();
