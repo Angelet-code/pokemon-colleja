@@ -2,6 +2,7 @@
   "$comment": "Plantillas de mensajes de combate en español que faltan en Showdown (null upstream). Misma sintaxis que data/text de Showdown: {POKEMON}, {ITEM:definite:capitalize}… Ver README.md.",
   "default": {
     "default": {
+      "opposingPokemon": "{NICKNAME} rival",
       "startBattle": "¡Empieza el combate entre {TRAINER1} y {TRAINER2}!",
       "winBattle": "¡**{TRAINER}** ha ganado el combate!",
       "tieBattle": "¡Empate entre {TRAINER1} y {TRAINER2}!",

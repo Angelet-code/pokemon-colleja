@@ -1,6 +1,7 @@
 /**
- * Battle screen, Showdown style: scoreboard on top, then the field with the controls below it
- * and the log on the right (a tab on small screens).
+ * Battle screen: scoreboard on top, then the controls with the field to their right (below it
+ * on narrow screens) and the log on the right (a tab on small screens). In doubles, the target
+ * of a move is clicked on the field (`TargetAim`).
  */
 import { isActionable, requestKind, type TeamPreviewRequest } from '@colleja/core';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
@@ -18,6 +19,7 @@ import { CalcButton } from './components/CalcButton';
 import { EndPanel } from './components/EndPanel';
 import { Field } from './components/Field';
 import { TeamPreview } from './components/TeamPreview';
+import type { TargetAim } from './target-aim';
 
 export function BattlePage() {
   const navigate = useNavigate();
@@ -25,6 +27,7 @@ export function BattlePage() {
   const meta = useMeta();
   const namesLocale = useSettings((state) => state.namesLocale);
   const [tab, setTab] = useState<'field' | 'log' | 'bot'>('field');
+  const [aim, setAim] = useState<TargetAim | null>(null);
 
   // Reloading the page: reattach to the battle this tab was playing.
   useEffect(() => {
@@ -128,6 +131,7 @@ export function BattlePage() {
           onChoose={battle.choose}
           disabled={busy}
           estimate={estimate}
+          onAim={setAim}
         />
       );
   } else {
@@ -137,6 +141,19 @@ export function BattlePage() {
       </div>
     );
   }
+
+  const stage = (
+    // biome-ignore lint/a11y/noStaticElementInteractions: a click on the field is a shortcut of the "Saltar animación" button.
+    // biome-ignore lint/a11y/useKeyWithClickEvents: Space does the same from the keyboard.
+    <div className="min-w-0" onClick={playing ? battle.skipAnimations : undefined}>
+      <Field
+        view={screen.view}
+        own={ownSide?.pokemon ?? []}
+        onAnimator={attachAnimator}
+        aim={playing ? null : aim}
+      />
+    </div>
+  );
 
   // On wide screens the side panel has its own tabs; on narrow ones the top tabs do it all.
   const sideTabs = (
@@ -207,14 +224,14 @@ export function BattlePage() {
         <div
           className={`scroll-thin flex min-h-0 flex-col gap-3 lg:overflow-y-auto lg:pr-1 [&>*]:shrink-0 ${tab === 'field' ? '' : 'hidden lg:flex'}`}
         >
-          {!previewing && (
-            // biome-ignore lint/a11y/noStaticElementInteractions: a click on the field is a shortcut of the "Saltar animación" button.
-            // biome-ignore lint/a11y/useKeyWithClickEvents: Space does the same from the keyboard.
-            <div onClick={playing ? battle.skipAnimations : undefined}>
-              <Field view={screen.view} own={ownSide?.pokemon ?? []} onAnimator={attachAnimator} />
+          {previewing ? (
+            controls
+          ) : (
+            <div className="grid gap-3 xl:grid-cols-[minmax(320px,380px)_minmax(0,1fr)] xl:items-start">
+              {stage}
+              <div className="min-w-0 xl:order-first">{controls}</div>
             </div>
           )}
-          {controls}
         </div>
         <div className={`min-h-[60vh] lg:min-h-0 ${tab === 'field' ? 'hidden lg:block' : ''}`}>
           {tab === 'bot' ? (

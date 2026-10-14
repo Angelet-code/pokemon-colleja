@@ -4,13 +4,11 @@
  * every attacker move is computed by the server with the same code the bot uses.
  */
 import type { PokemonSet } from '@colleja/core';
-import { getMove, type Locale } from '@colleja/data';
+import type { Locale } from '@colleja/data';
 import { abilityName, boostShort, moveName, statusName, weatherName } from '@colleja/narration';
-import type { CalcResponse } from '@colleja/protocol';
 import { CALC_SCREENS, CALC_STATUSES, CALC_TERRAINS, CALC_WEATHERS } from '@colleja/protocol';
 import { useEffect, useMemo, useState } from 'react';
-import { IconSwap, IconUpload } from '../../components/icons';
-import { TypeBadge } from '../../components/TypeBadge';
+import { IconHistory, IconSwap, IconUpload } from '../../components/icons';
 import {
   Button,
   Checkbox,
@@ -25,6 +23,9 @@ import { api } from '../../lib/api';
 import { useSettings } from '../../stores/settings';
 import { SetEditor } from '../teams/components/SetEditor';
 import { newDraft, replaceMembers } from '../teams/team-draft';
+import { CalcHistoryDialog } from './CalcHistoryDialog';
+import { ResultsTable } from './CalcResults';
+import { type MoveResult, useCalcHistory } from './calc-history';
 import {
   type CalcBoostStat,
   type CalcSide,
@@ -52,21 +53,22 @@ const TERRAIN_LABEL: Record<(typeof CALC_TERRAINS)[number], string> = {
   mistyterrain: 'Campo de Niebla',
 };
 
-interface MoveResult {
-  move: string;
-  result: CalcResponse | null;
-  error?: string;
-}
-
 export function CalculatorPage() {
   const calc = useCalc();
   const locale = useSettings((state) => state.namesLocale);
   const [loading, setLoading] = useState<'attacker' | 'defender' | null>(null);
   const results = useMoveResults(calc.attacker, calc.defender, calc.field);
+  const historyCount = useCalcHistory((state) => state.entries.length);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   return (
     <div className="mx-auto flex max-w-[1440px] flex-col gap-5">
       <PageHeader title="Calculadora">
+        <Button onClick={() => setHistoryOpen(true)}>
+          <IconHistory size={14} />
+          Historial
+          {historyCount > 0 && <span className="text-faint tabular-nums">{historyCount}</span>}
+        </Button>
         <Button onClick={calc.swap}>
           <IconSwap size={14} />
           Intercambiar
@@ -114,6 +116,16 @@ export function CalculatorPage() {
         ))}
       </div>
 
+      {historyOpen && (
+        <CalcHistoryDialog
+          onClose={() => setHistoryOpen(false)}
+          onOpen={(setup) => {
+            calc.load(structuredClone(setup));
+            setHistoryOpen(false);
+          }}
+        />
+      )}
+
       {loading && (
         <LoadSetDialog
           title={loading === 'attacker' ? 'Cargar atacante' : 'Cargar defensor'}
@@ -128,7 +140,10 @@ export function CalculatorPage() {
   );
 }
 
-/** Recomputes the damage of every attacker move when anything changes (debounced). */
+/**
+ * Recomputes the damage of every attacker move when anything changes (debounced), and records
+ * each computed comparison in the history.
+ */
 function useMoveResults(
   attacker: CalcSide,
   defender: CalcSide,
@@ -152,7 +167,9 @@ function useMoveResults(
           }
         }),
       ).then((next) => {
-        if (!cancelled) setResults(next);
+        if (cancelled) return;
+        setResults(next);
+        useCalcHistory.getState().record({ attacker, defender, field }, next);
       });
     }, 150);
     return () => {
@@ -161,113 +178,6 @@ function useMoveResults(
     };
   }, [attacker, defender, field]);
   return results;
-}
-
-function ResultsTable({
-  results,
-  defender,
-  locale,
-}: {
-  results: MoveResult[];
-  defender: CalcSide;
-  locale: Locale;
-}) {
-  if (results.length === 0) {
-    return <p className="p-4 text-sm text-muted">El atacante no tiene movimientos.</p>;
-  }
-  return (
-    <div className="scroll-thin overflow-x-auto">
-      <table className="w-full min-w-[720px] text-sm">
-        <caption className="sr-only">Daño de cada movimiento</caption>
-        <thead className="text-left">
-          <tr className="eyebrow text-faint">
-            <th className="px-4 py-3 font-semibold">Movimiento</th>
-            <th className="px-3 py-3 text-right font-semibold">PS</th>
-            <th className="px-3 py-3 font-semibold">% de PS</th>
-            <th className="px-4 py-3 font-semibold">Resultado</th>
-          </tr>
-        </thead>
-        <tbody>
-          {results.map(({ move, result, error }) => {
-            const data = getMove(move);
-            return (
-              <tr key={move} className="border-t border-line">
-                <th scope="row" className="px-4 py-3 text-left font-normal">
-                  <span className="flex items-center gap-3">
-                    {data && <TypeBadge type={data.type} locale={locale} />}
-                    <span className="font-semibold">{moveName(move, locale)}</span>
-                  </span>
-                </th>
-                {result && result.max > 0 ? (
-                  <>
-                    <td className="px-3 py-3 text-right font-display text-base font-semibold whitespace-nowrap tabular-nums">
-                      {result.min}–{result.max}
-                    </td>
-                    <td className="w-[38%] px-3 py-3">
-                      <div className="flex items-center gap-3">
-                        <span className="w-24 shrink-0 font-display text-base font-semibold whitespace-nowrap tabular-nums">
-                          {result.minPercent}–{result.maxPercent} %
-                        </span>
-                        <DamageBar result={result} hpPercent={defender.hpPercent} />
-                      </div>
-                    </td>
-                    <td
-                      className={`px-4 py-3 ${result.koChance >= 1 ? 'font-semibold text-bad' : result.koChance > 0 ? 'text-warn' : 'text-muted'}`}
-                    >
-                      {koText(result, defender)}
-                    </td>
-                  </>
-                ) : (
-                  <td colSpan={3} className="px-3 py-3 text-faint">
-                    {error ??
-                      (data?.category === 'Status' ? 'Movimiento de estado' : 'No le afecta')}
-                  </td>
-                )}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-/** The damage range over the defender's HP bar; the tick is its current HP. */
-function DamageBar({ result, hpPercent }: { result: CalcResponse; hpPercent: number }) {
-  const from = Math.min(100, result.minPercent);
-  const to = Math.min(100, result.maxPercent);
-  const color =
-    result.koChance >= 1 ? 'var(--bad)' : result.koChance > 0 ? 'var(--warn)' : 'var(--accent)';
-  return (
-    <span className="relative h-2 min-w-20 flex-1 bg-surface-3" aria-hidden="true">
-      <span
-        className="absolute inset-y-0 left-0 opacity-35"
-        style={{ width: `${from}%`, background: color }}
-      />
-      <span
-        className="absolute inset-y-0"
-        style={{ left: `${from}%`, width: `${Math.max(1, to - from)}%`, background: color }}
-      />
-      <span
-        className="absolute -inset-y-1 w-0.5 bg-text"
-        style={{ left: `calc(${Math.min(100, hpPercent)}% - 1px)` }}
-      />
-    </span>
-  );
-}
-
-/** "KO seguro", "62,5 % de KO" or "2–3 golpes para KO" (from the defender's current HP). */
-export function koText(result: CalcResponse, defender: Pick<CalcSide, 'hpPercent'>): string {
-  const hit = result.accuracy < 1 ? ` (si acierta: ${Math.round(result.accuracy * 100)} %)` : '';
-  const from = defender.hpPercent < 100 ? ` desde el ${defender.hpPercent} % de PS` : '';
-  if (result.koChance >= 1) return `KO seguro${from}${hit}`;
-  if (result.koChance > 0) {
-    const chance = (result.koChance * 100).toLocaleString('es-ES', { maximumFractionDigits: 1 });
-    return `${chance} % de KO de un golpe${from}${hit}`;
-  }
-  if (!result.hitsToKo) return '—';
-  const { best, worst } = result.hitsToKo;
-  return `${best === worst ? best : `${best}–${worst}`} golpes para KO${from}`;
 }
 
 /** Field effects with a switch: the room moves, and in doubles the allies' support. */

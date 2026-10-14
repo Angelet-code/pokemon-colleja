@@ -4,12 +4,13 @@
  * Everything comes from `BattleView` (p1 perspective) and, for your own Pokémon, the last
  * request (exact HP, item, ability). With `onAnimator`, it also carries the animation layers
  * (ADR-0020): each active Pokémon is marked with `data-slot` and its sprite with `data-fx`.
+ * With `aim`, the Pokémon a move can hit light up and a click on them picks the target.
  */
 import type { BattleView, RequestPokemon, SideId, ViewPokemon } from '@colleja/core';
 import { currentTypes, detailsShiny, parseCondition } from '@colleja/core';
 import { type Locale, toId } from '@colleja/data';
 import { abilityName, itemName, speciesName, statusName, statusShort } from '@colleja/narration';
-import { type CSSProperties, useRef } from 'react';
+import { type CSSProperties, useRef, useState } from 'react';
 import { ItemIcon } from '../../../components/ItemIcon';
 import { PokemonIcon, PokemonSprite } from '../../../components/PokemonIcon';
 import { TypeBadge } from '../../../components/TypeBadge';
@@ -18,32 +19,41 @@ import { useSettings } from '../../../stores/settings';
 import { FxLayer } from '../animation/FxLayer';
 import type { Animator } from '../animation/player';
 import { boostLabels, fieldEffects, hpPercent, hpTone, sideConditions } from '../format';
+import type { AimTarget, TargetAim } from '../target-aim';
 
 const SIDE_COLOR: Record<SideId, string> = { p1: 'var(--accent)', p2: 'var(--rival)' };
 
 /**
  * `own`: your team as in the last request (exact HP, item, ability), in battle order.
  * `onAnimator`: receives the animator of this stage (and `null` when it goes away).
+ * `aim`: a move waiting for its target (doubles).
  */
 export function Field({
   view,
   own,
   onAnimator,
+  aim = null,
 }: {
   view: BattleView;
   own: RequestPokemon[];
   onAnimator?: (animator: Animator | null) => void;
+  aim?: TargetAim | null;
 }) {
   const locale = useSettings((state) => state.namesLocale);
   const effects = fieldEffects(view.field, locale);
   const doubles = Math.max(view.sides.p1.active.length, view.sides.p2.active.length) > 1;
   const stageRef = useRef<HTMLElement>(null);
+  // A spread attack lights up all its targets together when one is hovered.
+  const [spreadHover, setSpreadHover] = useState(false);
+  const aiming: Aiming | null = aim
+    ? { aim, spreadHover: aim.spread && spreadHover, setSpreadHover }
+    : null;
 
   return (
     <section
       ref={stageRef}
       aria-label="Campo de batalla"
-      className="stage relative isolate overflow-hidden rounded-md border border-line"
+      className="stage @container relative isolate overflow-hidden rounded-md border border-line"
     >
       {onAnimator && <FxLayer rootRef={stageRef} onAnimator={onAnimator} />}
       <div data-fx="content" className="relative z-[1] flex min-h-[420px] flex-col justify-between">
@@ -52,7 +62,14 @@ export function Field({
           <TeamStrip side="p2" view={view} own={own} locale={locale} />
         </div>
 
-        <ActiveRow side="p2" view={view} own={own} locale={locale} doubles={doubles} />
+        <ActiveRow
+          side="p2"
+          view={view}
+          own={own}
+          locale={locale}
+          doubles={doubles}
+          aiming={aiming}
+        />
 
         <div className="flex min-h-6 justify-center px-3">
           {effects.length > 0 && (
@@ -68,7 +85,14 @@ export function Field({
           )}
         </div>
 
-        <ActiveRow side="p1" view={view} own={own} locale={locale} doubles={doubles} />
+        <ActiveRow
+          side="p1"
+          view={view}
+          own={own}
+          locale={locale}
+          doubles={doubles}
+          aiming={aiming}
+        />
 
         <div className="flex items-end justify-between gap-2 p-3">
           <TeamStrip side="p1" view={view} own={own} locale={locale} />
@@ -79,18 +103,27 @@ export function Field({
   );
 }
 
+interface Aiming {
+  aim: TargetAim;
+  /** A spread attack is hovered: all its targets light up. */
+  spreadHover: boolean;
+  setSpreadHover: (hover: boolean) => void;
+}
+
 function ActiveRow({
   side,
   view,
   own,
   locale,
   doubles,
+  aiming,
 }: {
   side: SideId;
   view: BattleView;
   own: RequestPokemon[];
   locale: Locale;
   doubles: boolean;
+  aiming: Aiming | null;
 }) {
   const active = view.sides[side].active;
   const rival = side === 'p2';
@@ -99,8 +132,15 @@ function ActiveRow({
     <div
       className={`flex flex-wrap gap-x-6 gap-y-2 px-4 ${rival ? 'justify-end' : 'justify-start'}`}
     >
-      {active.map((pokemon, index) =>
-        pokemon ? (
+      {active.map((pokemon, index) => {
+        if (!pokemon) {
+          // biome-ignore lint/suspicious/noArrayIndexKey: one entry per field position.
+          return <div key={index} className={doubles ? 'w-64' : 'w-72'} />;
+        }
+        const location = rival ? index + 1 : -(index + 1);
+        const hotkey = aiming ? aiming.aim.targets.findIndex((t) => t.location === location) : -1;
+        const target = aiming?.aim.targets[hotkey];
+        return (
           <Combatant
             // biome-ignore lint/suspicious/noArrayIndexKey: one entry per field position.
             key={index}
@@ -110,12 +150,10 @@ function ActiveRow({
             side={side}
             locale={locale}
             compact={doubles}
+            target={aiming && target ? { aiming, target, hotkey: hotkey + 1 } : null}
           />
-        ) : (
-          // biome-ignore lint/suspicious/noArrayIndexKey: one entry per field position.
-          <div key={index} className={doubles ? 'w-64' : 'w-72'} />
-        ),
-      )}
+        );
+      })}
     </div>
   );
 }
@@ -127,6 +165,7 @@ function Combatant({
   side,
   locale,
   compact,
+  target,
 }: {
   /** Field position (`p2a`), for the animations. */
   slot: string;
@@ -135,15 +174,33 @@ function Combatant({
   side: SideId;
   locale: Locale;
   compact: boolean;
+  /** The aimed move can hit this Pokémon. */
+  target: { aiming: Aiming; target: AimTarget; hotkey: number } | null;
 }) {
   const rival = side === 'p2';
   const sprite = compact ? 104 : 136;
+  // In doubles, a narrow stage (next to the controls) puts the HP card above or below the sprite.
+  const direction = compact
+    ? rival
+      ? 'flex-col @4xl:flex-row'
+      : 'flex-col-reverse @4xl:flex-row-reverse'
+    : rival
+      ? 'flex-row'
+      : 'flex-row-reverse';
   return (
     <div
       data-slot={slot}
-      className={`flex items-center gap-1 ${rival ? 'flex-row' : 'flex-row-reverse'}`}
+      className={`relative flex items-center gap-1 ${direction}`}
       style={{ '--side': SIDE_COLOR[side] } as CSSProperties}
     >
+      {target && (
+        <AimButton
+          {...target}
+          name={speciesName(pokemon.species, locale)}
+          rival={rival}
+          compact={compact}
+        />
+      )}
       <HpCard pokemon={pokemon} details={details} rival={rival} locale={locale} />
       <div
         className="relative flex shrink-0 items-end justify-center"
@@ -163,6 +220,60 @@ function Combatant({
         </div>
       </div>
     </div>
+  );
+}
+
+/** Clickable layer over a Pokémon the aimed move can hit, with its hotkey and expected effect. */
+function AimButton({
+  aiming,
+  target,
+  hotkey,
+  name,
+  rival,
+  compact,
+}: {
+  aiming: Aiming;
+  target: AimTarget;
+  hotkey: number;
+  name: string;
+  rival: boolean;
+  compact: boolean;
+}) {
+  const { aim, spreadHover, setSpreadHover } = aiming;
+  const tone = rival
+    ? 'border-rival/70 bg-rival/5 hover:bg-rival/15 data-[lit=true]:bg-rival/15'
+    : 'border-accent-fg/70 bg-accent/5 hover:bg-accent/15 data-[lit=true]:bg-accent/15';
+  return (
+    <button
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation();
+        setSpreadHover(false);
+        aim.onPick(target.location);
+      }}
+      onMouseEnter={() => aim.spread && setSpreadHover(true)}
+      onMouseLeave={() => aim.spread && setSpreadHover(false)}
+      data-lit={spreadHover}
+      aria-label={aim.spread ? `Lanzar ${aim.moveName} (${name})` : `Apuntar a ${name}`}
+      className={`aim-target absolute -inset-1.5 z-10 flex cursor-crosshair flex-col justify-between rounded-md border-2 p-1.5 transition-colors ${tone} ${
+        rival ? 'items-start' : 'items-end'
+      }`}
+    >
+      {!aim.spread && (
+        <kbd className="inline-flex size-[18px] items-center justify-center rounded-xs bg-surface/90 font-display text-xs text-text">
+          {hotkey}
+        </kbd>
+      )}
+      {target.detail && (
+        <span
+          className={`mt-auto rounded-xs bg-surface/95 px-1.5 py-0.5 backdrop-blur-sm ${
+            compact ? '' : 'text-sm'
+          }`}
+        >
+          {target.detail}
+        </span>
+      )}
+    </button>
   );
 }
 

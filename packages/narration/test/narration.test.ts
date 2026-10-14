@@ -64,9 +64,9 @@ describe('Narrator (Spanish, Showdown templates)', () => {
   });
 
   it('marks rival Pokémon and contracts "de el" into "del"', () => {
-    expect(lines).toContain('[Intimidación del Gyarados rival]');
+    expect(lines).toContain('[Intimidación de Gyarados rival]');
     expect(lines).toContain('¡El Ataque de Charizard ha disminuido!');
-    expect(lines).toContain('¡El Gyarados rival ha usado Cascada!');
+    expect(lines).toContain('¡Gyarados rival ha usado Cascada!');
   });
 
   it('uses item and stat grammar (gender, articles) and names the Mega forme', () => {
@@ -83,13 +83,13 @@ describe('Narrator (Spanish, Showdown templates)', () => {
     expect(lines).toContain('¡Un golpe crítico!');
     // Damage as a percentage of the maximum HP, for both sides.
     expect(lines).toContain('(¡Charizard ha perdido el 74 % de sus PS!)');
-    expect(lines).toContain('(¡El Gyarados rival ha perdido el 45 % de sus PS!)');
+    expect(lines).toContain('(¡Gyarados rival ha perdido el 45 % de sus PS!)');
     expect(lines).toContain('¡Charizard ha perdido unos pocos PS!');
-    expect(lines).toContain('(¡El Gyarados rival se ha comido su Baya Zidra!)');
+    expect(lines).toContain('(¡Gyarados rival se ha comido su Baya Zidra!)');
     expect(lines).toContain(
       '¡Reflejo ha aumentado la resistencia del lado rival ante los ataques físicos!',
     );
-    expect(lines).toContain('¡El Gyarados rival sufre parálisis! Quizá no se pueda mover.');
+    expect(lines).toContain('¡Gyarados rival sufre parálisis! Quizá no se pueda mover.');
   });
 
   it('classifies entries into turns, actions and consequences', () => {
@@ -101,6 +101,21 @@ describe('Narrator (Spanish, Showdown templates)', () => {
     });
     expect(entries.find((entry) => entry.text === '¡Es supereficaz!')?.kind).toBe('minor');
     expect(entries.at(-1)).toMatchObject({ kind: 'end', text: '¡**Bot** ha ganado el combate!' });
+  });
+
+  it('marks whose Pokémon each message is about', () => {
+    expect(entries.find((entry) => entry.text.includes('Cascada'))?.side).toBe('rival');
+    expect(entries.find((entry) => entry.text.includes('Charizard ha perdido el'))?.side).toBe(
+      'own',
+    );
+    expect(entries.find((entry) => entry.text.includes('Cascada'))?.actor).toBe('Gyarados');
+    expect(entries.find((entry) => entry.text.includes('Cascada'))?.move).toEqual({
+      name: 'Cascada',
+      type: 'Water',
+    });
+    expect(entries.find((entry) => entry.kind === 'turn')?.side).toBeUndefined();
+    const fromP2 = narrate(LOG, 'p2');
+    expect(fromP2.find((entry) => entry.text.includes('Cascada'))?.side).toBe('own');
   });
 
   it('keeps the battle state up to date', () => {
@@ -134,8 +149,8 @@ describe('Narrator (English)', () => {
 describe('names language', () => {
   it('can show English names inside Spanish messages', () => {
     const lines = texts(new Narrator('p1', { namesLocale: 'en' }).pushAll(LOG));
-    expect(lines).toContain('¡El Gyarados rival ha usado Waterfall!');
-    expect(lines).toContain('[Intimidate del Gyarados rival]');
+    expect(lines).toContain('¡Gyarados rival ha usado Waterfall!');
+    expect(lines).toContain('[Intimidate de Gyarados rival]');
   });
 });
 

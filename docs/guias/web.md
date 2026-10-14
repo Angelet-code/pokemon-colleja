@@ -23,8 +23,9 @@ La web recuerda el último equipo y las opciones (`localStorage`).
 
 En el combate:
 
-- Los menús salen de la petición del motor: movimientos con tipo y PP, Megaevolucionar, objetivos en dobles (posición por posición, con "← Atrás") y cambios.
-- **Teclado**: 1–4 movimientos (u objetivos al apuntar), 5–9 cambios, Esc atrás.
+- Los menús salen de la petición del motor: movimientos con tipo y PP, Megaevolucionar y cambios, posición por posición (con "← Atrás"). En pantallas anchas van **a la izquierda del campo**; en las estrechas, debajo.
+- **Objetivos en dobles, sobre el campo**: al elegir un movimiento con objetivo, los Pokémon a los que puede apuntar se iluminan (con su tecla y el daño estimado) y se elige con un clic. Un **ataque en área** ilumina a todos los que golpea y se lanza con un clic en cualquiera de ellos (o volviendo a pulsar el movimiento). `ActionPanel` publica el movimiento que apunta (`TargetAim`, `features/battle/target-aim.ts`) y `Field` lo dibuja.
+- **Teclado**: 1–4 movimientos (u objetivos al apuntar; 1 o Intro lanzan un ataque en área), 5–9 cambios, Esc atrás.
 - Marcador superior: los dos jugadores, el turno y **Deshacer**, **Rebobinar** a un turno, **Rendirse**, **Replay** y salir. El replay solo se puede descargar o **guardar** ("Guardar replay", para verlo en [Replays](herramientas.md)) al terminar, porque contiene la información oculta del rival.
 - En la columna derecha, pestañas **Registro** y **Pensamiento del bot**: lo que valoró el bot en la vista previa y en cada turno ya jugado ([herramientas](herramientas.md)). En móvil, las pestañas de arriba son Combate, Registro y Bot.
 - **Animaciones**: cada turno se ve acción a acción, en el orden en que pasa (ver [Animaciones de combate](#animaciones-de-combate)). El control ×1 · ×2 · No del marcador cambia la velocidad; un clic en el campo, Espacio o «Saltar animación» enseñan el turno entero al instante.

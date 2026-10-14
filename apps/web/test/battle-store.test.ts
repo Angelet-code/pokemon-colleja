@@ -54,7 +54,7 @@ describe('battle store', () => {
     state = useBattle.getState();
     expect(state.request).toBeNull();
     expect(state.ownSide).toBe(DOUBLES_MOVE.side);
-    expect(state.screen.entries.at(-1)?.text).toBe('¡El Gengar rival ha usado **Protección**!');
+    expect(state.screen.entries.at(-1)?.text).toBe('¡Gengar rival ha usado **Protección**!');
   });
 
   it('starts over from a snapshot', () => {
@@ -80,7 +80,7 @@ describe('battle store', () => {
     receive(update([...LINES, PROTECT], null));
     setNamesLocale('en');
     expect(useBattle.getState().screen.entries.at(-1)?.text).toBe(
-      '¡El Gengar rival ha usado **Protect**!',
+      '¡Gengar rival ha usado **Protect**!',
     );
     setNamesLocale('es');
   });

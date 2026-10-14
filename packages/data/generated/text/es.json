@@ -2,7 +2,7 @@
   "default": {
     "default": {
       "pokemon": "{NICKNAME}",
-      "opposingPokemon": "el {NICKNAME} rival",
+      "opposingPokemon": "{NICKNAME} rival",
       "fullName": "{NICKNAME} ({SPECIES})",
       "team": "tu lado",
       "opposingTeam": "el lado rival",

@@ -54,6 +54,7 @@ export const IconCopy = icon(
 export const IconTrash = icon(<path d="M4 7h16M10 7V4h4v3M6 7l1 13h10l1-13M10 11v6M14 11v6" />);
 export const IconEdit = icon(<path d="M4 20h4L19 9l-4-4L4 16v4zM13 7l4 4" />);
 export const IconSwap = icon(<path d="M4 8h14M14 4l4 4-4 4M20 16H6M10 12l-4 4 4 4" />);
+export const IconHistory = icon(<path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4M12 8v4l3 2" />);
 export const IconSave = icon(<path d="M5 4h11l3 3v13H5zM8 4v5h7V4M8 20v-6h8v6" />);
 export const IconPlay = icon(<path d="M7 4.5v15L19.5 12 7 4.5z" />);
 export const IconDice = icon(

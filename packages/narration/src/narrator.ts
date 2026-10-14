@@ -3,7 +3,7 @@
  * with Showdown's templates in Spanish (English where a translation is missing) or English.
  */
 import { BattleView, type SideId } from '@colleja/core';
-import type { Locale } from '@colleja/data';
+import { getMove, type Locale, type TypeName, toId } from '@colleja/data';
 import { BattleTextParser } from './text-parser';
 
 export type NarrationKind =
@@ -24,6 +24,19 @@ export interface NarrationEntry {
   turn: number;
   /** First message of a new block (the classic log leaves a blank line before it). */
   spaced: boolean;
+  /** Whose Pokémon the message is about, from the narrator's perspective (none for field-wide messages). */
+  side?: NarrationSide;
+  /** Name of that Pokémon as the text shows it (to highlight it), whenever `side` is set. */
+  actor?: string;
+  /** The move used, in a move message: its name as the text shows it (in bold) and its type. */
+  move?: NarrationMove;
+}
+
+export type NarrationSide = 'own' | 'rival';
+
+export interface NarrationMove {
+  name: string;
+  type: TypeName;
 }
 
 export interface NarratorOptions {
@@ -97,6 +110,9 @@ export class Narrator {
     }
     const text = this.parser.parseArgs(args, kwArgs);
     const turn = this.parser.turn;
+    const side = this.sideOf(args[0] ?? '', args[1] ?? '');
+    const subject = side && { side, actor: this.parser.pokemonName(args[1] ?? '') };
+    const move = args[0] === 'move' ? this.moveOf(args[2] ?? '') : undefined;
     const entries: NarrationEntry[] = [];
     let spaced = false;
     for (const raw of text.split('\n')) {
@@ -104,10 +120,24 @@ export class Narrator {
         spaced = true;
         continue;
       }
-      entries.push({ ...classify(args[0], raw), turn, spaced });
+      entries.push({ ...classify(args[0], raw), turn, spaced, ...subject, ...(move && { move }) });
       spaced = false;
     }
     return entries;
+  }
+
+  /** Side of the Pokémon a line is about: its first argument when it names one (`p2a: Gyarados`). */
+  private sideOf(command: string, subject: string): NarrationSide | undefined {
+    if (command === 'turn' || command === 'win' || command === 'tie') return undefined;
+    const match = /^(p[12])[a-d]?:/.exec(subject);
+    if (!match) return undefined;
+    return match[1] === this.perspective ? 'own' : 'rival';
+  }
+
+  /** Name and type of a used move (the base type: the protocol does not say if it changed). */
+  private moveOf(move: string): NarrationMove | undefined {
+    const data = getMove(toId(move));
+    return data && { name: this.parser.moveName(move), type: data.type };
   }
 
   /** Percentage of the maximum HP lost, from the state before the line is applied. */

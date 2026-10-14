@@ -1,7 +1,9 @@
 /**
  * Menus for a move or switch request, built from `getSlotOptions` (through `ChoiceDraft`):
- * one active slot at a time, moves with type/PP, Mega, targets in doubles and switches.
- * Keyboard: 1–4 moves, 5–9 switches, Esc goes back.
+ * one active slot at a time, moves with type/PP, Mega and switches. In doubles, the target of
+ * a move (and the confirmation of a spread attack) is clicked on the field: the panel publishes
+ * it with `onAim` and `Field` draws it. Keyboard: 1–4 moves, 5–9 switches, Esc goes back; while
+ * aiming, 1–3 pick the target (1 or Enter launch a spread attack).
  */
 import {
   type BattleView,
@@ -19,7 +21,7 @@ import {
 import { getDescription, getMove, type Locale, toId } from '@colleja/data';
 import { moveName, speciesName } from '@colleja/narration';
 import type { CalcResponse } from '@colleja/protocol';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { IconArrowLeft, IconSparkle } from '../../../components/icons';
 import { PokemonIcon } from '../../../components/PokemonIcon';
 import { TypeBadge } from '../../../components/TypeBadge';
@@ -27,7 +29,7 @@ import { Button, Notice, Panel } from '../../../components/ui';
 import { CATEGORY_LABEL, moveDetails } from '../../../lib/move-labels';
 import { typeColor } from '../../../lib/type-colors';
 import { useSettings } from '../../../stores/settings';
-import { koText } from '../../calc/CalculatorPage';
+import { koText } from '../../calc/CalcResults';
 import {
   availableSwitches,
   back,
@@ -50,6 +52,7 @@ import {
   rivalTargets,
   useMoveEstimates,
 } from '../move-estimates';
+import { spreadLocations, type TargetAim } from '../target-aim';
 import { HpBar } from './Field';
 
 export function ActionPanel({
@@ -58,6 +61,7 @@ export function ActionPanel({
   onChoose,
   disabled,
   estimate,
+  onAim,
 }: {
   request: MoveRequest | SwitchRequest;
   view: BattleView;
@@ -65,6 +69,8 @@ export function ActionPanel({
   disabled: boolean;
   /** Without it the moves show no damage estimate (no calculator requests). */
   estimate?: EstimateContext;
+  /** Receives the move waiting for a target on the field (`null` when there is none). */
+  onAim: (aim: TargetAim | null) => void;
 }) {
   const locale = useSettings((state) => state.namesLocale);
   const [draft, setDraft] = useState<ChoiceDraft>(() => createDraft(request));
@@ -128,17 +134,57 @@ export function ActionPanel({
 
   function pickMove(option: MoveOption) {
     if (option.disabled || disabled) return;
-    if (option.targets.length > 0) {
+    if (aiming?.slot === option.slot) {
+      // Clicking the aimed move again launches a spread attack, or stops aiming.
+      if (option.targets.length === 0) pickTarget(0);
+      else setAiming(null);
+      return;
+    }
+    if (option.targets.length > 0 || (doubles && isAttack(option))) {
       setAiming(option);
       return;
     }
     commit(choose(draft, moveAction(option.slot, mega ? { mega: true } : {})));
   }
 
+  /** `target` is ignored by spread attacks, which take none. */
   function pickTarget(target: number) {
     if (!aiming) return;
-    commit(choose(draft, moveAction(aiming.slot, { target, ...(mega ? { mega: true } : {}) })));
+    const options = {
+      ...(aiming.targets.length > 0 ? { target } : {}),
+      ...(mega ? { mega: true } : {}),
+    };
+    commit(choose(draft, moveAction(aiming.slot, options)));
   }
+
+  // The field calls the latest `pickTarget` (it closes over the draft and the Mega toggle).
+  const pickRef = useRef(pickTarget);
+  pickRef.current = pickTarget;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `slot` comes from `draft`; `effectsOf` reads `view` and `estimates`.
+  useEffect(() => {
+    if (!aiming || !slot) {
+      onAim(null);
+      return;
+    }
+    const spread = aiming.targets.length === 0;
+    const locations = spread
+      ? spreadLocations(aiming.move.target, slot.index, draft.slots.length)
+      : aiming.targets;
+    const effects = effectsOf(aiming);
+    onAim({
+      moveName: moveName(aiming.move.id, locale),
+      spread,
+      targets: locations.map((location) => {
+        const effect = effects.find((candidate) => candidate.target.position === location);
+        return {
+          location,
+          detail: effect && <EffectLine effect={effect} locale={locale} showTarget={false} />,
+        };
+      }),
+      onPick: (location) => pickRef.current(location),
+    });
+  }, [aiming, draft, view, estimates, locale, onAim]);
+  useEffect(() => () => onAim(null), [onAim]);
 
   function pickSwitch(position: number) {
     if (disabled) return;
@@ -160,10 +206,16 @@ export function ActionPanel({
         goBack();
         return;
       }
+      const spread = aiming !== null && aiming.targets.length === 0;
+      if (spread && event.key === 'Enter') {
+        event.preventDefault();
+        pickTarget(0);
+        return;
+      }
       const number = Number(event.key);
       if (!Number.isInteger(number) || number < 1) return;
       if (aiming) {
-        const target = aiming.targets[number - 1];
+        const target = spread ? (number === 1 ? 0 : undefined) : aiming.targets[number - 1];
         if (target !== undefined) pickTarget(target);
       } else if (number <= 4 && slot) {
         const option = slot.moves[number - 1];
@@ -189,11 +241,13 @@ export function ActionPanel({
   const title = forced
     ? `¿Qué Pokémon sale en lugar de ${name}?`
     : aiming
-      ? `¿A quién apunta ${moveName(aiming.move.id, locale)}?`
+      ? aiming.targets.length > 0
+        ? `¿A quién apunta ${moveName(aiming.move.id, locale)}?`
+        : `¿Lanzar ${moveName(aiming.move.id, locale)}?`
       : `¿Qué hará ${name}?`;
 
   return (
-    <section className="rise rounded-md border border-line bg-surface shadow-panel">
+    <section className="rise @container rounded-md border border-line bg-surface shadow-panel">
       <header className="flex min-h-12 items-center justify-between gap-3 border-b border-line px-4 py-2">
         <h2 className="display flex items-baseline gap-3 text-xl">
           {title}
@@ -213,52 +267,42 @@ export function ActionPanel({
       <div className="flex flex-col gap-3.5 p-4">
         {problems.length > 0 && <Notice items={problems} />}
 
-        {aiming ? (
-          <TargetPicker
-            targets={aiming.targets}
-            view={view}
-            slotIndex={slot.index}
-            onPick={pickTarget}
-            locale={locale}
-            effects={effectsOf(aiming)}
-          />
-        ) : (
-          slot.moves.length > 0 && (
-            <>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {slot.moves.map((option, index) => (
-                  <MoveButton
-                    key={option.slot}
-                    option={option}
-                    hotkey={index + 1}
-                    locale={locale}
-                    disabled={disabled}
-                    effects={effectsOf(option)}
-                    showTarget={doubles}
-                    onClick={() => pickMove(option)}
-                  />
-                ))}
-              </div>
-              {slot.canMega && !megaTaken(draft) && (
-                <label
-                  className={`flex h-9 w-fit cursor-pointer items-center gap-2 rounded-sm px-3.5 font-display text-sm font-semibold tracking-[0.06em] uppercase transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent-fg ${
-                    mega
-                      ? 'bg-accent text-on-accent'
-                      : 'border border-accent-fg/50 text-accent-fg hover:bg-accent/10'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={mega}
-                    onChange={(event) => setMega(event.target.checked)}
-                    className="sr-only"
-                  />
-                  <IconSparkle size={15} />
-                  Megaevolucionar
-                </label>
-              )}
-            </>
-          )
+        {slot.moves.length > 0 && (
+          <>
+            <div className="grid gap-2 @lg:grid-cols-2">
+              {slot.moves.map((option, index) => (
+                <MoveButton
+                  key={option.slot}
+                  option={option}
+                  hotkey={index + 1}
+                  locale={locale}
+                  disabled={disabled}
+                  effects={effectsOf(option)}
+                  showTarget={doubles}
+                  aimed={aiming?.slot === option.slot}
+                  onClick={() => pickMove(option)}
+                />
+              ))}
+            </div>
+            {slot.canMega && !megaTaken(draft) && (
+              <label
+                className={`flex h-9 w-fit cursor-pointer items-center gap-2 rounded-sm px-3.5 font-display text-sm font-semibold tracking-[0.06em] uppercase transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent-fg ${
+                  mega
+                    ? 'bg-accent text-on-accent'
+                    : 'border border-accent-fg/50 text-accent-fg hover:bg-accent/10'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={mega}
+                  onChange={(event) => setMega(event.target.checked)}
+                  className="sr-only"
+                />
+                <IconSparkle size={15} />
+                Megaevolucionar
+              </label>
+            )}
+          </>
         )}
 
         {!aiming && (
@@ -283,6 +327,7 @@ function MoveButton({
   disabled,
   effects,
   showTarget,
+  aimed,
   onClick,
 }: {
   option: MoveOption;
@@ -292,6 +337,8 @@ function MoveButton({
   effects: MoveEffect[];
   /** In doubles each line says which rival it is about. */
   showTarget: boolean;
+  /** Waiting for its target on the field. */
+  aimed: boolean;
   onClick: () => void;
 }) {
   const data = getMove(option.move.id);
@@ -314,8 +361,11 @@ function MoveButton({
       type="button"
       onClick={onClick}
       disabled={option.disabled || disabled}
+      aria-pressed={aimed}
       title={[moveDetails(option.move.id), description].filter(Boolean).join('\n')}
-      className="flex flex-col gap-2 rounded-sm border border-line px-3.5 py-3 text-left transition-[border-color,transform] duration-150 hover:-translate-y-px hover:border-text/70 disabled:pointer-events-none disabled:opacity-35"
+      className={`flex min-w-0 flex-col gap-2 rounded-sm border px-3.5 py-3 text-left transition-[border-color,transform] duration-150 hover:-translate-y-px disabled:pointer-events-none disabled:opacity-35 ${
+        aimed ? 'border-accent-fg outline-2 outline-accent-fg' : 'border-line hover:border-text/70'
+      }`}
       style={{
         background: `linear-gradient(100deg, color-mix(in oklab, ${color} 26%, var(--surface-2)), var(--surface-2) 72%)`,
       }}
@@ -349,64 +399,6 @@ function MoveButton({
         </span>
       )}
     </button>
-  );
-}
-
-function TargetPicker({
-  targets,
-  view,
-  slotIndex,
-  onPick,
-  locale,
-  effects,
-}: {
-  targets: number[];
-  view: BattleView;
-  slotIndex: number;
-  onPick: (target: number) => void;
-  locale: Locale;
-  effects: MoveEffect[];
-}) {
-  return (
-    <div className="grid gap-2 sm:grid-cols-2">
-      {targets.map((target, i) => {
-        const rival = target > 0;
-        const pokemon = (rival ? view.sides.p2 : view.sides.p1).active[Math.abs(target) - 1];
-        const self = !rival && Math.abs(target) - 1 === slotIndex;
-        const label = pokemon ? speciesName(pokemon.species, locale) : 'Posición vacía';
-        const effect = rival
-          ? effects.find((candidate) => candidate.target.position === target)
-          : undefined;
-        return (
-          <button
-            key={target}
-            type="button"
-            onClick={() => onPick(target)}
-            className={`flex items-center gap-3 rounded-sm border bg-surface-2 px-3 py-2 text-left transition-colors hover:bg-surface-3 ${
-              rival
-                ? 'border-rival/40 hover:border-rival'
-                : 'border-accent-fg/40 hover:border-accent-fg'
-            }`}
-          >
-            {pokemon && (
-              <PokemonIcon
-                species={pokemon.species}
-                shiny={detailsShiny(pokemon.details)}
-                size={40}
-              />
-            )}
-            <span className="min-w-0 flex-1">
-              <span className="block truncate font-semibold">{label}</span>
-              <span className={`eyebrow ${rival ? 'text-rival' : 'text-accent-fg'}`}>
-                {rival ? 'Rival' : self ? 'Él mismo' : 'Aliado'} · {Math.abs(target)}
-              </span>
-              {effect && <EffectLine effect={effect} locale={locale} showTarget={false} />}
-            </span>
-            <Kbd>{i + 1}</Kbd>
-          </button>
-        );
-      })}
-    </div>
   );
 }
 
@@ -544,6 +536,12 @@ function Kbd({ children }: { children: number }) {
       {children}
     </kbd>
   );
+}
+
+/** Damaging move: in doubles even a spread one waits for a click on the field. */
+function isAttack(option: MoveOption): boolean {
+  const category = getMove(option.move.id)?.category;
+  return category !== undefined && category !== 'Status';
 }
 
 /** Shortcuts must not fire while typing (text fields, selects); checkboxes are fine. */

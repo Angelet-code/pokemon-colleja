@@ -14,6 +14,7 @@ Con `npm run dev`:
 - **Crítico** (en la cabecera de «Daño»): todos los golpes son críticos.
 - **Resultado**: el daño de los cuatro movimientos del atacante a la vez (rango en PS y en %, y "KO seguro", "62,5 % de KO de un golpe" o "2–3 golpes para KO", desde los PS actuales). "Intercambiar" cambia los papeles.
 - Recuerda lo último que calculaste (en el navegador).
+- **Historial** (botón en la cabecera): cada comparación que calculas se guarda sola en el navegador (`features/calc/calc-history.ts`, hasta 50). Una entrada por pareja atacante → defensor: retocar un set actualiza la suya y la sube arriba. La ventana es una lista de «X vs Y» con un buscador (cada palabra escrita es el principio del nombre de uno de los dos, sin acentos ni mayúsculas): un clic la abre en la calculadora; la papelera la borra.
 
 ### «Calcular» desde un combate
 
@@ -111,4 +112,5 @@ Los specs están en `tools/e2e/specs/`. Usa nombres accesibles (`getByRole`, `ge
 | `apps/web/test/calc-from-battle.test.ts` | «Calcular»: lo visible del combate, el set supuesto con equipo cerrado y el real con equipo abierto, objeto perdido, campo y parejas en dobles |
 | `apps/server/test/tools.test.ts` | `/api/calc` = `estimateDamage` (Mega, cambios, Reflejo, dobles, crítico, Refuerzo y Compiescolta solo en dobles, Zona Extraña), movimientos de estado y errores; explicaciones solo de turnos resueltos y sin movimientos no vistos (y completas con equipo abierto, rehechas al rebobinar); guardar, listar, leer, renombrar y borrar replays |
 | `apps/web/test/tools.test.tsx` | Textos de la explicación, panel, store (explicaciones y replay guardado), `EndPanel`, pasos del visor y censura "como jugador", textos de KO, peticiones de la calculadora (crítico y efectos de dobles) y renombrar en la lista |
+| `apps/web/test/calc-history.test.ts` | Historial de la calculadora: una entrada por pareja, límite, borrar y buscar |
 | `tools/e2e/specs/*.spec.ts` | Flujos completos en el navegador (ver arriba) |

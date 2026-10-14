@@ -368,6 +368,20 @@ input[type="number"].bare {
   animation: rise 220ms var(--ease-out) both;
 }
 
+/* A Pokémon the aimed move can hit (battle field): its frame breathes until picked. */
+@keyframes aim-pulse {
+  50% {
+    border-color: transparent;
+  }
+}
+.aim-target {
+  animation: aim-pulse 1.4s ease-in-out infinite;
+}
+.aim-target:hover,
+.aim-target[data-lit="true"] {
+  animation: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
