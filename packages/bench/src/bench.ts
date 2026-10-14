@@ -1,9 +1,12 @@
 /**
- * The team bench: your team (and optionally a second version of it) against your rivals,
+ * The team bench: your team (and optionally a second version of it) against your rivals or
+ * the metagame (each rival with its weight),
  * bot against bot, until the numbers are precise enough. The scheduler decides which battle
  * comes next; the runner (worker threads) plays them; the summary turns them into the table.
  */
-import type { GameMode } from '@colleja/data';
+import type { SetPriors } from '@colleja/bot';
+import type { PokemonSet } from '@colleja/core';
+import { type GameMode, getSpecies } from '@colleja/data';
 import { teamProblems } from '@colleja/engine';
 import { type BattleRunner, defaultThreads, InlineRunner, WorkerPool } from './pool';
 import { BenchScheduler, type ScheduledJob } from './scheduler';
@@ -57,6 +60,7 @@ export function planStrata(config: BenchConfig): Plan {
       blocked = true;
     }
     config.opponents.forEach((opponent, index) => {
+      if (opponent.modes && !opponent.modes.includes(mode)) return;
       const problems = teamProblems(opponent.members, mode);
       if (problems.length > 0) {
         plan.skipped.push({
@@ -69,7 +73,12 @@ export function planStrata(config: BenchConfig): Plan {
         return;
       }
       if (blocked) return;
-      plan.strata.push({ opponentId: opponent.id, opponentName: opponent.name, mode });
+      plan.strata.push({
+        opponentId: opponent.id,
+        opponentName: opponent.name,
+        mode,
+        weight: opponent.weight ?? 1,
+      });
       plan.opponents.push(index);
     });
   }
@@ -88,7 +97,12 @@ export async function runBench(
   const start = performance.now();
   const plan = planStrata(config);
   const paired = config.versus !== undefined;
-  const scheduler = new BenchScheduler(plan.strata.length, config.budget, paired);
+  const scheduler = new BenchScheduler(
+    plan.strata.length,
+    config.budget,
+    paired,
+    plan.strata.map((stratum) => stratum.weight),
+  );
   const threads = options.threads ?? defaultThreads();
   const ownRunner = options.runner === undefined;
   const runner =
@@ -153,6 +167,7 @@ export async function runBench(
         teamPreview: config.options?.teamPreview ?? true,
         openTeamSheets: config.options?.openTeamSheets ?? false,
       },
+      ...jobPriors(config.setPriors?.[mode], [...team.members, ...opponent.members]),
     };
   };
 
@@ -230,5 +245,28 @@ function maxUsefulThreads(config: BenchConfig): number {
   const perStratum =
     config.budget.kind === 'fixed' ? config.budget.battles : config.budget.minPerStratum;
   const versions = config.versus ? 2 : 1;
-  return Math.max(1, config.opponents.length * config.modes.length * perStratum * versions);
+  const strata = config.opponents.reduce(
+    (total, opponent) =>
+      total + config.modes.filter((mode) => opponent.modes?.includes(mode) ?? true).length,
+    0,
+  );
+  return Math.max(1, strata * perStratum * versions);
+}
+
+/** Only the priors of the species in the battle: each job travels to a thread. */
+export function jobPriors(
+  priors: SetPriors | undefined,
+  members: readonly PokemonSet[],
+): { setPriors?: SetPriors } {
+  if (!priors) return {};
+  const species = [...new Set(members.map((member) => baseSpeciesOf(member.species)))].sort();
+  const kept = Object.fromEntries(
+    species.flatMap((id) => (priors[id] ? [[id, priors[id]]] : [])),
+  ) as SetPriors;
+  return { setPriors: kept };
+}
+
+function baseSpeciesOf(species: string): string {
+  const data = getSpecies(species);
+  return data?.changesFrom ?? data?.id ?? species;
 }

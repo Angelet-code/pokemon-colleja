@@ -49,10 +49,15 @@ export class BenchScheduler {
   private looks = 0;
   private stop: SchedulerStop | null = null;
 
+  /**
+   * `weights`: relative weight of each stratum in the total (1 when missing); the stopping
+   * rule and the allocation use the weighted total.
+   */
   constructor(
     readonly strata: number,
     private readonly budget: BenchBudget,
     paired: boolean,
+    private readonly weights: readonly number[] = [],
   ) {
     this.variants = paired ? [0, 1] : [0];
     this.roundSize = Math.max(strata, MIN_ROUND);
@@ -110,8 +115,11 @@ export class BenchScheduler {
 
   /** Points and variances of the planned units of every stratum (for the stopping rule). */
   private totals() {
-    return stratumTotals(this.planned, this.paired, (stratum, index, variant) =>
-      this.result(stratum, index, variant),
+    return stratumTotals(
+      this.planned,
+      this.paired,
+      (stratum, index, variant) => this.result(stratum, index, variant),
+      this.weights,
     );
   }
 
@@ -152,7 +160,7 @@ export class BenchScheduler {
         : this.paired
           ? pairSpreadSquared(pairTally(tally.differences))
           : winRateSpread(tally.team) ** 2;
-      return { spreadSquared, battles };
+      return { spreadSquared, battles, weight: this.weights[stratum] ?? 1 };
     });
     return neymanAllocation(strata, count);
   }

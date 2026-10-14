@@ -10,6 +10,7 @@
   "dependencies": {
     "@colleja/bot": "*",
     "@colleja/core": "*",
-    "@colleja/data": "*"
+    "@colleja/data": "*",
+    "@colleja/metagame": "*"
   }
 }

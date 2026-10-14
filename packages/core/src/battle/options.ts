@@ -81,12 +81,17 @@ export function activeCount(request: MoveRequest | SwitchRequest): number {
   return 'forceSwitch' in request ? request.forceSwitch.length : request.active.length;
 }
 
-/** Bench positions (1-based) that could be sent in, ignoring what other slots chose. */
+/**
+ * Positions (1-based) that could be sent in, ignoring what other slots chose: healthy bench
+ * Pokémon, or any fainted one for Revival Blessing (in doubles, also a fainted ally that is
+ * still on the field).
+ */
 function benchSwitches(request: MoveRequest | SwitchRequest, reviving: boolean): number[] {
   const count = activeCount(request);
   return request.side.pokemon.flatMap((pokemon, i) => {
+    if (reviving) return isFainted(pokemon) ? [i + 1] : [];
     const benched = i >= count && !pokemon.active;
-    return benched && isFainted(pokemon) === reviving ? [i + 1] : [];
+    return benched && !isFainted(pokemon) ? [i + 1] : [];
   });
 }
 

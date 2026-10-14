@@ -2,7 +2,8 @@
  * Which set each rival Pokémon probably has (phase 11, level 3): the opponent model's
  * candidates (standard sets that agree with what has been revealed) weighed by how well they
  * explain what the bot has observed — the damage of every hit and who moved first
- * (`observations.ts`) — plus the Item Clause. A uniform prior, like random teams; a set that
+ * (`observations.ts`) — plus the Item Clause. The prior is the model's: the weight of each set
+ * that is played (fase 22) or uniform over the standard sets, like random teams; a set that
  * contradicts an observation keeps a small likelihood (effects the model misses). When no
  * candidate explains everything (a custom set), spread variants of the best one join in.
  */
@@ -104,26 +105,31 @@ export function inferBeliefs(
 
   for (const { species, revealed } of rivals) {
     const taken = takenBy(species);
-    let candidates = model.candidates(revealed);
-    const allowed = candidates.filter((set) => !set.item || !taken.has(set.item));
+    let candidates = model.weightedCandidates(revealed);
+    const allowed = candidates.filter(({ set }) => !set.item || !taken.has(set.item));
     if (allowed.length > 0) candidates = allowed;
     const relevant = observations.filter((observation) => involves(observation, species, foe));
     const pokemon = 'ident' in revealed ? (revealed as ViewPokemon) : undefined;
 
-    let hypotheses = candidates.map((set) => ({
+    const scored = candidates.map(({ set, weight }) => ({
       set,
-      weight: likelihood(set, relevant, foe, own),
+      prior: weight,
+      likelihood: likelihood(set, relevant, foe, own),
+    }));
+    let hypotheses = scored.map(({ set, prior, likelihood }) => ({
+      set,
+      weight: prior * likelihood,
       variant: false,
     }));
-    const best = hypotheses.reduce((top, h) => Math.max(top, h.weight), 0);
+    const best = scored.reduce((top, h) => Math.max(top, h.likelihood), 0);
     if (relevant.length > 0 && best < 1 && model.knownSet(species) === undefined) {
-      const base = hypotheses.find((h) => h.weight === best)?.set ?? candidates[0];
+      const base = scored.find((h) => h.likelihood === best) ?? scored[0];
       if (base) {
         const itemOpen = pokemon?.item === undefined;
         hypotheses = hypotheses.concat(
-          spreadVariants(base, itemOpen ? taken : null).map((set) => ({
+          spreadVariants(base.set, itemOpen ? taken : null).map((set) => ({
             set,
-            weight: VARIANT_PRIOR * likelihood(set, relevant, foe, own),
+            weight: VARIANT_PRIOR * base.prior * likelihood(set, relevant, foe, own),
             variant: true,
           })),
         );

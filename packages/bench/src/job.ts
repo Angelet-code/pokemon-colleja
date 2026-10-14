@@ -8,12 +8,12 @@ export async function playBenchJob(job: BattleJob): Promise<BattleJobResult> {
   const team: BotBattlePlayer = {
     name: 'Equipo',
     team: job.team,
-    agent: createBot(job.levels.team, { seed: `${job.seed}:team` }),
+    agent: createBot(job.levels.team, { seed: `${job.seed}:team`, ...priors(job) }),
   };
   const opponent: BotBattlePlayer = {
     name: 'Rival',
     team: job.opponent,
-    agent: createBot(job.levels.opponent, { seed: `${job.seed}:opponent` }),
+    agent: createBot(job.levels.opponent, { seed: `${job.seed}:opponent`, ...priors(job) }),
   };
   try {
     const battle = await playBotBattle({
@@ -44,6 +44,8 @@ export async function playBenchJob(job: BattleJob): Promise<BattleJobResult> {
     return failedJob(error);
   }
 }
+
+const priors = (job: BattleJob) => (job.setPriors ? { setPriors: job.setPriors } : {});
 
 /** A battle that could not even start or whose thread failed: an error, never a loss. */
 export function failedJob(error: unknown): BattleJobResult {

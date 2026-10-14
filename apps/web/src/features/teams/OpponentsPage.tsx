@@ -1,16 +1,19 @@
 /**
- * Saved opponents (`/rivales`): teams for the bot with their difficulty. A new opponent can be
- * generated at random, copied from one of your teams, imported or built from scratch; the
- * generated and copied ones open in the editor as unsaved drafts (they must be saved to play).
+ * Rivals (`/rivales`), in two sections:
+ * - «Mis rivales»: saved opponents, teams for the bot with their difficulty. A new opponent
+ *   can be generated at random, copied from one of your teams, imported or built from
+ *   scratch; the generated and copied ones open in the editor as unsaved drafts (they must be
+ *   saved to play).
+ * - «Meta» (`/rivales?seccion=meta`): the ladder's metagame, read only (`MetagameSection`).
  */
 import type { GameMode } from '@colleja/data';
 import type { BotLevelValue, OpponentSummary, TeamSummary } from '@colleja/protocol';
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { type ReactNode, useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router';
 import { Dialog } from '../../components/Dialog';
 import { IconCopy, IconDice } from '../../components/icons';
 import { PokemonIcon } from '../../components/PokemonIcon';
-import { Button, Loading, Notice } from '../../components/ui';
+import { Button, Loading, Notice, Segmented } from '../../components/ui';
 import { api } from '../../lib/api';
 import { botLevelName, useMeta } from '../../lib/use-meta';
 import { useSetup } from '../setup/setup-store';
@@ -18,6 +21,7 @@ import { BotLevelSelect } from './components/BotLevelSelect';
 import { ImportSavedDialog } from './components/ImportSavedDialog';
 import { SavedCard } from './components/SavedCard';
 import { messageOf, SavedListLayout, useSavedList } from './components/SavedList';
+import { MetagameSection } from './MetagameSection';
 import type { EditorLocationState } from './TeamEditorPage';
 import {
   copyName,
@@ -29,7 +33,31 @@ import {
 
 const NEW_OPPONENT = '/rivales/nuevo';
 
+type Section = 'mine' | 'metagame';
+
 export function OpponentsPage() {
+  const [params, setParams] = useSearchParams();
+  const section: Section = params.get('seccion') === 'meta' ? 'metagame' : 'mine';
+  const sections = (
+    <Segmented
+      label="Sección de rivales"
+      size="sm"
+      value={section}
+      onChange={(value: Section) => setParams(value === 'metagame' ? { seccion: 'meta' } : {})}
+      options={[
+        { value: 'mine', label: 'Mis rivales' },
+        { value: 'metagame', label: 'Meta' },
+      ]}
+    />
+  );
+  return section === 'metagame' ? (
+    <MetagameSection kicker={sections} />
+  ) : (
+    <SavedOpponents kicker={sections} />
+  );
+}
+
+function SavedOpponents({ kicker }: { kicker: ReactNode }) {
   const navigate = useNavigate();
   const meta = useMeta();
   const list = useSavedList(async () => (await api.listOpponents()).opponents);
@@ -73,6 +101,7 @@ export function OpponentsPage() {
   return (
     <SavedListLayout
       title="Rivales"
+      kicker={kicker}
       newPath={NEW_OPPONENT}
       newLabel="Nuevo rival"
       listLabel="Rivales guardados"

@@ -14,6 +14,8 @@ import {
   CreateTeamRequestSchema,
   ImportOpponentRequestSchema,
   ImportTeamRequestSchema,
+  MetagameSnapshotSchema,
+  metagameSnapshotId,
   PokemonSetSchema,
   parseClientMessage,
   RandomTeamRequestSchema,
@@ -23,8 +25,10 @@ import {
   type ServerMessage,
   ServerMessageSchema,
   StartBattleSchema,
+  StartBenchRequestSchema,
   TeamSchema,
   TurnExplanationSchema,
+  UpdateMetagameRequestSchema,
   UpdateOpponentRequestSchema,
   UpdateTeamRequestSchema,
   ValidateTeamRequestSchema,
@@ -547,5 +551,92 @@ describe('phase 8: calculator, replays and explanations', () => {
       ok: true,
       message: { type: 'battle:save-replay', battleId: 'b1' },
     });
+  });
+});
+
+describe('phase 20: the metagame', () => {
+  const member = PokemonSetSchema.parse({
+    species: 'garchomp',
+    item: 'lifeorb',
+    ability: 'roughskin',
+    nature: 'jolly',
+    statPoints: { hp: 2, atk: 32, def: 0, spa: 0, spd: 0, spe: 32 },
+    moves: ['earthquake', 'dragonclaw', 'rockslide', 'protect'],
+  });
+  const snapshot = {
+    id: '2026-09-1760',
+    month: '2026-09',
+    cutoff: 1760,
+    createdAt: '2026-10-12T00:00:00.000Z',
+    sources: [
+      {
+        mode: 'doubles',
+        format: 'gen9championsvgc2026regmc',
+        battles: 1_631_943,
+        teamsFrom: 'replays',
+        samples: 4000,
+        coverage: 0.68,
+        discarded: 0,
+      },
+    ],
+    teams: [
+      {
+        id: 'doubles-01',
+        name: 'Lluvia · Mega-Swampert + Pelipper',
+        mode: 'doubles',
+        archetype: 'Lluvia',
+        weight: 0.136,
+        members: Array.from({ length: 6 }, () => member),
+      },
+    ],
+  };
+
+  it('round-trips a snapshot and rejects broken ones', () => {
+    expect(MetagameSnapshotSchema.parse(snapshot)).toEqual(snapshot);
+    expect(metagameSnapshotId('2026-09', 1760)).toBe(snapshot.id);
+    const team = snapshot.teams[0];
+    for (const broken of [
+      { ...snapshot, month: '2026-13' },
+      { ...snapshot, id: '../x' },
+      { ...snapshot, teams: [{ ...team, weight: 1.5 }] },
+      { ...snapshot, teams: [{ ...team, members: [member] }] },
+    ]) {
+      expect(MetagameSnapshotSchema.safeParse(broken).success).toBe(false);
+    }
+    expect(UpdateMetagameRequestSchema.parse({ month: '2026-09', cutoff: 1760 })).toEqual({
+      month: '2026-09',
+      cutoff: 1760,
+    });
+    expect(UpdateMetagameRequestSchema.safeParse({ cutoff: 1700 }).success).toBe(false);
+  });
+
+  it('accepts a metagame team in battle:start and a metagame bench', () => {
+    const versusMetagame = {
+      ...start,
+      opponent: { kind: 'metagame', snapshotId: '2026-09-1760', teamId: 'doubles-01' },
+    };
+    expect(parseClientMessage(JSON.stringify(versusMetagame))).toEqual({
+      ok: true,
+      message: versusMetagame,
+    });
+    expect(
+      StartBattleSchema.safeParse({
+        ...start,
+        opponent: { kind: 'metagame', snapshotId: '../x', teamId: 'doubles-01' },
+      }).success,
+    ).toBe(false);
+
+    const bench = {
+      teamId: 'a',
+      modes: ['doubles'],
+      levels: { team: 3, opponent: 3 },
+      budget: { kind: 'fixed', battles: 2 },
+    };
+    const metagameBench = { ...bench, metagame: { snapshotId: '2026-09-1760' } };
+    expect(StartBenchRequestSchema.parse(metagameBench)).toEqual(metagameBench);
+    expect(StartBenchRequestSchema.safeParse(bench).success).toBe(false);
+    expect(
+      StartBenchRequestSchema.safeParse({ ...metagameBench, opponentIds: ['x'] }).success,
+    ).toBe(false);
   });
 });

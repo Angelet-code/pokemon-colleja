@@ -53,6 +53,7 @@ export default defineConfig({
     env: {
       SERVER_PORT: String(PORT),
       STORAGE_DIR: process.env.E2E_STORAGE_DIR,
+      METAGAME_LATEST: 'off',
       LOG_LEVEL: 'warn',
     },
   },

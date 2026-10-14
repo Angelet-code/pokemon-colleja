@@ -43,6 +43,8 @@ export interface StratumTally {
   versus: WinTally;
   /** B − A of every pair where both battles finished. */
   differences: number[];
+  /** Relative weight of the stratum in the totals. */
+  weight: number;
 }
 
 export interface Totals {
@@ -52,11 +54,15 @@ export interface Totals {
   difference: TotalEstimate | null;
 }
 
-/** Tallies of the planned units of every stratum, and the totals weighted per stratum. */
+/**
+ * Tallies of the planned units of every stratum, and the totals weighted per stratum
+ * (`weights[stratum]`, 1 when missing).
+ */
 export function stratumTotals(
   planned: readonly number[],
   paired: boolean,
   lookup: ResultLookup,
+  weights: readonly number[] = [],
 ): Totals {
   const strata = planned.map((count, stratum) => {
     const team: WinTally = { points: 0, finished: 0 };
@@ -78,29 +84,31 @@ export function stratumTotals(
       }
       if (pointsA !== null && pointsB !== null) differences.push(pointsB - pointsA);
     }
-    return { team, versus, differences };
+    return { team, versus, differences, weight: weights[stratum] ?? 1 };
   });
   return totalsOf(strata, paired);
 }
 
 function totalsOf(strata: StratumTally[], paired: boolean): Totals {
-  const rate = (tally: WinTally) =>
+  const rate = (tally: WinTally, weight: number) =>
     tally.finished === 0
       ? []
-      : [{ mean: tally.points / tally.finished, variance: winRateVariance(tally) }];
-  const pairs = strata
-    .map(({ differences }) => pairTally(differences))
-    .filter((tally) => tally.n > 0)
-    .map((tally: PairTally) => ({ mean: tally.sum / tally.n, variance: pairVariance(tally) }));
+      : [{ mean: tally.points / tally.finished, variance: winRateVariance(tally), weight }];
+  const pairs = strata.flatMap(({ differences, weight }) => {
+    const tally: PairTally = pairTally(differences);
+    return tally.n > 0
+      ? [{ mean: tally.sum / tally.n, variance: pairVariance(tally), weight }]
+      : [];
+  });
   return {
     strata,
     team: stratifiedEstimate(
-      strata.flatMap(({ team }) => rate(team)),
+      strata.flatMap(({ team, weight }) => rate(team, weight)),
       [0, 1],
     ),
     versus: paired
       ? stratifiedEstimate(
-          strata.flatMap(({ versus }) => rate(versus)),
+          strata.flatMap(({ versus, weight }) => rate(versus, weight)),
           [0, 1],
         )
       : null,
@@ -165,7 +173,12 @@ export function summarizeStrata(
   total: TotalSummary;
   byMode: Partial<Record<GameMode, TotalSummary>>;
 } {
-  const totals = stratumTotals(planned, paired, lookup);
+  const totals = stratumTotals(
+    planned,
+    paired,
+    lookup,
+    strata.map((stratum) => stratum.weight),
+  );
   const rows = strata.map((stratum, index): StratumSummary => {
     const played = (variant: Variant) =>
       Array.from({ length: planned[index] ?? 0 }, (_, unit) => lookup(index, unit, variant)).filter(

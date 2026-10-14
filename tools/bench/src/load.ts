@@ -1,14 +1,16 @@
 /**
- * Teams and rivals for the bench CLI: saved ones (by id or name, read from `storage/`) or
- * files (a saved JSON, a bare `{ members }` JSON or Showdown export text). Read only: what is
- * saved is written by the server's repositories.
+ * Teams and rivals for the bench CLI: saved ones (by id or name, read from `storage/`), the
+ * metagame (`storage/metagame/`) or files (a saved JSON, a bare `{ members }` JSON or Showdown
+ * export text). Read only: what is saved is written by the server's repositories and
+ * `@colleja/metagame`.
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { BenchOpponent, BenchTeam } from '@colleja/bench';
+import type { BenchConfig, BenchOpponent, BenchTeam } from '@colleja/bench';
 import { parseShowdownTeam } from '@colleja/core';
 import type { GameMode } from '@colleja/data';
+import { FileMetagameStore } from '@colleja/metagame';
 import { PokemonSetSchema, SavedOpponentSchema, TeamSchema } from '@colleja/protocol';
 import { z } from 'zod';
 
@@ -66,10 +68,14 @@ function readTeamFile(path: string): BenchTeam {
 }
 
 /**
- * Saved rivals: `all` (those whose preferred mode is one of `modes`) or a comma-separated list
- * of ids or names.
+ * Rivals: `meta` (every team of the active metagame snapshot in `modes`, each with its share;
+ * `meta:<id>` for an older snapshot), or saved ones: `all` (those whose preferred mode is one
+ * of `modes`) or a comma-separated list of ids or names.
  */
 export function loadOpponents(reference: string, modes: readonly GameMode[]): BenchOpponent[] {
+  if (reference === 'meta' || reference.startsWith('meta:')) {
+    return loadMetagame(reference.slice('meta:'.length) || null, modes);
+  }
   const saved = readSaved('opponents');
   if (reference === 'all') {
     return saved
@@ -84,4 +90,37 @@ export function loadOpponents(reference: string, modes: readonly GameMode[]): Be
     const { mode: _, ...opponent } = found;
     return opponent;
   });
+}
+
+/**
+ * The sets that are played, from the active metagame (fase 22): the bots assume them for their
+ * rivals first, as in a battle of the web. `null` without a snapshot with sets.
+ */
+export function loadMetagameSets(): {
+  id: string;
+  sets: NonNullable<BenchConfig['setPriors']>;
+} | null {
+  const snapshot = new FileMetagameStore(join(STORAGE_DIR, 'metagame')).active();
+  return snapshot?.sets ? { id: snapshot.id, sets: snapshot.sets } : null;
+}
+
+/** The teams of a metagame snapshot (the active one when `id` is `null`) in `modes`. */
+function loadMetagame(id: string | null, modes: readonly GameMode[]): BenchOpponent[] {
+  const store = new FileMetagameStore(join(STORAGE_DIR, 'metagame'));
+  const snapshot = id ? store.get(id) : store.active();
+  if (!snapshot) {
+    throw new Error(
+      id ? `No encuentro el meta "${id}".` : 'Aún no hay meta: lanza antes npm run meta:update.',
+    );
+  }
+  console.log(`Meta ${snapshot.id} (${snapshot.month}, corte ${snapshot.cutoff})`);
+  return snapshot.teams
+    .filter((team) => modes.includes(team.mode))
+    .map(({ id: teamId, name, members, weight, mode }) => ({
+      id: teamId,
+      name,
+      members,
+      weight,
+      modes: [mode],
+    }));
 }

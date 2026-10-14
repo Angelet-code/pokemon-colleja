@@ -21,7 +21,7 @@ import {
   type TeamPreviewRequest,
   teamChoice,
 } from '@colleja/core';
-import { getMove, type MoveId } from '@colleja/data';
+import { getMove, type MoveId, type SpeciesId } from '@colleja/data';
 import { type Combatant, megaEvolved } from '../analysis/combatant';
 import type { DamageEstimate } from '../analysis/damage';
 import {
@@ -34,7 +34,13 @@ import {
   teamPreviewOrder,
 } from '../analysis/evaluation';
 import { FIRST_TURN_MOVES, SELF_KO_MOVES } from '../analysis/move-knowledge';
-import { type FoeMember, type OwnMember, Situation } from '../analysis/situation';
+import type { SetPriors } from '../analysis/opponent-model';
+import {
+  type FoeMember,
+  type OwnMember,
+  Situation,
+  type SituationOptions,
+} from '../analysis/situation';
 import {
   describeAction,
   EXPLANATION_METHODS,
@@ -47,6 +53,26 @@ import type { BotLevel } from '../levels';
 export interface BotOptions {
   /** Same seed → same decisions for the same situations (ties are broken at random). */
   seed?: string;
+  /**
+   * Measuring hook (arena `--fixed-group`, fase 21): at team preview, bring exactly these team
+   * positions (1-based) and only choose who leads. Levels 2 and 3; nothing changes without it.
+   */
+  fixedGroup?: readonly number[];
+  /**
+   * The sets that are played (fase 22, ADR-0024), by base species: the bot assumes them for the
+   * rival before the standard sets. Plain data (the bot never reads files).
+   */
+  setPriors?: SetPriors;
+  /**
+   * Measuring hook (fase 22): with `setPriors`, the share of the prior left to the standard sets
+   * (default `STANDARD_SHARE`).
+   */
+  standardShare?: number;
+  /**
+   * Measuring hook (arena, fase 23): the species the rival brought, as if the bot knew them
+   * (only what it brought, not its sets). Nothing changes without it.
+   */
+  rivalBrought?: readonly SpeciesId[];
 }
 
 /** One possible action of one slot and its value. */
@@ -67,8 +93,29 @@ export class AggressiveAgent implements BattleAgent {
   /** Builds the explanation of the last decision on demand (only the server asks for it). */
   protected explainLast: (() => DecisionExplanation) | null = null;
 
+  /** Team positions it must bring (`BotOptions.fixedGroup`). */
+  protected readonly fixedGroup: readonly number[] | undefined;
+  /** The sets that are played (`BotOptions.setPriors`). */
+  protected readonly setPriors: SetPriors | null;
+  protected readonly standardShare: number | undefined;
+  /** What the rival brought (`BotOptions.rivalBrought`). */
+  protected readonly rivalBrought: readonly SpeciesId[] | undefined;
+
   constructor(options: BotOptions = {}) {
     this.random = new SeededRandom(options.seed ?? String(Math.random()));
+    this.fixedGroup = options.fixedGroup;
+    this.setPriors = options.setPriors ?? null;
+    this.standardShare = options.standardShare;
+    this.rivalBrought = options.rivalBrought;
+  }
+
+  /** Indexes into `situation.own` of the fixed group, if any. */
+  protected fixedMembers(situation: Situation): number[] | undefined {
+    const group = this.fixedGroup;
+    if (!group) return undefined;
+    return situation.own.flatMap((member, index) =>
+      group.includes(member.position ?? index + 1) ? [index] : [],
+    );
   }
 
   explain(): DecisionExplanation | null {
@@ -91,7 +138,16 @@ export class AggressiveAgent implements BattleAgent {
 
   /** What the bot makes of its context before deciding. */
   protected situation(context: AgentContext): Situation {
-    return new Situation(context);
+    return new Situation(context, this.priorOptions());
+  }
+
+  /** How the bot models the rival: set priors (`BotOptions.setPriors`) and its measuring hooks. */
+  protected priorOptions(): SituationOptions {
+    return {
+      priors: this.setPriors,
+      ...(this.standardShare !== undefined ? { standardShare: this.standardShare } : {}),
+      ...(this.rivalBrought ? { rivalBrought: this.rivalBrought } : {}),
+    };
   }
 
   protected chooseTeam(situation: Situation, request: TeamPreviewRequest): Choice {

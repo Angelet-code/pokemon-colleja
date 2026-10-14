@@ -60,10 +60,20 @@ export class BattleManager {
       throw error;
     }
 
+    const metagame = this.storage.metagame.active();
+    const setPriors = metagame?.sets?.[mode];
     const room = new BattleRoom(
-      { id: randomUUID(), seed, botLevel, opponentKind: message.opponent.kind },
+      {
+        id: randomUUID(),
+        seed,
+        botLevel,
+        opponentKind: message.opponent.kind,
+        ...(metagame && setPriors ? { metagameSets: metagame.id } : {}),
+      },
       session,
-      createBot(botLevel, { seed: `${seed}:bot` }),
+      // The sets that are played (fase 22): the bot assumes them for the player first. Without
+      // a snapshot (or one built before), the standard sets.
+      createBot(botLevel, { seed: `${seed}:bot`, ...(setPriors ? { setPriors } : {}) }),
       this.storage.replays,
     );
     this.rooms.set(room.id, room);
@@ -118,8 +128,8 @@ export class BattleManager {
   }
 
   /**
-   * The bot's team: random, pasted or a saved opponent. The difficulty always comes from
-   * `botLevel` (the client fills it in with the saved opponent's own).
+   * The bot's team: random, pasted, a saved opponent or a metagame team. The difficulty always
+   * comes from `botLevel` (the client fills it in with the saved opponent's own).
    */
   private async rivalTeam(message: StartBattleMessage, seed: string): Promise<PokemonSet[]> {
     const { opponent, mode } = message;
@@ -141,6 +151,21 @@ export class BattleManager {
         );
       }
       return stored.opponent.members;
+    }
+    if (opponent.kind === 'metagame') {
+      const team = this.storage.metagame
+        .get(opponent.snapshotId)
+        ?.teams.find((entry) => entry.id === opponent.teamId);
+      if (!team) {
+        throw new TeamProblemsError('Ese equipo del meta no existe.', [
+          'Puede que el meta se haya actualizado. Elige otro en la lista.',
+        ]);
+      }
+      const problems = teamProblems(team.members, mode);
+      if (problems.length > 0) {
+        throw new TeamProblemsError(`«${team.name}» no se puede usar en este modo.`, problems);
+      }
+      return team.members;
     }
     const rival = readTeam(opponent.team, mode);
     if (rival.problems.length > 0) {

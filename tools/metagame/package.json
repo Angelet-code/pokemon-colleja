@@ -1,0 +1,14 @@
+{
+  "name": "@colleja/metagame-cli",
+  "version": "0.0.0",
+  "private": true,
+  "description": "npm run meta:update: descarga las estadísticas de Smogon y los replays nuevos y guarda la instantánea del meta en storage/metagame.",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@colleja/metagame": "*",
+    "@colleja/protocol": "*"
+  }
+}

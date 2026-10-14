@@ -18,4 +18,20 @@ describe('toStartMessage', () => {
     expect(saved).not.toHaveProperty('team');
     expect(ClientMessageSchema.safeParse(saved).success).toBe(true);
   });
+
+  it('sends a metagame team by its snapshot and id', () => {
+    const message = toStartMessage({
+      ...DEFAULT_FORM,
+      team: 'Garchomp',
+      opponentKind: 'metagame',
+      metagameSnapshotId: '2026-09-1760',
+      metagameTeamId: 'doubles-01',
+    });
+    expect(message.opponent).toEqual({
+      kind: 'metagame',
+      snapshotId: '2026-09-1760',
+      teamId: 'doubles-01',
+    });
+    expect(ClientMessageSchema.safeParse(message).success).toBe(true);
+  });
 });

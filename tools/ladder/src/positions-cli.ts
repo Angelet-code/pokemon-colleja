@@ -10,7 +10,7 @@ import { createWriteStream, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { FEATURES_VERSION } from '@colleja/bot';
-import type { StoredReplay } from './fetch';
+import type { StoredReplay } from '@colleja/metagame';
 import { DATASETS, LADDER_FORMAT, replaysDir } from './paths';
 import { replayPositions } from './positions';
 

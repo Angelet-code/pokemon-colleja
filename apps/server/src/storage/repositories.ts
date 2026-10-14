@@ -1,4 +1,5 @@
 /** Everything the user saves (PLAN §3.7), as seen by the routes and the battle manager. */
+import type { FileMetagameStore } from '@colleja/metagame';
 import type { BenchRepository } from '../bench/bench-repository';
 import type { CollectionRepository } from '../collection/collection-repository';
 import type { OpponentRepository } from '../opponents/opponent-repository';
@@ -11,4 +12,6 @@ export interface Repositories {
   replays: ReplayRepository;
   bench: BenchRepository;
   collection: CollectionRepository;
+  /** Metagame snapshots (read only here: `@colleja/metagame` writes them). */
+  metagame: FileMetagameStore;
 }

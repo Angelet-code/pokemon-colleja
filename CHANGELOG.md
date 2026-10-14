@@ -32,8 +32,96 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 - En «Nuevo combate», los nombres largos de equipos y rivales guardados ensanchaban la lista y se salían del panel; ahora se recortan.
 - Nivel 1 en dobles: con dos Pokémon capaces de megaevolucionar en el campo, la segunda posición pasaba turno (todas sus opciones llevaban mega). Ahora ataca sin megaevolucionar.
 - Niveles 2 y 3 en dobles: en el **turno de recarga** (tras Hiperrayo, Gigaimpacto…) la posición pasaba turno y Showdown rechazaba la elección (combate con error en el banco, ≈ 8 % de los combates con Sylveon). «Recargar» no está en los datos de movimientos y el plan de dobles lo descartaba; ahora es una opción que no hace nada. Test: `packages/bot/test/recharge.test.ts` (los tres niveles, en los dos modos).
+- Todos los niveles en dobles: tras **Plegaria Vital** (Revival Blessing), si el aliado debilitado seguía en el campo (cayó ese mismo turno o no quedaba relevo), el bot pasaba y Showdown rechazaba la elección («Can't pass: You need to switch in a Pokémon to replace Pawmot»; combate con error en el arena de la fase 21). Showdown deja revivir a **cualquier** Pokémon debilitado del equipo, también uno activo, pero `getSlotOptions` (core) solo ofrecía los del banquillo. Ahora los ofrece todos; lo aprovechan también la pantalla de combate y `validateChoice`. Tests: `packages/bot/test/revival-blessing.test.ts` (niveles 0–3, en los dos modos) y `packages/core/test/battle.test.ts`.
 
 - Con `npm run dev`, abrir la web en el puerto del servidor (3001) mostraba `apps/web/dist`, una compilación que podía ser vieja (por ejemplo, con los iconos Gen 8 pixelados en lugar de los renders de Champions). Ahora el servidor de desarrollo redirige las páginas a Vite (`WEB_DEV_URL`, que pone `npm run dev`).
+
+### Fase 23 — Qué trae el rival: parada en el techo (2026-10-12)
+
+[ADR-0025](docs/adr/0025-que-trae-el-rival-no-importa.md), [brief](docs/fases/fase-23.md), guías del [bot](docs/guias/bot.md#arena-npm-run-arena) y de [aprendizaje](docs/guias/aprendizaje.md#qué-trae-el-rival-ladderbringeval).
+
+#### Añadido
+
+- Gancho de medida `BotOptions.rivalBrought` (niveles 1–3): `Situation` deja en la vista previa del rival solo las especies que trajo. Arena: `--a-oracle` (con `--fixed` o `--fixed-group`) se lo da al bot A con el grupo real del B. Sin él, las mismas decisiones (huellas de `arena:perf`). Tests: `packages/bot/test/rival-brought.test.ts` y el del arena.
+- `npm run ladder:bring:eval`: la prueba barata de qué trae el rival con los replays.
+
+#### Medidas
+
+- **Techo**: nivel 3 que sabe qué trajo el rival contra el nivel 3 de hoy (los dos con los sets del meta, dobles, espejo, equipos del meta, 600 pares por tanda): **51,1 % ± 2,4** y **49,7 % ± 2,4**. Saberlo no le da nada medible.
+- Prueba barata (3 598 lados de ajuste antes del 1 de octubre, 6 097 de prueba después): los 4 de 6 antes del combate, 71,3 % por especie frente a 68,8 % uniforme; los 2 de atrás tras la salida, **61,7 %** frente a 51,7 % (con los compañeros de salida, log-loss 0,635 frente a 0,693).
+- Decisión del usuario: **parar**; el bot no cambia.
+
+### Fase 22 — Sets del meta para predecir al rival (2026-10-12)
+
+[ADR-0024](docs/adr/0024-sets-del-meta-para-predecir-al-rival.md), [brief](docs/fases/fase-22.md), guías del [bot](docs/guias/bot.md#nivel-3-qué-deduce-del-rival), de [rivales](docs/guias/rivales.md#meta), del [banco](docs/guias/banco.md#contra-el-meta) y de [aprendizaje](docs/guias/aprendizaje.md#sets-del-meta-laddersetseval).
+
+#### Añadido
+
+- **Sets que se juegan, con su probabilidad** (`@colleja/metagame`, `buildSetPriors`): por especie, los 6 sets más probables de las estadísticas de Smogon (2 habilidades × 3 objetos × 3 repartos con los 4 movimientos más usados que aprende; sus Megas con su piedra), todos legales y con pesos que suman 1. Van en la instantánea del meta (`MetagameSnapshot.sets`, por modo; opcional, las viejas se leen igual) y `GET /api/metagame` no los envía a la web. **Actualiza el meta** (`npm run meta:update`) para tenerlos.
+- **El bot los supone para el rival** (`BotOptions.setPriors`): candidatos del meta en orden de probabilidad, filtrados por lo revelado (en cada paso de la cascada, antes que los estándar), y la deducción del nivel 3 parte de sus pesos. Sin priors, las mismas decisiones (huellas de `arena:perf`). Los pasan **el servidor** (cada combate, con la instantánea activa; `BattleRoomInfo.metagameSets`) y **el banco** en la web y en la terminal (los dos bots; `setup.metagameSets`).
+- Arena: `--a-priors meta`/`--b-priors meta`, `--teams meta` (equipos del meta activo) y `--a-standard-share` (gancho de medida).
+- `npm run ladder:sets:eval`: la prueba barata de los sets contra lo que revelan los replays.
+
+#### Medidas
+
+- Prueba barata (1 598 partidas de octubre, rating ≥ 1 500, sin nada revelado): el primer set supuesto acierta el **objeto** un **78,6 %** con el meta frente al 34,5 % con los estándar, y los **movimientos** revelados un **81,7 %** frente al 62,2 %. Habilidad igual (≈ 96 %).
+- Nivel 3 con el meta contra el nivel 3 de antes, dobles, espejo, 600 pares por tanda: **59,5 % ± 2,5** y **59,3 % ± 2,5** con equipos del meta, **55,1 % ± 2,5** con los rivales guardados y 46,6 % ± 2,5 con aleatorios (sets estándar, el caso en que el modelo de siempre acierta por construcción). Dejar un 20 % del prior a los estándar: 56,6 % con el meta y 46,9 % con aleatorios (no se usa). Misma velocidad.
+- Decisión del usuario: **activado siempre** que haya meta con sets.
+
+### Fase 21 — La salida no se aprende (2026-10-12)
+
+[ADR-0023](docs/adr/0023-la-salida-no-se-aprende.md), [brief](docs/fases/fase-21.md), guías de [aprendizaje](docs/guias/aprendizaje.md#salidas-ladderleads) y del [bot](docs/guias/bot.md#arena-npm-run-arena).
+
+#### Añadido
+
+- **Factores de salida** (`learning/lead-features.ts`): 12 situaciones de las dos parejas al empezar el turno 1, sin especies. Dos de ellos solo miran los grupos, para separar el emparejamiento de grupos de lo que aporta la salida. `withOwnBack` ve la posición desde un lado con su grupo conocido.
+- `npm run ladder:leads` (posiciones de salida de los replays) y `npm run ladder:leads:eval` (la prueba barata: 10 divisiones y curva de aprendizaje).
+- **`npm run arena -- --fixed-group`**: grupos fijos como `--fixed`, pero cada bot elige su salida; `--a-leads`/`--b-leads random` la sortea. El bot gana la opción de medida `BotOptions.fixedGroup` (niveles 2 y 3). Sin ella las decisiones son idénticas (huellas de `arena:perf`).
+
+#### Cifras
+
+- **La salida no predice al ganador en los replays**: log-loss 0,6930 con todos los factores frente a 0,6931 del 50 %, en 5 996 partidas. El emparejamiento de grupos tampoco predice nada.
+- **Para el bot, elegir la salida vale ≈ 1,5 puntos**. En espejo, con 600 pares por medida:
+  - nivel 3 con salida al azar contra nivel 3 eligiéndola: 48,4 % ± 2,4;
+  - lo mismo con el nivel 2: 48,7 % ± 2,5;
+  - nivel 3 contra nivel 2, los dos eligiendo su salida: 81,1 % ± 2,1.
+- Decisión del usuario: **no se cambia cómo elige la salida el nivel 3**, y **desde ahora las variantes del bot se miden nivel 3 contra nivel 3**.
+
+### Fase 20 — El meta: rivales que se actualizan solos y un banco sin sesgo (2026-10-12)
+
+[ADR-0022](docs/adr/0022-meta-del-ladder-como-rivales.md), [brief](docs/fases/fase-20.md), guías de [rivales](docs/guias/rivales.md#meta) y del [banco](docs/guias/banco.md#contra-el-meta).
+
+#### Añadido
+
+- **Rivales del meta** (`/rivales?seccion=meta`): la página de rivales tiene dos secciones, **Mis rivales** (los de siempre) y **Meta**. El meta son los equipos del ladder de Showdown, **de solo lectura**, cada uno con su **peso** en el meta de su modo.
+  - **Sets**: lo más usado según las estadísticas mensuales de Smogon con corte 1760.
+  - **Equipos de dobles**: equipos reales de seis vistos en replays (rating ≥ 1500), agrupados por arquetipo.
+  - **Equipos de individuales**: crecidos por compañeros, porque no hay replays con rating alto.
+
+  Cada equipo se puede usar como rival o **copiar a Mis rivales** para editarlo. En el inicio, el rival puede ser «Meta».
+- **Actualizar meta** (botón en la web y `npm run meta:update`): descarga el último mes de Smogon y unos 300 replays nuevos de dobles y guarda la instantánea en `storage/metagame/<mes>-<corte>.json`. Avisa si Smogon ya tiene un mes más nuevo. Nunca se actualiza sola.
+- **Banco «Contra el meta»** (web y `npm run bench -- --opponents meta`): el total pesa cada equipo por su parte del meta, así que da el % esperado contra el meta. La tabla enseña el peso de cada rival y **«Donde más pierdes»** (peso × derrotas, en puntos del total). El historial marca la instantánea.
+- Paquete `@colleja/metagame` (solo Node): estadísticas de Smogon, replays y su vista previa, sets, arquetipos, nombres y la instantánea (pura y determinista). La descarga de replays de `tools/ladder` se mueve aquí y gana `until`, para completar con los más nuevos.
+
+#### Cambiado
+
+- El banco pesa cada rival (`BenchOpponent.weight`, por defecto 1) en el total y en el reparto de Neyman. **Con pesos iguales, el resultado es idéntico al de antes** (test).
+
+#### Cifras
+
+- Meta de septiembre de 2026, corte 1760:
+  - **Dobles**: 1,63 M combates en Smogon y 4 000 equipos de replays; 24 arquetipos que cubren el 68 %.
+  - **Individuales**: 69 000 combates; 24 equipos.
+  - 0 equipos descartados por ilegales.
+- Contra mis rivales frente a contra el meta (dobles, nivel 2 contra 2, 20 combates por rival):
+
+  | Equipo | Contra mis rivales | Contra el meta |
+  |---|---|---|
+  | Collejas pingüi | 59,2 % | 46,9 % |
+  | Collejas pingüi (Bellibolt) | 58,8 % | 45,1 % |
+  | Viento Ninja | 45,4 % | 38,4 % |
+
+  El orden no cambia, pero los rivales guardados eran más fáciles: **contra el meta todos bajan entre 7 y 14 puntos**. Donde más pierden los tres es contra Mega-Floette + Rillaboom (13,6 % del meta).
 
 ### Fase 19 — El nivel 3 valora con lo aprendido (2026-10-12)
 

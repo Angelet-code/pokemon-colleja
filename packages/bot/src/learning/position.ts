@@ -202,3 +202,28 @@ export function canMegaEvolve(side: PositionSide): boolean {
 function speciesNum(species: SpeciesId): number {
   return getSpecies(species)?.num ?? -1;
 }
+
+/**
+ * A lead position seen by `side` (fase 21): the same position, but `side`'s members that have
+ * not come out are replaced by its own back (`back`: the sets it brought and did not lead
+ * with, each with its weight: 1 when known). The rival keeps a spectator's view.
+ */
+export function withOwnBack(
+  position: Position,
+  side: SideId,
+  back: readonly { set: PokemonSet; weight: number }[],
+): Position {
+  const current = position.sides[side];
+  const seen = current.members.filter((member) => member.active || member.weight >= 1);
+  const members = [
+    ...seen,
+    ...back.map(({ set, weight }) => ({
+      combatant: makeCombatant({ side, set }),
+      active: false,
+      fainted: false,
+      fresh: true,
+      weight,
+    })),
+  ];
+  return { ...position, sides: { ...position.sides, [side]: { ...current, members } } };
+}

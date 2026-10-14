@@ -1,5 +1,5 @@
 /** What a bench receives and what it reports. See docs/guias/banco.md. */
-import type { BotLevel } from '@colleja/bot';
+import type { BotLevel, SetPriors } from '@colleja/bot';
 import type { PokemonSet, SideId } from '@colleja/core';
 import type { GameMode } from '@colleja/data';
 import type { Estimate, StopReason } from './stats';
@@ -11,11 +11,18 @@ export interface BenchTeam {
   members: PokemonSet[];
 }
 
-/** A rival of the bench (a saved opponent; its own difficulty is not used). */
+/** A rival of the bench (a saved opponent or a metagame team; its difficulty is not used). */
 export interface BenchOpponent {
   id: string;
   name: string;
   members: PokemonSet[];
+  /**
+   * Relative weight in the total (default 1: every rival weighs the same). Metagame teams
+   * carry their share of the metagame.
+   */
+  weight?: number;
+  /** Only these modes (default: all of the bench). A metagame team belongs to one mode. */
+  modes?: GameMode[];
 }
 
 /**
@@ -44,6 +51,11 @@ export interface BenchConfig {
   seed: string;
   /** Default: team preview, closed team sheets (like a normal battle). */
   options?: { teamPreview?: boolean; openTeamSheets?: boolean };
+  /**
+   * The sets that are played, by mode (fase 22): both bots assume them for their rival first,
+   * as in a battle of the web. Default: the standard sets.
+   */
+  setPriors?: Partial<Record<GameMode, SetPriors>>;
 }
 
 /** A rival and mode (a stratum of the statistics). */
@@ -51,6 +63,8 @@ export interface Stratum {
   opponentId: string;
   opponentName: string;
   mode: GameMode;
+  /** Relative weight in the total (the rival's). */
+  weight: number;
 }
 
 /** Version A (`0`) or B (`1`). */
@@ -71,6 +85,8 @@ export interface BattleJob {
   opponent: PokemonSet[];
   levels: { team: BotLevel; opponent: BotLevel };
   options: { teamPreview: boolean; openTeamSheets: boolean };
+  /** The sets that are played of the species of both teams (`BenchConfig.setPriors`). */
+  setPriors?: SetPriors;
 }
 
 /** Result of a battle, from the measured team's point of view. */
@@ -111,7 +127,7 @@ export interface StratumSummary extends Stratum {
 }
 
 export interface TotalSummary {
-  /** Average over strata (each rival and mode weighs the same). */
+  /** Average over strata, each with its weight (by default every rival and mode the same). */
   team: Estimate | null;
   versus?: Estimate | null;
   difference?: Estimate | null;

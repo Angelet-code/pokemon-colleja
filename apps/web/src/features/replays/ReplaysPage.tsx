@@ -22,6 +22,7 @@ const OPPONENT_LABEL: Record<ReplaySummary['opponentKind'], string> = {
   random: 'rival aleatorio',
   team: 'rival pegado',
   saved: 'rival guardado',
+  metagame: 'equipo del meta',
 };
 
 export function ReplaysPage() {

@@ -57,6 +57,11 @@ export interface FetchOptions {
   readonly intervalMs: number;
   /** Start from the newest replays instead of the stored cursor. */
   readonly fromNewest?: boolean;
+  /**
+   * Stop at replays uploaded before this time (seconds), e.g. the newest one already stored:
+   * a top-up of the newest replays. The stored cursor is then left alone.
+   */
+  readonly until?: number;
   readonly fetch?: FetchLike;
   readonly sleep?: (ms: number) => Promise<void>;
   readonly now?: () => number;
@@ -112,7 +117,8 @@ export async function fetchReplays(options: FetchOptions): Promise<FetchResult> 
     }
   };
 
-  let cursor = options.fromNewest ? undefined : options.store.readCursor();
+  const topUp = options.until !== undefined;
+  let cursor = options.fromNewest || topUp ? undefined : options.store.readCursor();
   let downloaded = 0;
   let skipped = 0;
   let listed = 0;
@@ -125,6 +131,9 @@ export async function fetchReplays(options: FetchOptions): Promise<FetchResult> 
     if (!Array.isArray(page)) throw new Error('La búsqueda de replays no devolvió una lista.');
     const rows = parseListing(page.slice(0, PAGE_SIZE));
     for (const row of rows) {
+      if (topUp && row.uploadtime < (options.until as number)) {
+        return { ...progress(), exhausted: false };
+      }
       listed++;
       if (row.private || row.rating < options.minRating) continue;
       if (options.store.has(row.id)) {
@@ -143,7 +152,7 @@ export async function fetchReplays(options: FetchOptions): Promise<FetchResult> 
     // Only move the cursor past a page that was fully handled.
     if (downloaded < options.limit && oldest !== undefined) {
       cursor = oldest;
-      options.store.writeCursor(cursor);
+      if (!topUp) options.store.writeCursor(cursor);
       options.onProgress?.(progress());
     }
     if (page.length <= PAGE_SIZE) return { ...progress(), exhausted: downloaded < options.limit };

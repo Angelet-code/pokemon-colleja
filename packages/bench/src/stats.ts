@@ -1,6 +1,6 @@
 /**
  * The statistics of the bench, as pure functions (no battles): win rates with Wilson
- * intervals, paired differences (A/B), the total weighted equally per stratum, the Neyman
+ * intervals, paired differences (A/B), the total weighted per stratum, the Neyman
  * allocation of the next battles and the stopping rule. See docs/guias/banco.md.
  */
 
@@ -132,20 +132,30 @@ export function pairEstimate(tally: PairTally, z = Z95): Estimate {
   return { mean, interval: [Math.max(-1, mean - margin), Math.min(1, mean + margin)] };
 }
 
+/** A stratum of a total: its mean, the variance of that mean and its relative weight. */
+export interface WeightedStratum {
+  mean: number;
+  variance: number;
+  /** Relative weight (default 1). */
+  weight?: number;
+}
+
 /**
- * Total over strata weighted **equally** (not by number of battles), so giving more battles
- * to the uncertain strata does not bias it. `bounds` clamps the interval.
+ * Total over strata weighted by **their weight** (by default equally), never by number of
+ * battles, so giving more battles to the uncertain strata does not bias it. The weights are
+ * normalised over the strata given. `bounds` clamps the interval.
  */
 export function stratifiedEstimate(
-  strata: readonly { mean: number; variance: number }[],
+  strata: readonly WeightedStratum[],
   bounds: [number, number],
   z = Z95,
 ): TotalEstimate | null {
-  if (strata.length === 0) return null;
-  const weight = 1 / strata.length;
+  const sum = strata.reduce((total, stratum) => total + (stratum.weight ?? 1), 0);
+  if (strata.length === 0 || sum <= 0) return null;
   let mean = 0;
   let variance = 0;
   for (const stratum of strata) {
+    const weight = (stratum.weight ?? 1) / sum;
     mean += weight * stratum.mean;
     variance += weight * weight * stratum.variance;
   }
@@ -159,13 +169,13 @@ export function stratifiedEstimate(
 }
 
 /**
- * Neyman allocation of `count` new battles among strata with equal weights: each battle goes,
- * one at a time, to the stratum where it reduces the variance of the total the most
- * (`σ² / (n · (n + 1))`). Strata with more uncertainty (win rates near 50 %, noisy
- * differences) get more battles; a 13/14 gets few. Ties go to the first stratum.
+ * Neyman allocation of `count` new battles among strata: each battle goes, one at a time, to
+ * the stratum where it reduces the variance of the total the most (`w² σ² / (n · (n + 1))`,
+ * `w` its weight, 1 by default). Strata with more uncertainty (win rates near 50 %, noisy
+ * differences) or more weight get more battles; a 13/14 gets few. Ties go to the first one.
  */
 export function neymanAllocation(
-  strata: readonly { spreadSquared: number; battles: number }[],
+  strata: readonly { spreadSquared: number; battles: number; weight?: number }[],
   count: number,
 ): number[] {
   const extra = strata.map(() => 0);
@@ -174,7 +184,13 @@ export function neymanAllocation(
     let bestGain = -Infinity;
     strata.forEach((stratum, index) => {
       const n = stratum.battles + (extra[index] ?? 0);
-      const gain = n === 0 ? Infinity : stratum.spreadSquared / (n * (n + 1));
+      const weight = stratum.weight ?? 1;
+      const gain =
+        weight <= 0
+          ? -Infinity
+          : n === 0
+            ? Infinity
+            : (weight * weight * stratum.spreadSquared) / (n * (n + 1));
       if (gain > bestGain) {
         bestGain = gain;
         best = index;

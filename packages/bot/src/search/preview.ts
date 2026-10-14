@@ -167,6 +167,8 @@ export function planPreview(
   picked: number,
   settings: PreviewSettings,
   random: SeededRandom,
+  /** Only this group (indexes into `situation.own`): the arena's fixed groups (fase 21). */
+  only?: readonly number[],
 ): PreviewPlan | null {
   const own = situation.own.map((member) => battleForm(member.combatant));
   const foes = situation.foes.filter((foe) => foe.view === null);
@@ -205,9 +207,15 @@ export function planPreview(
   );
   const lead = leadShares(foes.length, foeGroups);
   const size = Math.min(picked, own.length);
-  const options = situation.doubles
+  const all = situation.doubles
     ? doublesOptions(situation, own, foes, duel, ownRead, size, settings)
     : singlesOptions(situation, own, foes, foeGroups, size, settings);
+  const options = only
+    ? all.filter(
+        (option) =>
+          option.group.length === only.length && option.group.every((i) => only.includes(i)),
+      )
+    : all;
   const ownRows = (members: readonly number[]) => {
     const shares = speedControlShares(ownRead, members, settings);
     return own.map((mine, i) =>

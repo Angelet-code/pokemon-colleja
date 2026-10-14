@@ -27,7 +27,7 @@ Todos los bots solo ven su `AgentContext` (su perspectiva). **No conocen los set
 | `analysis/situation.ts` | `Situation`: todo lo que el bot sabe en una decisión. Sus Pokémon (petición + sets del equipo), los rivales (`BattleView` + modelo del rival), el campo y el daño cacheado |
 | `analysis/combatant.ts` | `Combatant`: un Pokémon como lo razona el bot (set, PS absolutos, estado, cambios de características, objeto, habilidad, movimientos). Mega, velocidad efectiva |
 | `analysis/damage.ts` | Traduce `Combatant` y campo a `@smogon/calc` (generación 0 = Champions, Stat Points en `evs`). Devuelve tiradas, media, probabilidad de KO y precisión |
-| `analysis/opponent-model.ts` | Sets posibles de cada rival: sets estándar filtrados por lo revelado, del más ofensivo al menos. Con equipo abierto, el real |
+| `analysis/opponent-model.ts` | Sets posibles de cada rival filtrados por lo revelado: los **sets del meta** con su peso, del más probable al menos (`BotOptions.setPriors`, fase 22), y si ninguno encaja (o no hay meta), los estándar del más ofensivo al menos. Con equipo abierto, el real |
 | `analysis/evaluation.ts` | Valor de un golpe, víctimas de un movimiento, enfrentamientos simples (nivel 1) |
 | `analysis/duel.ts` | Simulación de duelo 1 contra 1 y `chainValue` (si el nuestro cae, entra el siguiente) |
 | `analysis/team-chain.ts` | `teamChainValue`: duelos encadenados de los dos equipos enteros (al caer uno, su lado saca su mejor respuesta al superviviente) hasta que un lado se queda sin nadie |
@@ -64,7 +64,8 @@ Lo que limita al nivel 3 es, sobre todo, la **información oculta**: con equipo 
 
 ### Nivel 3: qué deduce del rival
 
-- **Sets** ([ADR-0012](../adr/0012-deduccion-de-sets-y-estilo-del-rival.md)): en cada decisión, `inferBeliefs` repasa lo observado (`extractObservations`). Para cada candidato de `OpponentModel` comprueba si alguna tirada de `estimateDamage` explica cada golpe (con el redondeo del %) y si su velocidad explica cada orden de movimiento. Parte de un prior uniforme, aplica la cláusula de objeto y da una verosimilitud de 0,05 a lo que no cuadra (`CONTRADICTION_LIKELIHOOD`), nunca cero. Con sets propios, si nada cuadra, prueba variantes de reparto (`spreadVariants`). El combatiente supuesto pasa a ser el set más probable y las suposiciones se reparten por cuantiles de la probabilidad.
+- **Sets** ([ADR-0012](../adr/0012-deduccion-de-sets-y-estilo-del-rival.md)): en cada decisión, `inferBeliefs` repasa lo observado (`extractObservations`). Para cada candidato de `OpponentModel` comprueba si alguna tirada de `estimateDamage` explica cada golpe (con el redondeo del %) y si su velocidad explica cada orden de movimiento. Parte del peso de cada candidato (`weightedCandidates`: el de los sets del meta o uniforme sobre los estándar), aplica la cláusula de objeto y da una verosimilitud de 0,05 a lo que no cuadra (`CONTRADICTION_LIKELIHOOD`), nunca cero. Con sets propios, si nada cuadra, prueba variantes de reparto (`spreadVariants`). El combatiente supuesto pasa a ser el set más probable y las suposiciones se reparten por cuantiles de la probabilidad.
+- **Sets del meta** ([ADR-0024](../adr/0024-sets-del-meta-para-predecir-al-rival.md)): con `BotOptions.setPriors` (los pasan el servidor y el banco con la instantánea activa del meta, y el arena con `--a-priors meta`), los candidatos son los sets que se juegan en el ladder con su probabilidad (`MetagameSnapshot.sets`, de las estadísticas de Smogon). En cada paso de la cascada de filtros se prueban antes que los estándar. Sin priors, todo idéntico (mismas huellas). Son datos planos: el bot nunca lee disco.
 - **Estilo**: `RivalStyle` apunta en cada búsqueda la respuesta **evidente** del rival y su **contrapredicción** (la que más castiga la opción evidente del bot, entre sus `counterCandidates` mejores). En el turno siguiente compara con lo que hizo. `styleAdjustment` afina las respuestas: un rival evidente baja la temperatura y uno que contrapredice más que el azar pesa su contrapredicción (hasta un 60 %).
 - Todo sale del log de la perspectiva del bot: mismo log → mismas creencias y mismo estilo. Las creencias se ven en la explicación («Lo que cree de tu equipo»).
 
@@ -124,12 +125,18 @@ npm run arena -- --a 2 --b 1 --mode doubles --battles 300 --seed otra
 | `--seed X` | Semilla base: mismos parámetros, mismos combates |
 | `--no-preview`, `--open-team-sheets` | Opciones de práctica |
 | `--fixed` | **Modo de medida** (fase 17): cada equipo lleva 4 fijos (3 en individuales) con una salida al azar, la misma en los dos combates del par, y los dos combates comparten la semilla: el par es un espejo y solo cambian los bots de asiento. Añade el informe «Por pares» (gana los dos / reparten / pierde los dos, con el ± de los pares) |
+| `--fixed-group` | Como `--fixed`, pero **cada bot elige su salida** entre sus cuatro fijos (fase 21; `BotOptions.fixedGroup`, niveles 2 y 3; los niveles 0 y 1 la sortean). Un par en espejo mide la salida y el juego |
+| `--a-leads bot\|random` / `--b-leads bot\|random` | Con `--fixed-group`: quién elige la salida de cada bot. Con `random`, al azar como en `--fixed`. Así se mide el **techo** de una decisión de vista previa: nivel 3 con salida al azar contra nivel 3 eligiéndola dio 48,4 % ± 2,4 |
 | `--json <fichero>` | Guarda cada combate (par, salidas de cada bot, resultado) y el resumen |
-| `--teams rivales\|<carpeta>` | Equipos de un conjunto en lugar de aleatorios: tus rivales guardados del modo (`rivales`) o los ficheros de una carpeta (JSON guardado o texto de Showdown). Cada par de combates saca dos distintos al azar, por semilla. Los aleatorios casi nunca forman arquetipos (Espacio Raro, lluvia…): para medir algo de equipo, usa los dos |
+| `--a-priors meta` / `--b-priors meta` | El bot supone para el rival los **sets del meta** activo antes que los estándar (fase 22, `BotOptions.setPriors`) |
+| `--a-oracle` | Con `--fixed` o `--fixed-group`: el bot A sabe **qué especies trajo** el B (no sus sets; `BotOptions.rivalBrought`). Es el techo de predecir qué trae el rival: dio 51,1 y 49,7 % (fase 23, [ADR-0025](../adr/0025-que-trae-el-rival-no-importa.md)) |
+| `--teams rivales\|meta\|<carpeta>` | Equipos de un conjunto en lugar de aleatorios: tus rivales guardados del modo (`rivales`), los equipos del meta activo (`meta`) o los ficheros de una carpeta (JSON guardado o texto de Showdown). Cada par de combates saca dos distintos al azar, por semilla. Los aleatorios casi nunca forman arquetipos (Espacio Raro, lluvia…): para medir algo de equipo, usa los dos |
 
 Muestra el % de victorias con su intervalo de confianza del 95 % (Wilson), los turnos medios, los ms por combate y por decisión, y las elecciones inválidas (deben ser 0). Los combates que fallen se guardan en `storage/arena/` como replays (`BattleSession.fromReplay`). La lógica está en `runArena()` (`tools/arena/src/arena.ts`).
 
 Resultados de referencia (fases 4, 9 y 10): en el [CHANGELOG](../../CHANGELOG.md). El nivel 3 tarda unas décimas de segundo por decisión: para medirlo con cientos de combates conviene lanzar varios arenas en paralelo con semillas distintas. Con 600 combates el ruido es de ±2 puntos (IC 95 % ≈ ±4): compara variantes con la misma semilla y confirma lo prometedor con otra semilla antes de quedártelo.
+
+**Mide nivel 3 contra nivel 3** (decisión del usuario, fase 21): una variante del nivel 3 se mide contra el nivel 3 de hoy, en espejo y con dos tandas. El nivel 2 solo sirve de criba barata: el nivel 3 ya le gana ≈ 81–83 % y lo que se le gana puede ser explotar sus fallos. Nivel 3 contra nivel 3 en dobles: ≈ 18 min por 1 200 combates en 16 núcleos.
 
 Referencia en espejo (`--fixed`, 1 200 combates por modo): nivel 3 contra nivel 2, **≈ 83,4 %** en dobles (4 contra 4, con la valoración aprendida desde la fase 19; antes 81,0 % ± 2,1) y **64,2 % ± 2,4** en individuales (3 contra 3). El espejo apenas baja el ruido de una diferencia (en cuanto las decisiones divergen, la suerte también): compara variantes con dos tandas de semillas distintas.
 
@@ -151,7 +158,7 @@ Lo que cuesta el nivel 3 ([ADR-0014](../adr/0014-nivel-3-mas-rapido-con-poda.md)
 1. Reproduce el problema: un combate concreto del arena (semilla) o un escenario guionizado (`packages/bot/test/helpers.ts`: `scenario(modo, líderes p1, líderes p2)` crea un combate sin vista previa con esos Pokémon en cabeza).
 2. Mira las opciones y sus valores: `planSingles(situation, slot)` devuelve cada acción con su puntuación; `DoublesSim.evaluate(situation, planes)` valora una pareja. `new Situation(session.getAgentContext('p1'))` da la situación de un turno.
 3. Corrige el **modelo** (un efecto que falta en la simulación, un dato mal leído), no añadas pesos sueltos. En el nivel 3, su `explain()` da el valor medio de cada opción tras la búsqueda; compáralo con el del nivel 2 en la misma posición.
-4. Mide con el arena contra el nivel anterior: al menos 300 combates por modo (±5 %) y, para cifras finales, 1000.
+4. Mide con el arena: la variante contra la versión de hoy del **mismo nivel** (en el nivel 3, nivel 3 contra nivel 3), en espejo, al menos 1 200 combates y dos tandas. El nivel anterior solo como criba.
 
 ## Valoración aprendida
 

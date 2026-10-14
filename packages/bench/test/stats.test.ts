@@ -41,6 +41,29 @@ describe('bench statistics', () => {
     expect(stratifiedEstimate([], [0, 1])).toBeNull();
   });
 
+  it('weights the total by the weight of each stratum (normalised)', () => {
+    const strata = [
+      { mean: 1, variance: 0.001, weight: 3 },
+      { mean: 0, variance: 0.01, weight: 1 },
+    ];
+    const total = stratifiedEstimate(strata, [0, 1]);
+    expect(total?.mean).toBeCloseTo(0.75, 12);
+    expect(total?.standardError).toBeCloseTo(Math.sqrt((9 * 0.001 + 0.01) / 16), 12);
+    // Only the ratio matters; weight 1 everywhere is the plain average.
+    expect(
+      stratifiedEstimate(
+        strata.map((s) => ({ ...s, weight: s.weight * 10 })),
+        [0, 1],
+      ),
+    ).toEqual(total);
+    expect(
+      stratifiedEstimate(
+        strata.map((s) => ({ ...s, weight: 1 })),
+        [0, 1],
+      )?.mean,
+    ).toBe(0.5);
+  });
+
   it('estimates paired differences', () => {
     const same = pairEstimate(pairTally([0, 0, 0, 0]));
     expect(same.mean).toBe(0);
@@ -63,6 +86,27 @@ describe('bench statistics', () => {
     expect(extra.reduce((a, b) => a + b, 0)).toBe(12);
     expect(extra[0]).toBeGreaterThan(extra[2] as number);
     expect(extra[2]).toBeGreaterThan(extra[1] as number);
+  });
+
+  it('gives more battles to heavier strata and the same as before with equal weights', () => {
+    const strata = [
+      { spreadSquared: 0.25, battles: 6 },
+      { spreadSquared: 0.25, battles: 6 },
+    ];
+    expect(neymanAllocation(strata, 10)).toEqual(
+      neymanAllocation(
+        strata.map((stratum) => ({ ...stratum, weight: 1 })),
+        10,
+      ),
+    );
+    const weighted = neymanAllocation(
+      [
+        { ...strata[0], weight: 0.8 },
+        { ...strata[1], weight: 0.2 },
+      ] as { spreadSquared: number; battles: number; weight: number }[],
+      10,
+    );
+    expect(weighted[0]).toBeGreaterThan(weighted[1] as number);
   });
 
   describe('stopping rule', () => {

@@ -20,6 +20,9 @@ export const BENCH_DIR = fileURLToPath(new URL('storage/bench/', REPO_ROOT));
 /** The player's collection («PC de Bill»): a single JSON file. */
 export const COLLECTION_DIR = fileURLToPath(new URL('storage/collection/', REPO_ROOT));
 
+/** Metagame snapshots (`@colleja/metagame` writes them; `npm run meta:update` or the web). */
+export const METAGAME_DIR = fileURLToPath(new URL('storage/metagame/', REPO_ROOT));
+
 /** Production build of the web app (`npm run build`). */
 export const WEB_DIST_DIR = fileURLToPath(new URL('apps/web/dist/', REPO_ROOT));
 

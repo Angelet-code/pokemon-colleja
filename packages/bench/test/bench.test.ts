@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { type BenchConfig, type BenchSummary, runBench } from '../src/index';
+import {
+  type BenchConfig,
+  type BenchOpponent,
+  type BenchSummary,
+  jobPriors,
+  runBench,
+} from '../src/index';
 import { randomOpponents, TEAM_A, TEAM_B } from './helpers';
 
 const base: BenchConfig = {
@@ -40,6 +46,36 @@ describe('team bench', () => {
     expect(summary.byMode.singles).toEqual(summary.total);
     expect(progress).toEqual([...progress].sort((a, b) => a - b));
     expect(progress.at(-1)).toBe(8);
+  });
+
+  it('weights the total by rival and plays each rival only in its modes', async () => {
+    const opponents = [
+      { ...(base.opponents[0] as BenchOpponent), weight: 0.75 },
+      { ...(base.opponents[1] as BenchOpponent), weight: 0.25 },
+      {
+        id: 'doubles-only',
+        name: 'Solo dobles',
+        members: randomOpponents('doubles', 1)[0]?.members ?? [],
+        modes: ['doubles' as const],
+      },
+    ];
+    const summary = await runBench({ ...base, opponents }, { threads: 0 });
+    expect(summary.strata.map((row) => [row.opponentId, row.weight])).toEqual([
+      ['rival-0', 0.75],
+      ['rival-1', 0.25],
+    ]);
+    const [first, second] = summary.strata.map((row) => row.team.winRate as number);
+    expect(summary.total.team?.mean).toBeCloseTo(
+      0.75 * (first as number) + 0.25 * (second as number),
+      12,
+    );
+    // Equal weights: exactly the bench of before.
+    const plain = await runBench(base, { threads: 0 });
+    const equal = await runBench(
+      { ...base, opponents: base.opponents.map((opponent) => ({ ...opponent, weight: 2 })) },
+      { threads: 0 },
+    );
+    expect(table(equal).total).toEqual(table(plain).total);
   });
 
   it('skips illegal teams and rivals without aborting', async () => {
@@ -95,5 +131,18 @@ describe('team bench', () => {
     expect(summary.status).toBe('cancelled');
     expect(summary.stopReason).toBe('cancelled');
     expect(summary.battles.played).toBeLessThan(100);
+  });
+});
+
+describe('sets that are played (fase 22)', () => {
+  it('sends each battle only the priors of the species in it', () => {
+    const [first, second] = TEAM_A.members;
+    if (!first || !second) throw new Error('Equipo vacío');
+    const prior = { set: first, weight: 1 };
+    const priors = { [first.species]: [prior], zzzz: [prior] };
+    expect(jobPriors(priors, [first, second])).toEqual({
+      setPriors: { [first.species]: [prior] },
+    });
+    expect(jobPriors(undefined, [first])).toEqual({});
   });
 });

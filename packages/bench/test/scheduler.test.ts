@@ -104,6 +104,7 @@ describe('bench scheduler', () => {
       opponentId: `r${index}`,
       opponentName: `R${index}`,
       mode: 'singles' as const,
+      weight: 1,
     }));
     const table = (scheduler: BenchScheduler) =>
       summarizeStrata(strata, scheduler.planned, false, (s, i, v) => scheduler.result(s, i, v));

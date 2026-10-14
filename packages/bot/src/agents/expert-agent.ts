@@ -77,7 +77,12 @@ export class ExpertAgent extends TacticalAgent {
 
   constructor(private readonly options: ExpertOptions = {}) {
     super(options);
-    this.replacements = new TacticalAgent({ seed: `${this.random.next()}` });
+    this.replacements = new TacticalAgent({
+      seed: `${this.random.next()}`,
+      ...(options.setPriors ? { setPriors: options.setPriors } : {}),
+      ...(options.standardShare !== undefined ? { standardShare: options.standardShare } : {}),
+      ...(options.rivalBrought ? { rivalBrought: options.rivalBrought } : {}),
+    });
   }
 
   /**
@@ -88,7 +93,10 @@ export class ExpertAgent extends TacticalAgent {
     const kind = requestKind(context.request);
     const infer =
       kind === 'team' || kind === 'switch' || (kind === 'move' && context.sandbox !== undefined);
-    const situation = new Situation(context, infer ? { beliefs: 'infer' } : {});
+    const situation = new Situation(context, {
+      ...this.priorOptions(),
+      ...(infer ? { beliefs: 'infer' as const } : {}),
+    });
     this.lastSituation = situation;
     return situation;
   }
@@ -116,7 +124,13 @@ export class ExpertAgent extends TacticalAgent {
   protected override chooseTeam(situation: Situation, request: TeamPreviewRequest): Choice {
     const picked = request.maxChosenTeamSize ?? request.side.pokemon.length;
     const settings = { ...PREVIEW_SETTINGS[situation.mode], ...this.options.preview };
-    const plan = planPreview(situation, picked, settings, this.random);
+    const plan = planPreview(
+      situation,
+      picked,
+      settings,
+      this.random,
+      this.fixedMembers(situation),
+    );
     if (!plan) return super.chooseTeam(situation, request);
     const position = (index: number) => situation.own[index]?.position ?? index + 1;
     this.explainLast = () => ({

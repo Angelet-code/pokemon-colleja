@@ -7,6 +7,7 @@ export * from './bench';
 export * from './calc';
 export * from './collection';
 export * from './common';
+export * from './metagame';
 export * from './opponents';
 export * from './replays';
 export * from './rest';

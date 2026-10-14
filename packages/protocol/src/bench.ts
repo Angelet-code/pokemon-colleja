@@ -1,11 +1,12 @@
 /**
  * The team bench (`/api/bench` and the `/ws/bench` WebSocket): your saved team (and optionally
- * a second version of it) against your saved rivals, bot against bot, with its win rate per
+ * a second version of it) against your saved rivals or the metagame, bot against bot, with its win rate per
  * rival and in total. `BenchSummarySchema` replicates `BenchSummary` of `@colleja/bench`
  * (Node-only): if one changes, change the other (the server stops compiling otherwise).
  */
 import { z } from 'zod';
 import { BotLevelSchema, GameModeSchema, SeedSchema, SideIdSchema, TeamTextSchema } from './common';
+import { MetagameSnapshotIdSchema } from './metagame';
 import { OpponentIdSchema } from './opponents';
 import { PokemonSetSchema, SavedIdSchema, TeamIdSchema, TeamNameSchema } from './teams';
 
@@ -51,19 +52,30 @@ export const BenchVersusSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('text'), text: TeamTextSchema, name: TeamNameSchema.optional() }),
 ]);
 
-/** `POST /api/bench`: starts a bench (one at a time). */
-export const StartBenchRequestSchema = z.object({
-  teamId: TeamIdSchema,
-  versus: BenchVersusSchema.optional(),
-  opponentIds: z
-    .array(OpponentIdSchema)
-    .min(1, 'Elige al menos un rival.')
-    .max(BENCH_LIMITS.opponents),
-  modes: z.array(GameModeSchema).min(1).max(2),
-  levels: BenchLevelsSchema,
-  budget: BenchBudgetSchema,
-  seed: SeedSchema.optional(),
-});
+/**
+ * `POST /api/bench`: starts a bench (one at a time), against saved rivals (`opponentIds`) or
+ * against the metagame (`metagame`: every team of a snapshot in the chosen modes, each one
+ * weighted by its share of the metagame). Exactly one of the two.
+ */
+export const StartBenchRequestSchema = z
+  .object({
+    teamId: TeamIdSchema,
+    versus: BenchVersusSchema.optional(),
+    opponentIds: z
+      .array(OpponentIdSchema)
+      .min(1, 'Elige al menos un rival.')
+      .max(BENCH_LIMITS.opponents)
+      .optional(),
+    metagame: z.object({ snapshotId: MetagameSnapshotIdSchema }).optional(),
+    modes: z.array(GameModeSchema).min(1).max(2),
+    levels: BenchLevelsSchema,
+    budget: BenchBudgetSchema,
+    seed: SeedSchema.optional(),
+  })
+  .refine((request) => (request.opponentIds === undefined) !== (request.metagame === undefined), {
+    message: 'Elige los rivales: tus rivales guardados o el meta (uno de los dos).',
+    path: ['opponentIds'],
+  });
 
 export type BenchBudgetValue = z.infer<typeof BenchBudgetSchema>;
 export type BenchVersus = z.infer<typeof BenchVersusSchema>;
@@ -97,6 +109,8 @@ export const StratumSummarySchema = z.object({
   opponentId: z.string(),
   opponentName: z.string(),
   mode: GameModeSchema,
+  /** Relative weight of the rival in the total (absent in benches saved before the metagame). */
+  weight: z.number().min(0).optional(),
   team: TallySummarySchema,
   versus: TallySummarySchema.optional(),
   difference: EstimateSchema.extend({ pairs: count }).optional(),
@@ -173,7 +187,20 @@ export const BenchTeamSnapshotSchema = z.object({
 export const BenchSetupSchema = z.object({
   team: BenchTeamSnapshotSchema,
   versus: BenchTeamSnapshotSchema.optional(),
-  opponents: z.array(z.object({ id: OpponentIdSchema, name: z.string() })),
+  opponents: z.array(
+    z.object({
+      id: OpponentIdSchema,
+      name: z.string(),
+      /** Metagame teams only: their share of the metagame. */
+      weight: z.number().min(0).optional(),
+    }),
+  ),
+  /** Against the metagame: which snapshot (only benches with the same one compare). */
+  metagame: z
+    .object({ snapshotId: MetagameSnapshotIdSchema, month: z.string(), cutoff: z.number() })
+    .optional(),
+  /** Snapshot whose sets the bots assumed for their rivals (fase 22), if any. */
+  metagameSets: MetagameSnapshotIdSchema.optional(),
   modes: z.array(GameModeSchema),
   levels: BenchLevelsSchema,
   budget: BenchBudgetSchema,
@@ -201,6 +228,8 @@ export interface BenchListEntry {
   modes: z.infer<typeof GameModeSchema>[];
   levels: z.infer<typeof BenchLevelsSchema>;
   opponents: number;
+  /** Snapshot of the metagame it was measured against, if any. */
+  metagameId?: string;
   status: z.infer<typeof BenchStatusSchema>;
   total: z.infer<typeof TotalSummarySchema>;
   battles: number;

@@ -22,11 +22,11 @@ export function loadPositions(file: string): PositionRow[] {
 }
 
 /** Train and test rows, split by battle (a seeded `testShare` of the battles go to the test). */
-export function splitByBattle(
-  rows: readonly PositionRow[],
+export function splitByBattle<R extends { id: string }>(
+  rows: readonly R[],
   seed: string,
   testShare = 0.2,
-): { train: PositionRow[]; test: PositionRow[] } {
+): { train: R[]; test: R[] } {
   const ids = [...new Set(rows.map((row) => row.id))].sort();
   const random = new SeededRandom(`split:${seed}`);
   const test = new Set(ids.filter(() => random.next() < testShare));
@@ -65,9 +65,9 @@ export interface Metrics {
   bins: { predicted: number; observed: number; rows: number }[];
 }
 
-export function metrics(
-  predict: (row: PositionRow) => number,
-  rows: readonly PositionRow[],
+export function metrics<R extends { won: 0 | 1 }>(
+  predict: (row: R) => number,
+  rows: readonly R[],
 ): Metrics {
   const bins = Array.from({ length: 10 }, () => ({ predicted: 0, observed: 0, rows: 0 }));
   let correct = 0;
