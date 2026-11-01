@@ -59,6 +59,7 @@ export interface FoeMember {
 const MAX_VARIANTS = 3;
 /** With beliefs, variants less likely than this are not averaged over. */
 const MIN_VARIANT_PROBABILITY = 0.05;
+const SCREEN_CONDITIONS = new Set(['reflect', 'lightscreen', 'auroraveil']);
 
 export interface SituationOptions {
   /**
@@ -75,6 +76,12 @@ export interface SituationOptions {
    * to them, as if the bot knew which ones it left behind.
    */
   rivalBrought?: readonly SpeciesId[] | null;
+  /**
+   * Level 2's simulation understands the status moves of fase 24 (stat drops, entry abilities,
+   * Skill Swap, Prankster, Wide Guard, weather…). Default true; false is the model before it
+   * (measuring hook, `SearchSettings.statusModel`).
+   */
+  statusModel?: boolean;
 }
 
 export class Situation {
@@ -92,6 +99,8 @@ export class Situation {
   readonly beliefs: SetBeliefs | undefined;
   /** What the rival brought, when known (`SituationOptions.rivalBrought`). */
   readonly rivalBrought: readonly SpeciesId[] | null;
+  /** See `SituationOptions.statusModel`. */
+  readonly statusModel: boolean;
   private readonly damageCache = new WeakMap<
     Combatant,
     WeakMap<Combatant, Map<MoveId, DamageEstimate>>
@@ -109,6 +118,7 @@ export class Situation {
     this.mode = context.mode;
     this.field = fieldFromView(this.view);
     this.rivalBrought = options.rivalBrought ?? null;
+    this.statusModel = options.statusModel ?? true;
     if (this.rivalBrought) narrowPreview(this.view, this.foe, this.rivalBrought);
     this.model = new OpponentModel(
       context.mode,
@@ -128,6 +138,16 @@ export class Situation {
    */
   withWeather(weather: string | null): Situation {
     return weather === this.field.weather ? this : this.withField({ ...this.field, weather });
+  }
+
+  /** The same situation without Reflect, Light Screen or Aurora Veil (Screen Cleaner). */
+  withoutScreens(): Situation {
+    const clear = (conditions: Readonly<Record<string, number>>) =>
+      Object.fromEntries(
+        Object.entries(conditions).filter(([name]) => !SCREEN_CONDITIONS.has(name)),
+      );
+    const { p1, p2 } = this.field.conditions;
+    return this.withField({ ...this.field, conditions: { p1: clear(p1), p2: clear(p2) } });
   }
 
   /**

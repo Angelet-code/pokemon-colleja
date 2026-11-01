@@ -22,6 +22,7 @@ import {
   type TeamPreviewRequest,
   teamChoice,
 } from '@colleja/core';
+import type { GameMode } from '@colleja/data';
 import { weatherAfter } from '../analysis/combatant';
 import { pickBest } from '../analysis/evaluation';
 import { readPreview } from '../analysis/preview-read';
@@ -95,6 +96,7 @@ export class ExpertAgent extends TacticalAgent {
       kind === 'team' || kind === 'switch' || (kind === 'move' && context.sandbox !== undefined);
     const situation = new Situation(context, {
       ...this.priorOptions(),
+      statusModel: this.settings(context.mode).statusModel !== 0,
       ...(infer ? { beliefs: 'infer' as const } : {}),
     });
     this.lastSituation = situation;
@@ -113,8 +115,8 @@ export class ExpertAgent extends TacticalAgent {
     return choice;
   }
 
-  private settings(situation: Situation): SearchSettings {
-    return { ...SEARCH_SETTINGS[situation.mode], ...this.options.settings };
+  private settings(mode: GameMode): SearchSettings {
+    return { ...SEARCH_SETTINGS[mode], ...this.options.settings };
   }
 
   /**
@@ -167,7 +169,7 @@ export class ExpertAgent extends TacticalAgent {
     if (situation.doubles || !slot || slot.mustPass || slot.switches.length < 2) {
       return super.chooseReplacements(situation, request);
     }
-    const { assumptions } = this.settings(situation);
+    const { assumptions } = this.settings(situation.mode);
     const lineups = rivalAssumptions(situation, assumptions, this.random).map((assumption) =>
       foeLineup(situation, assumption),
     );
@@ -200,7 +202,7 @@ export class ExpertAgent extends TacticalAgent {
   protected override chooseMoves(situation: Situation, request: MoveRequest): Choice {
     const { sandbox } = situation.context;
     if (!sandbox) return super.chooseMoves(situation, request);
-    const settings = this.settings(situation);
+    const settings = this.settings(situation.mode);
     const style =
       settings.counterCandidates > 0
         ? styleAdjustment(this.style.summary(situation.context.log, situation.foe))

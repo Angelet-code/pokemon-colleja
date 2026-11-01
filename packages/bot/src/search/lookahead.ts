@@ -81,6 +81,11 @@ export interface SearchSettings {
   pruneAfter: number;
   /** Score points below the best average at which an option is dropped (see `pruneAfter`). */
   pruneMargin: number;
+  /**
+   * 1: level 2's simulation understands the status moves of fase 24 (ADR-0026); 0: the model
+   * before it (measuring hook). Doubles only.
+   */
+  statusModel: number;
 }
 
 export const SEARCH_SETTINGS: Record<'singles' | 'doubles', SearchSettings> = {
@@ -98,6 +103,7 @@ export const SEARCH_SETTINGS: Record<'singles' | 'doubles', SearchSettings> = {
     counterCandidates: 6,
     pruneAfter: 2,
     pruneMargin: 30,
+    statusModel: 1,
   },
   doubles: {
     assumptions: 2,
@@ -114,6 +120,7 @@ export const SEARCH_SETTINGS: Record<'singles' | 'doubles', SearchSettings> = {
     counterCandidates: 6,
     pruneAfter: 1,
     pruneMargin: 30,
+    statusModel: 1,
   },
 };
 
@@ -419,7 +426,9 @@ function rankRivalReplies(
 ): RankedReplies {
   const request = root.request(situation.foe);
   if (!request || requestKind(request) !== 'move') return { request: null, options: [] };
-  const rival = new Situation(rivalContext(situation, request, [], assumption));
+  const rival = new Situation(rivalContext(situation, request, [], assumption), {
+    statusModel: situation.statusModel,
+  });
   const count = Math.max(
     tools.settings.rivalReplies,
     tools.style ? tools.settings.counterCandidates : 0,
@@ -579,6 +588,7 @@ function positionValue(
     priors: situation.model.priors,
     standardShare: situation.model.standardShare,
     rivalBrought: situation.rivalBrought,
+    statusModel: situation.statusModel,
   });
   const { materialWeight, positionWeight, chainWeight, learnedWeight } = tools.settings;
   let value = materialWeight * material;

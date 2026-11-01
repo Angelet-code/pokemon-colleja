@@ -6,7 +6,7 @@
  * switching into an attack, or sacrificing a Pokémon versus saving it.
  */
 import type { BoostId } from '@colleja/core';
-import { getMove, type MoveId } from '@colleja/data';
+import { type AbilityId, getMove, type MoveId } from '@colleja/data';
 import { type Combatant, hasChoiceItem, typesOf } from './combatant';
 import { FIRST_TURN_MOVES, SELF_KO_MOVES } from './move-knowledge';
 import type { Situation } from './situation';
@@ -301,6 +301,12 @@ function variant(combatant: Combatant, key: string, make: () => Combatant): Comb
     byKey.set(key, result);
   }
   return result;
+}
+
+/** Copy of a combatant with another ability (Skill Swap…; memoised). */
+export function withAbility(combatant: Combatant, ability: AbilityId): Combatant {
+  if (combatant.ability === ability) return combatant;
+  return variant(combatant, `ability:${ability}`, () => ({ ...combatant, ability }));
 }
 
 /** Copy of a combatant with stat stages added (clamped to ±6). */

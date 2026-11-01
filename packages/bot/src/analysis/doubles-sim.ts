@@ -10,17 +10,35 @@
  */
 import type { BoostId, SideId } from '@colleja/core';
 import { getMove, type MoveId } from '@colleja/data';
-import { type Combatant, effectiveSpeed, hasChoiceItem, megaEvolved, typesOf } from './combatant';
-import { attackDamage, withBoosts, withStatus } from './duel';
+import {
+  type Combatant,
+  effectiveSpeed,
+  hasChoiceItem,
+  megaEvolved,
+  typesOf,
+  weatherOf,
+} from './combatant';
+import { attackDamage, withAbility, withBoosts, withStatus } from './duel';
 import { KO_BONUS } from './evaluation';
 import {
+  ABILITY_MOVES,
+  DROP_REACTIONS,
   FIRST_TURN_MOVES,
+  FIXED_ABILITIES,
+  GUARD_MOVES,
+  HEAL_TARGET_MOVES,
+  INTIMIDATE_IMMUNE,
+  LOCK_MOVES,
+  NO_DROP_ABILITIES,
   PROTECT_MOVES,
   RECOVERY_MOVES,
   REDIRECTION_MOVES,
   SELF_KO_MOVES,
   SETUP_MOVES,
+  STAT_GUARD_ABILITIES,
   STATUS_MOVES,
+  TARGET_BOOST_MOVES,
+  WEATHER_MOVES,
 } from './move-knowledge';
 import type { OwnMember, Situation } from './situation';
 
@@ -50,6 +68,8 @@ interface Unit {
   protect: boolean;
   flinch: boolean;
   helped: boolean;
+  /** Last move it used (from the view), for Encore. */
+  lastMove: MoveId | null;
 }
 
 interface Action {
@@ -89,6 +109,7 @@ const SLEEP_TURNS = 2;
 /** Doubles screens reduce damage to about two thirds. */
 const SCREEN_FACTOR = 2 / 3;
 const SINGLE_TARGETS = new Set(['normal', 'any', 'adjacentFoe', 'randomNormal']);
+const SPREAD_TARGETS = new Set(['allAdjacentFoes', 'allAdjacent']);
 
 export class DoublesSim {
   private readonly units: Unit[];
@@ -96,14 +117,25 @@ export class DoublesSim {
   private trickRoom: boolean;
   private readonly screens: Record<'mine' | 'foe', Set<string>>;
   private followMe: Record<'mine' | 'foe', Unit | null> = { mine: null, foe: null };
+  /** Wide Guard / Quick Guard of each side this turn. */
+  private readonly guards: Record<'mine' | 'foe', Set<'spread' | 'priority'>> = {
+    mine: new Set(),
+    foe: new Set(),
+  };
+  /** The situation under the simulated field (weather moves and Screen Cleaner change it). */
+  private situation: Situation;
+  /** Fase 24 status moves and entry abilities (`Situation.statusModel`). */
+  private readonly statusModel: boolean;
   /** Turn being played (1 = the planned one). */
   private turnNumber = 0;
 
   constructor(
-    private readonly situation: Situation,
+    situation: Situation,
     private readonly lineup: SimLineup | null = null,
     private readonly trace: SimTrace | null = null,
   ) {
+    this.situation = situation;
+    this.statusModel = situation.statusModel;
     const { field, me, foe } = situation;
     this.tailwind = {
       mine: 'tailwind' in field.conditions[me],
@@ -124,10 +156,10 @@ export class DoublesSim {
     for (let position = 0; position < 2; position++) {
       const member = situation.ownActive(position);
       if (member && !member.fainted) {
-        this.units.push(this.unit('mine', position, member.combatant, member));
+        this.units.push(this.unit('mine', position, member.combatant, member, member.view));
       }
       const rival = situation.foeAt(position);
-      if (rival) this.units.push(this.unit('foe', position, rival.combatant, null));
+      if (rival) this.units.push(this.unit('foe', position, rival.combatant, null, rival.view));
     }
   }
 
@@ -136,6 +168,7 @@ export class DoublesSim {
     position: number,
     combatant: Combatant,
     member: OwnMember | null,
+    view: { lastMove: string | null } | null | undefined = null,
   ): Unit {
     return {
       side,
@@ -149,6 +182,7 @@ export class DoublesSim {
       protect: false,
       flinch: false,
       helped: false,
+      lastMove: (view?.lastMove as MoveId | null | undefined) ?? null,
     };
   }
 
@@ -218,7 +252,7 @@ export class DoublesSim {
         unit,
         move: plan.move,
         target: plan.target,
-        priority: move?.priority ?? 0,
+        priority: (move?.priority ?? 0) + (this.pranksterBoosted(unit, plan.move) ? 1 : 0),
         plan,
       });
     }
@@ -239,6 +273,8 @@ export class DoublesSim {
     unit.sleep = member.combatant.status === 'slp' ? SLEEP_TURNS : 0;
     unit.lock = null;
     unit.fresh = true;
+    unit.lastMove = null;
+    if (this.statusModel) this.enter(unit);
   }
 
   /** Negative when `a` moves first. Ties: rivals first (pessimistic). */
@@ -325,6 +361,7 @@ export class DoublesSim {
     }
     for (const defender of this.targets(unit, move, action.target)) {
       if (defender.protect) continue;
+      if (this.statusModel && this.guarded(defender, data.target, action.priority)) continue;
       let damage = attackDamage(this.situation, unit.combatant, defender.combatant, move);
       if (unit.helped) damage *= 1.5;
       const screen = data.category === 'Physical' ? 'reflect' : 'lightscreen';
@@ -358,6 +395,7 @@ export class DoublesSim {
     if (unit.combatant.item === 'lifeorb') unit.hp -= unit.combatant.maxhp / 10;
     if (hasChoiceItem(unit.combatant)) unit.lock = move;
     unit.fresh = false;
+    unit.lastMove = move;
   }
 
   /** Effects of own status moves on turn 1 (rivals' status moves are not modelled). */
@@ -395,7 +433,153 @@ export class DoublesSim {
       this.followMe[side] = unit;
     } else if (move === 'reflect' || move === 'lightscreen' || move === 'auroraveil') {
       this.screens[side].add(move);
+    } else if (this.statusModel) {
+      this.modelledStatus(unit, move, target, plan);
     }
+  }
+
+  // ── Fase 24 (ADR-0026): status moves and entry abilities ──────────────
+
+  /** Status moves level 2 used to value at 0: stat changes, abilities, weather, guards… */
+  private modelledStatus(unit: Unit, move: MoveId, target: number | undefined, plan: SlotPlan) {
+    const weather = WEATHER_MOVES[move];
+    if (weather) {
+      this.setWeather(weather);
+      return;
+    }
+    const guard = GUARD_MOVES[move];
+    if (guard) {
+      this.guards[unit.side].add(guard);
+      return;
+    }
+    if (plan.effectLands === false) return;
+    const boosts = TARGET_BOOST_MOVES[move];
+    const ability = ABILITY_MOVES[move];
+    for (const victim of this.statusVictims(unit, move, target)) {
+      if (this.blocks(unit, victim, move)) continue;
+      if (boosts) {
+        if (victim.side === unit.side) victim.combatant = withBoosts(victim.combatant, boosts);
+        else this.lowerStats(victim, boosts, unit);
+      } else if (ability) {
+        this.moveAbility(unit, victim, ability);
+      } else if (HEAL_TARGET_MOVES.has(move)) {
+        victim.hp = Math.min(victim.combatant.maxhp, victim.hp + victim.combatant.maxhp / 2);
+      } else if (LOCK_MOVES.has(move) && victim.side !== unit.side && victim.lastMove) {
+        victim.lock = victim.lastMove;
+      }
+    }
+  }
+
+  /** Who a modelled status move affects: the ally with `-N`, else like an attack. */
+  private statusVictims(unit: Unit, move: MoveId, target: number | undefined): Unit[] {
+    const data = getMove(move);
+    if (!data) return [];
+    if (data.target === 'adjacentAllies' || data.target === 'adjacentAlly') {
+      const ally = this.allyOf(unit);
+      return ally ? [ally] : [];
+    }
+    if (SPREAD_TARGETS.has(data.target)) return this.enemiesOf(unit);
+    return this.targets(unit, move, target);
+  }
+
+  /** The status move fails on `victim`: Protect, Good as Gold, Magic Bounce, Prankster on Dark. */
+  private blocks(unit: Unit, victim: Unit, move: MoveId): boolean {
+    const data = getMove(move);
+    if (!data || victim === unit) return false;
+    if (victim.protect && data.flags.includes('protect')) return true;
+    if (victim.combatant.ability === 'goodasgold') return true;
+    if (victim.side === unit.side) return false;
+    if (victim.combatant.ability === 'magicbounce' && data.flags.includes('reflectable')) {
+      return true;
+    }
+    return this.pranksterBoosted(unit, move) && typesOf(victim.combatant).includes('Dark');
+  }
+
+  private pranksterBoosted(unit: Unit, move: MoveId): boolean {
+    return (
+      this.statusModel &&
+      unit.combatant.ability === 'prankster' &&
+      getMove(move)?.category === 'Status'
+    );
+  }
+
+  /** Damage that Wide Guard (spread moves) or Quick Guard (priority moves) stops. */
+  private guarded(defender: Unit, moveTarget: string, priority: number): boolean {
+    const guards = this.guards[defender.side];
+    return (
+      (guards.has('spread') && SPREAD_TARGETS.has(moveTarget)) ||
+      (guards.has('priority') && priority > 0)
+    );
+  }
+
+  /** Skill Swap, Role Play, Entrainment: the abilities move and those that arrive activate. */
+  private moveAbility(unit: Unit, victim: Unit, kind: 'swap' | 'copy' | 'give'): void {
+    const mine = unit.combatant.ability;
+    const theirs = victim.combatant.ability;
+    if (FIXED_ABILITIES.has(mine) && kind !== 'copy') return;
+    if (FIXED_ABILITIES.has(theirs) && kind !== 'give') return;
+    // Like Showdown: the target's new ability starts first, then the user's.
+    if (kind !== 'copy') {
+      victim.combatant = withAbility(victim.combatant, mine);
+      this.enter(victim);
+    }
+    if (kind !== 'give') {
+      unit.combatant = withAbility(unit.combatant, theirs);
+      this.enter(unit);
+    }
+  }
+
+  /** Entry abilities of `unit` (switching in or receiving them): Intimidate, Screen Cleaner, weather. */
+  private enter(unit: Unit): void {
+    const { ability } = unit.combatant;
+    if (ability === 'intimidate') {
+      for (const foe of this.enemiesOf(unit)) {
+        const reaction = foe.combatant.ability;
+        if (reaction === 'guarddog') foe.combatant = withBoosts(foe.combatant, { atk: 1 });
+        if (INTIMIDATE_IMMUNE.has(reaction)) continue;
+        this.lowerStats(foe, { atk: -1 }, unit);
+        if (reaction === 'rattled') foe.combatant = withBoosts(foe.combatant, { spe: 1 });
+      }
+    } else if (ability === 'screencleaner') {
+      this.screens.mine.clear();
+      this.screens.foe.clear();
+      this.situation = this.situation.withoutScreens();
+    }
+    const weather = weatherOf(unit.combatant);
+    if (weather) this.setWeather(weather);
+  }
+
+  /**
+   * Stat changes `source` (a rival of `victim`) causes: Contrary inverts them, Clear Body & co.
+   * stop the drops, Mirror Armor sends them back, Defiant and Competitive answer them.
+   */
+  private lowerStats(victim: Unit, boosts: Partial<Record<BoostId, number>>, source: Unit): void {
+    const { ability } = victim.combatant;
+    const changes: Partial<Record<BoostId, number>> = {};
+    const reflected: Partial<Record<BoostId, number>> = {};
+    let dropped = false;
+    for (const [stat, raw] of Object.entries(boosts) as [BoostId, number][]) {
+      const stages = ability === 'contrary' ? -raw : raw;
+      if (stages < 0) {
+        if (NO_DROP_ABILITIES.has(ability) || STAT_GUARD_ABILITIES[ability] === stat) continue;
+        if (ability === 'mirrorarmor') {
+          reflected[stat] = stages;
+          continue;
+        }
+        dropped = true;
+      }
+      changes[stat] = stages;
+    }
+    victim.combatant = withBoosts(victim.combatant, changes);
+    if (Object.keys(reflected).length > 0) {
+      source.combatant = withBoosts(source.combatant, reflected);
+    }
+    const reaction = DROP_REACTIONS[ability];
+    if (dropped && reaction) victim.combatant = withBoosts(victim.combatant, reaction);
+  }
+
+  private setWeather(weather: string): void {
+    this.situation = this.situation.withWeather(weather);
   }
 
   private statusTargets(unit: Unit, move: MoveId, target: number | undefined): Unit[] {
@@ -424,6 +608,8 @@ export class DoublesSim {
       unit.helped = false;
     }
     this.followMe = { mine: null, foe: null };
+    this.guards.mine.clear();
+    this.guards.foe.clear();
   }
 
   /** Records `dealt` HP from `attacker` to `defender` and, if it fainted, who knocked it out. */
