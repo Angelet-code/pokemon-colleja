@@ -36,6 +36,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 - Con `npm run dev`, abrir la web en el puerto del servidor (3001) mostraba `apps/web/dist`, una compilación que podía ser vieja (por ejemplo, con los iconos Gen 8 pixelados en lugar de los renders de Champions). Ahora el servidor de desarrollo redirige las páginas a Vite (`WEB_DEV_URL`, que pone `npm run dev`).
 
+### Fase 25 — Cuánto falta en los sets del rival: parada en el techo (2026-11-01)
+
+- **Techo de conocer los sets del rival** ([ADR-0027](docs/adr/0027-techo-de-los-sets-del-rival.md)): gancho de medida `BotOptions.rivalSets` (los sets reales entran en el modelo del rival solo para ese bot; el rival de sus copias sigue sin ver los suyos) y `npm run arena -- --a-oracle-sets`. Test: `packages/bot/test/rival-sets.test.ts`. Sin el gancho, el código es el de antes.
+- Nivel 3 con el oráculo contra el de hoy (sets del meta en los dos, dobles, espejo, 600 pares por tanda): **51,2 % y 49,7 %** con equipos del meta y **55,3 % ± 2,3** con los rivales guardados (equipos de torneo).
+- **Parada** (decisión del usuario): contra el meta, conocer los sets no vale nada; los ≈ 5 puntos con sets raros quedan propuestos. Siguiente: la vista previa trae juntas las piezas de un combo ([fase 26](docs/fases/fase-26.md)).
+
 ### Fase 24 — Los movimientos de estado que el nivel 2 no entendía (2026-11-01)
 
 [ADR-0026](docs/adr/0026-movimientos-de-estado-del-nivel-2.md), [brief](docs/fases/fase-24.md), [guía del bot](docs/guias/bot.md#qué-modela-la-simulación-nivel-2). Sustituye al techo de los sets, que pasa a la [fase 25](docs/fases/fase-25.md).
