@@ -1,6 +1,6 @@
-# Fase 26 — La vista previa trae juntas las piezas de un combo
+# Fase 27 — La vista previa trae juntas las piezas de un combo
 
-> **Brief de la fase.** Escrito el 2026-11-01 al cerrar la fase 25 (parada en el techo de los sets, [ADR-0027](../adr/0027-techo-de-los-sets-del-rival.md)). Viene de la fase 24: el usuario quiere que el bot **entienda de qué va el equipo que juega**. Desde la fase 24 el nivel 2 sabe jugar Intercambio con Intimidación, Bromista, Última Palabra o Vasta Guardia, pero en la vista previa de dobles el bot elige sus 4 por duelos uno contra uno: muchas veces deja fuera una pieza del combo. Lee antes [AGENTS.md](../../AGENTS.md), la [guía del bot](../guias/bot.md#nivel-3-vista-previa), [ADR-0015](../adr/0015-vista-previa-del-nivel-3.md) (vista previa), [ADR-0017](../adr/0017-arquetipos-en-la-vista-previa.md) (arquetipos), [ADR-0018](../adr/0018-parejas-de-salida-simuladas.md) (salidas simuladas) y [ADR-0026](../adr/0026-movimientos-de-estado-del-nivel-2.md) (movimientos de estado).
+> **Brief de la fase.** Escrito el 2026-11-01 al cerrar la fase 25 (parada en el techo de los sets, [ADR-0027](../adr/0027-techo-de-los-sets-del-rival.md)) como fase 26; pasó a la 27 porque los golpes críticos ([fase 26](fase-26.md), [ADR-0028](../adr/0028-golpes-criticos.md)) fueron antes. Viene de la fase 24: el usuario quiere que el bot **entienda de qué va el equipo que juega**. Desde la fase 24 el nivel 2 sabe jugar Intercambio con Intimidación, Bromista, Última Palabra o Vasta Guardia, pero en la vista previa de dobles el bot elige sus 4 por duelos uno contra uno: muchas veces deja fuera una pieza del combo. Lee antes [AGENTS.md](../../AGENTS.md), la [guía del bot](../guias/bot.md#nivel-3-vista-previa), [ADR-0015](../adr/0015-vista-previa-del-nivel-3.md) (vista previa), [ADR-0017](../adr/0017-arquetipos-en-la-vista-previa.md) (arquetipos), [ADR-0018](../adr/0018-parejas-de-salida-simuladas.md) (salidas simuladas) y [ADR-0026](../adr/0026-movimientos-de-estado-del-nivel-2.md) (movimientos de estado).
 
 ## Objetivo
 
@@ -17,7 +17,7 @@ Que el nivel 3, en dobles, traiga juntos a los Pokémon que se necesitan (Interc
 
 ## Diseño recomendado
 
-Si te apartas de esto, escribe un ADR (ADR-0028).
+Si te apartas de esto, escribe un ADR (ADR-0029).
 
 1. **Medir antes el techo**: ¿cuánto gana el bot si trae el grupo bueno? Un oráculo barato: en el arena, comparar la vista previa del bot con un grupo fijado a mano que lleva el combo (`BotOptions.fixedGroup`) con los equipos del usuario. Si no gana nada, **parar y decidirlo con el usuario**.
 2. **Valorar grupos con la simulación**: para los mejores grupos candidatos del nivel 2 (p. ej. 4–6), jugar sus parejas de salida contra las salidas probables del rival con `LeadPlanner`/`evaluateLineup` (que ya entienden los combos) y mezclar ese valor con el de los duelos (peso en `PREVIEW_SETTINGS`). Así el combo cuenta por lo que hace en la partida, no por una regla.
@@ -34,7 +34,7 @@ Si te apartas de esto, escribe un ADR (ADR-0028).
 
 - Techo medido; si sigue, la mejora nivel 3 contra nivel 3 en dos tandas con los equipos de combo y sin perder con los rivales guardados ni el meta. Cifras en el ADR y el CHANGELOG; activarla, decisión del usuario.
 - Vista previa ≤ ~3 s y decisiones del nivel 3 ≤ ~1 s de media.
-- `npm run check` y `npm run e2e` en verde; CI en verde. Docs y brief de la fase 27.
+- `npm run check` y `npm run e2e` en verde; CI en verde. Docs y brief de la fase 28.
 
 ## Fuera de alcance
 

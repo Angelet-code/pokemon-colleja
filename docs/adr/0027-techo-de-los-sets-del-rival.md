@@ -32,4 +32,4 @@ Nivel 3 con el oráculo contra el nivel 3 de hoy (con el modelo de la fase 24), 
 
 - De la información oculta del rival, la salida (fase 21), lo que trae (fase 23) y sus sets contra el meta (esta fase) valen ≈ 0 para el nivel 3. Lo que queda: los sets **raros** (≈ 5 puntos contra equipos de torneo) y lo que hará el rival cada turno.
 - Si se retoma: repartir los 5 puntos con oráculos parciales (solo objetos, solo movimientos, solo repartos) sobre `--teams rivales`, y mejorar lo que más pese (repartos más finos, sets condicionados por los compañeros, verosimilitud de daño y velocidad).
-- Siguiente fase: la vista previa trae juntas las piezas de un combo ([fase 26](../fases/fase-26.md)), pendiente desde la fase 24.
+- Siguiente fase: la vista previa trae juntas las piezas de un combo ([fase 27](../fases/fase-27.md)), pendiente desde la fase 24; antes fueron los golpes críticos (fase 26, [ADR-0028](0028-golpes-criticos.md)).

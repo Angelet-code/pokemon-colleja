@@ -36,11 +36,31 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 - Con `npm run dev`, abrir la web en el puerto del servidor (3001) mostraba `apps/web/dist`, una compilación que podía ser vieja (por ejemplo, con los iconos Gen 8 pixelados en lugar de los renders de Champions). Ahora el servidor de desarrollo redirige las páginas a Vite (`WEB_DEV_URL`, que pone `npm run dev`).
 
+### Fase 26 — Golpes críticos (2026-11-01)
+
+[ADR-0028](docs/adr/0028-golpes-criticos.md), [brief](docs/fases/fase-26.md), [guía del bot](docs/guias/bot.md#qué-modela-la-simulación-nivel-2). La vista previa con las piezas de un combo pasa a la [fase 27](docs/fases/fase-27.md).
+
+#### Cambiado
+
+- **El nivel 2 (y con él el nivel 3 y el banco) cuenta los golpes críticos**: el daño esperado mezcla las tiradas normales y las críticas según la probabilidad de crítico (índice del movimiento, Puerro, Periscopio, Afortunado, Foco Energía y Dragoaliento; Armadura Batalla y Caparazón los paran). El grado 0 (1/24) no se cuenta. Sirfetch'd con Puerro y Dragoaliento del aliado critica siempre.
+- **Foco Energía y Dragoaliento se juegan** en dobles e individuales (`CRIT_BOOST_MOVES`); Foco Energía sale de `UNMODELLED_STATUS_MOVES`.
+
+#### Añadido
+
+- `BattleView.critBoost` (core): Foco Energía (+2) y Dragoaliento (+1, +2 a un Dragón) hasta que el Pokémon se retira.
+- `SEARCH_SETTINGS.critModel` (1) y `SituationOptions.critModel`: con 0, el nivel 3 de antes con las mismas decisiones (huellas de `arena:perf`).
+- Tests: `packages/bot/test/crits.test.ts` y el de `critBoost` en `packages/core/test/battle.test.ts`.
+
+#### Medidas
+
+- Nivel 3 con críticos contra el de antes (espejo, 600 pares por tanda): meta en dobles **50,7 % ± 2,3** y **49,8 % ± 2,4**, equipos de críticos **49,8 % ± 2,1**, meta en individuales **50,7 % ± 2,2**. Empate; mismo tiempo por decisión.
+- Decisión del usuario: **activarlo**.
+
 ### Fase 25 — Cuánto falta en los sets del rival: parada en el techo (2026-11-01)
 
 - **Techo de conocer los sets del rival** ([ADR-0027](docs/adr/0027-techo-de-los-sets-del-rival.md)): gancho de medida `BotOptions.rivalSets` (los sets reales entran en el modelo del rival solo para ese bot; el rival de sus copias sigue sin ver los suyos) y `npm run arena -- --a-oracle-sets`. Test: `packages/bot/test/rival-sets.test.ts`. Sin el gancho, el código es el de antes.
 - Nivel 3 con el oráculo contra el de hoy (sets del meta en los dos, dobles, espejo, 600 pares por tanda): **51,2 % y 49,7 %** con equipos del meta y **55,3 % ± 2,3** con los rivales guardados (equipos de torneo).
-- **Parada** (decisión del usuario): contra el meta, conocer los sets no vale nada; los ≈ 5 puntos con sets raros quedan propuestos. Siguiente: la vista previa trae juntas las piezas de un combo ([fase 26](docs/fases/fase-26.md)).
+- **Parada** (decisión del usuario): contra el meta, conocer los sets no vale nada; los ≈ 5 puntos con sets raros quedan propuestos. Siguiente: la vista previa trae juntas las piezas de un combo (pasó a la [fase 27](docs/fases/fase-27.md); antes fueron los golpes críticos, fase 26).
 
 ### Fase 24 — Los movimientos de estado que el nivel 2 no entendía (2026-11-01)
 
