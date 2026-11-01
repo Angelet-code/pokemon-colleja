@@ -47,6 +47,8 @@ export interface ArenaOptions {
   leads?: { a?: LeadPolicy; b?: LeadPolicy };
   /** Search settings of bot A (level 3), over `SEARCH_SETTINGS`: to measure a variant. */
   aSettings?: Partial<SearchSettings>;
+  /** The same for bot B (fase 24): to play a variant against the level 3 of before. */
+  bSettings?: Partial<SearchSettings>;
   /** The sets each bot assumes for its rival first (fase 22; default: the standard sets). */
   setPriors?: { a?: SetPriors; b?: SetPriors };
   /** With `setPriors`: bot A's share of the prior left to the standard sets (a variant). */
@@ -124,19 +126,20 @@ export interface PairSummary {
 }
 
 /**
- * `--a-settings` (fase 19): a JSON object of numeric search settings, e.g.
+ * `--a-settings` (fase 19) and `--b-settings` (fase 24): a JSON object of numeric search
+ * settings, e.g.
  * `{"learnedWeight":1,"positionWeight":0}`. Unknown keys are an error.
  */
 export function parseSearchSettings(text: string): Partial<SearchSettings> {
   const parsed: unknown = JSON.parse(text);
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-    throw new Error('--a-settings debe ser un objeto JSON.');
+    throw new Error('Los ajustes de búsqueda deben ser un objeto JSON.');
   }
   const known = Object.keys(SEARCH_SETTINGS.doubles);
   const settings: Record<string, number> = {};
   for (const [key, value] of Object.entries(parsed)) {
-    if (!known.includes(key)) throw new Error(`--a-settings: opción desconocida "${key}".`);
-    if (typeof value !== 'number') throw new Error(`--a-settings: "${key}" debe ser un número.`);
+    if (!known.includes(key)) throw new Error(`Ajuste de búsqueda desconocido: "${key}".`);
+    if (typeof value !== 'number') throw new Error(`El ajuste "${key}" debe ser un número.`);
     settings[key] = value;
   }
   return settings as Partial<SearchSettings>;
@@ -185,6 +188,7 @@ export async function playArenaBattle(options: ArenaOptions, index: number): Pro
       seed: `${botSeed}:${bot}`,
       ...own,
       ...(bot === 'a' && options.aSettings ? { settings: options.aSettings } : {}),
+      ...(bot === 'b' && options.bSettings ? { settings: options.bSettings } : {}),
       ...(options.setPriors?.[bot] ? { setPriors: options.setPriors[bot] } : {}),
       ...(bot === 'a' && options.aStandardShare !== undefined
         ? { standardShare: options.aStandardShare }

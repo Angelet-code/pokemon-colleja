@@ -53,6 +53,7 @@ const USAGE = `Uso: npm run arena -- [opciones]
   --b-leads bot|random           Lo mismo para el bot B
   --a-settings <json>            Ajustes de búsqueda del bot A (nivel 3) sobre SEARCH_SETTINGS,
                                  p. ej. '{"learnedWeight":1}': para medir una variante
+  --b-settings <json>            Lo mismo para el bot B (fase 24): p. ej. '{"statusModel":0}'
   --a-priors ${METAGAME}                 El bot A supone para el rival los sets que se juegan (los
                                  del meta activo, fase 22) antes que los estándar
   --b-priors ${METAGAME}                 Lo mismo para el bot B
@@ -153,15 +154,18 @@ async function main(): Promise<number> {
   if (values['a-oracle'] && !values.fixed && !values['fixed-group'])
     fail('--a-oracle solo vale con --fixed o --fixed-group.');
 
-  let aSettings: ReturnType<typeof parseSearchSettings> | undefined;
-  if (values['a-settings']) {
-    if (a !== 3) fail('--a-settings solo vale con --a 3.');
+  const settingsOf = (flag: 'a-settings' | 'b-settings', level: BotLevel) => {
+    const value = values[flag];
+    if (!value) return undefined;
+    if (level !== 3) fail(`--${flag} solo vale con el nivel 3.`);
     try {
-      aSettings = parseSearchSettings(values['a-settings']);
+      return parseSearchSettings(value);
     } catch (error) {
       fail(error instanceof Error ? error.message : String(error));
     }
-  }
+  };
+  const aSettings = settingsOf('a-settings', a);
+  const bSettings = settingsOf('b-settings', b);
   for (const flag of ['a-priors', 'b-priors'] as const) {
     const value = values[flag];
     if (value !== undefined && value !== METAGAME) fail(`--${flag} solo admite "${METAGAME}".`);
@@ -201,6 +205,7 @@ async function main(): Promise<number> {
         b: leadPolicy(values['b-leads'], '--b-leads'),
       },
       ...(aSettings ? { aSettings } : {}),
+      ...(bSettings ? { bSettings } : {}),
       setPriors,
       ...(values['a-standard-share'] !== undefined
         ? { aStandardShare: share(values['a-standard-share']) }
@@ -249,6 +254,7 @@ function parse() {
       'a-leads': { type: 'string', default: 'bot' },
       'b-leads': { type: 'string', default: 'bot' },
       'a-settings': { type: 'string' },
+      'b-settings': { type: 'string' },
       'a-priors': { type: 'string' },
       'b-priors': { type: 'string' },
       'a-standard-share': { type: 'string' },
