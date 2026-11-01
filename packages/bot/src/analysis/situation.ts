@@ -77,6 +77,11 @@ export interface SituationOptions {
    */
   rivalBrought?: readonly SpeciesId[] | null;
   /**
+   * Measuring hook (fase 25): the rival's real sets, as if only this bot saw its team sheet.
+   * Unlike Open Team Sheets, the rival in the forks still does not know the bot's sets.
+   */
+  rivalSets?: readonly PokemonSet[] | null;
+  /**
    * Level 2's simulation understands the status moves of fase 24 (stat drops, entry abilities,
    * Skill Swap, Prankster, Wide Guard, weather…). Default true; false is the model before it
    * (measuring hook, `SearchSettings.statusModel`).
@@ -99,6 +104,8 @@ export class Situation {
   readonly beliefs: SetBeliefs | undefined;
   /** What the rival brought, when known (`SituationOptions.rivalBrought`). */
   readonly rivalBrought: readonly SpeciesId[] | null;
+  /** The rival's real sets, when known (`SituationOptions.rivalSets`). */
+  readonly rivalSets: readonly PokemonSet[] | null;
   /** See `SituationOptions.statusModel`. */
   readonly statusModel: boolean;
   private readonly damageCache = new WeakMap<
@@ -118,11 +125,12 @@ export class Situation {
     this.mode = context.mode;
     this.field = fieldFromView(this.view);
     this.rivalBrought = options.rivalBrought ?? null;
+    this.rivalSets = options.rivalSets ?? null;
     this.statusModel = options.statusModel ?? true;
     if (this.rivalBrought) narrowPreview(this.view, this.foe, this.rivalBrought);
     this.model = new OpponentModel(
       context.mode,
-      context.opponentTeam,
+      context.opponentTeam ?? this.rivalSets,
       options.priors ?? null,
       options.standardShare,
     );

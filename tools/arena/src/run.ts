@@ -61,6 +61,8 @@ const USAGE = `Uso: npm run arena -- [opciones]
                                  estándar (por defecto ${STANDARD_SHARE})
   --a-oracle                     Con --fixed o --fixed-group: el bot A sabe qué especies
                                  trajo el B (no sus sets): el techo de predecirlo (fase 23)
+  --a-oracle-sets                El bot A ve los sets reales del B (solo él): el techo de
+                                 deducirlos (fase 25)
   --json <fichero>               Guarda cada combate (par, salidas, resultado) y el resumen
   -h, --help                     Esta ayuda`;
 
@@ -211,6 +213,7 @@ async function main(): Promise<number> {
         ? { aStandardShare: share(values['a-standard-share']) }
         : {}),
       ...(values['a-oracle'] ? { aOracle: true } : {}),
+      ...(values['a-oracle-sets'] ? { aSetsOracle: true } : {}),
       ...(pool ? { teams: pool.map((team) => team.members) } : {}),
       onBattle: (record) => {
         const { replay: _replay, ...kept } = record;
@@ -259,6 +262,7 @@ function parse() {
       'b-priors': { type: 'string' },
       'a-standard-share': { type: 'string' },
       'a-oracle': { type: 'boolean', default: false },
+      'a-oracle-sets': { type: 'boolean', default: false },
       json: { type: 'string' },
       help: { type: 'boolean', short: 'h', default: false },
     },

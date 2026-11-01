@@ -588,6 +588,7 @@ function positionValue(
     priors: situation.model.priors,
     standardShare: situation.model.standardShare,
     rivalBrought: situation.rivalBrought,
+    rivalSets: situation.rivalSets,
     statusModel: situation.statusModel,
   });
   const { materialWeight, positionWeight, chainWeight, learnedWeight } = tools.settings;

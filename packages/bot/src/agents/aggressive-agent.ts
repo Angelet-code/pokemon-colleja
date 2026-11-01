@@ -13,6 +13,7 @@ import {
   type MoveOption,
   type MoveRequest,
   PASS,
+  type PokemonSet,
   requestKind,
   SeededRandom,
   type SlotAction,
@@ -73,6 +74,11 @@ export interface BotOptions {
    * (only what it brought, not its sets). Nothing changes without it.
    */
   rivalBrought?: readonly SpeciesId[];
+  /**
+   * Measuring hook (arena, fase 25): the rival's real sets, as if only this bot saw its team
+   * sheet (the ceiling of predicting them). Nothing changes without it.
+   */
+  rivalSets?: readonly PokemonSet[];
 }
 
 /** One possible action of one slot and its value. */
@@ -100,6 +106,8 @@ export class AggressiveAgent implements BattleAgent {
   protected readonly standardShare: number | undefined;
   /** What the rival brought (`BotOptions.rivalBrought`). */
   protected readonly rivalBrought: readonly SpeciesId[] | undefined;
+  /** The rival's real sets (`BotOptions.rivalSets`). */
+  protected readonly rivalSets: readonly PokemonSet[] | undefined;
 
   constructor(options: BotOptions = {}) {
     this.random = new SeededRandom(options.seed ?? String(Math.random()));
@@ -107,6 +115,7 @@ export class AggressiveAgent implements BattleAgent {
     this.setPriors = options.setPriors ?? null;
     this.standardShare = options.standardShare;
     this.rivalBrought = options.rivalBrought;
+    this.rivalSets = options.rivalSets;
   }
 
   /** Indexes into `situation.own` of the fixed group, if any. */
@@ -147,6 +156,7 @@ export class AggressiveAgent implements BattleAgent {
       priors: this.setPriors,
       ...(this.standardShare !== undefined ? { standardShare: this.standardShare } : {}),
       ...(this.rivalBrought ? { rivalBrought: this.rivalBrought } : {}),
+      ...(this.rivalSets ? { rivalSets: this.rivalSets } : {}),
     };
   }
 

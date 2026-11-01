@@ -1,7 +1,7 @@
 /**
  * Bot levels available to the CLI, the arena and (phase 5) the UI.
  */
-import type { BattleAgent } from '@colleja/core';
+import type { BattleAgent, PokemonSet } from '@colleja/core';
 import type { SpeciesId } from '@colleja/data';
 import { AggressiveAgent } from './agents/aggressive-agent';
 import { ExpertAgent } from './agents/expert-agent';
@@ -65,6 +65,8 @@ export interface CreateBotOptions {
   standardShare?: number;
   /** Levels 1–3: the species the rival brought (measuring hook, fase 23). */
   rivalBrought?: readonly SpeciesId[];
+  /** Levels 1–3: the rival's real sets (measuring hook, fase 25). */
+  rivalSets?: readonly PokemonSet[];
 }
 
 export function createBot(level: BotLevel, options: CreateBotOptions = {}): BattleAgent {

@@ -58,6 +58,8 @@ export interface ArenaOptions {
    * predicting it (fase 23, `BotOptions.rivalBrought`).
    */
   aOracle?: boolean;
+  /** Bot A sees bot B's real sets (not what it brought), the ceiling of predicting them (fase 25). */
+  aSetsOracle?: boolean;
   /** Called after every battle (progress). */
   onBattle?: (record: BattleRecord) => void;
 }
@@ -194,6 +196,7 @@ export async function playArenaBattle(options: ArenaOptions, index: number): Pro
         ? { standardShare: options.aStandardShare }
         : {}),
       ...(bot === 'a' && options.aOracle ? { rivalBrought: brought('b') } : {}),
+      ...(bot === 'a' && options.aSetsOracle ? { rivalSets: teamOf('b') } : {}),
     });
     return policy(bot) === 'random' ? new FixedLineupAgent(agent, groupOf(bot)) : agent;
   };

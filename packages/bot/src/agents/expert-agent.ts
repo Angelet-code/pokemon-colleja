@@ -83,6 +83,7 @@ export class ExpertAgent extends TacticalAgent {
       ...(options.setPriors ? { setPriors: options.setPriors } : {}),
       ...(options.standardShare !== undefined ? { standardShare: options.standardShare } : {}),
       ...(options.rivalBrought ? { rivalBrought: options.rivalBrought } : {}),
+      ...(options.rivalSets ? { rivalSets: options.rivalSets } : {}),
     });
   }
 
