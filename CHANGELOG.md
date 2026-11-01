@@ -36,6 +36,26 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 - Con `npm run dev`, abrir la web en el puerto del servidor (3001) mostraba `apps/web/dist`, una compilación que podía ser vieja (por ejemplo, con los iconos Gen 8 pixelados en lugar de los renders de Champions). Ahora el servidor de desarrollo redirige las páginas a Vite (`WEB_DEV_URL`, que pone `npm run dev`).
 
+### Fase 24 — Los movimientos de estado que el nivel 2 no entendía (2026-11-01)
+
+[ADR-0026](docs/adr/0026-movimientos-de-estado-del-nivel-2.md), [brief](docs/fases/fase-24.md), [guía del bot](docs/guias/bot.md#qué-modela-la-simulación-nivel-2). Sustituye al techo de los sets, que pasa a la [fase 25](docs/fases/fase-25.md).
+
+#### Cambiado
+
+- **El nivel 2 (y con él el nivel 3) entiende los movimientos de estado que se juegan en dobles**. Antes valoraba a 0 el 19 % del uso de movimientos de estado de los sets del meta, y el nivel 3 nunca los probaba ni los esperaba del rival. Ahora `DoublesSim` modela: bajadas y subidas de stats al objetivo (Última Palabra, Llanto Falso, Encanto, Chirrido, Decoración…), con las reacciones del objetivo (Respondón, Cuerpo Puro, Corte Fuerte, Coraza Reflejo, Competitivo, Tenacidad); **Intercambio**, Imitación y Danza Amiga, con las habilidades que llegan activándose (**Intimidación**, Antibarrera, clima); Intimidación también al entrar por un cambio (con Fuerza Mental, Despiste, Ritmo Propio, Intrépido, Perro Guardián, Cobardía); la prioridad de **Bromista** (y que falla contra Siniestro); Cuerpo Áureo y Espejo Mágico; Vasta Guardia y Anticipo; Danza Lluvia y los demás climas; Pulso Cura y Otra Vez. Con el equipo «Doble Intimidación», el nivel 3 pasa de no usar Intercambio nunca a usarlo cuando toca.
+- Lo que sigue sin modelar está en `UNMODELLED_STATUS_MOVES` con su motivo (Mofa, Truco, Canto Mortal, Sustituto, Relevo, trampas…).
+
+#### Añadido
+
+- `SEARCH_SETTINGS.statusModel` (1) y `SituationOptions.statusModel`: con 0, el nivel 3 de antes con las mismas decisiones (huellas de `arena:perf`).
+- Arena: `--b-settings` (como `--a-settings`, para el bot B): enfrenta una variante del nivel 3 al de antes.
+- Tests: `packages/bot/test/status-moves.test.ts` (efectos en la simulación y cobertura: cada movimiento de estado de los sets estándar, modelado o en la lista de no modelados).
+
+#### Medidas
+
+- Nivel 3 con el modelo contra el nivel 3 de antes (los dos con los sets del meta, dobles, espejo, 15 arenas): equipos del meta **49,2 % ± 2,3** y **50,2 % ± 2,5** (600 pares por tanda, empate); los dos equipos de Intercambio del usuario, **51,8 % ± 2,4** (300 pares). ≈ 0,65 s por decisión (+3–5 %).
+- Decisión del usuario: **activarlo**.
+
 ### Fase 23 — Qué trae el rival: parada en el techo (2026-10-12)
 
 [ADR-0025](docs/adr/0025-que-trae-el-rival-no-importa.md), [brief](docs/fases/fase-23.md), guías del [bot](docs/guias/bot.md#arena-npm-run-arena) y de [aprendizaje](docs/guias/aprendizaje.md#qué-trae-el-rival-ladderbringeval).

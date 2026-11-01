@@ -92,7 +92,9 @@ Los pesos están en `PREVIEW_SETTINGS` (no en constantes sueltas) y `new ExpertA
 - Estados infligidos (quemadura, parálisis, sueño con cláusula de sueño), mejoras de características, recuperación, Descanso.
 - Protección (y que falla si se repite), Sorpresa (solo el primer turno en el campo), bloqueo de los objetos Elección, movimientos de dos turnos y de recarga.
 - Dobles: Refuerzo, Señuelo/Polvo Ira, pantallas, ataques en área (y el daño al aliado), objetivo que ya cayó.
-- **No** modela: cambios del rival, críticos, efectos secundarios probabilísticos, volátiles (Sustituto, Mofa, Otra Vez…).
+- Dobles, desde la fase 24 ([ADR-0026](../adr/0026-movimientos-de-estado-del-nivel-2.md)): movimientos de estado que cambian stats del rival o del aliado (Última Palabra, Llanto Falso, Encanto, Chirrido, Decoración…), **Intercambio**, Imitación y Danza Amiga con las habilidades de entrada que se activan (**Intimidación**, Antibarrera, las de clima), Intimidación también al entrar por un cambio, la prioridad de **Bromista** (y que falla contra Siniestro), Vasta Guardia y Anticipo, Danza Lluvia y los demás climas, Pulso Cura y Otra Vez. Las bajadas pasan por las reacciones del objetivo: Cuerpo Puro, Corte Fuerte, Respondón, Coraza Reflejo, Competitivo, Tenacidad, Perro Guardián, Cobardía. Cuerpo Áureo y Espejo Mágico los paran.
+- **No** modela: cambios del rival, críticos, efectos secundarios probabilísticos, los movimientos de estado del rival en los turnos de seguimiento y los de `UNMODELLED_STATUS_MOVES` (`move-knowledge.ts`: Mofa, Truco, Canto Mortal, Sustituto, Relevo…, cada uno con su motivo). Un test (`status-moves.test.ts`) exige que cada movimiento de estado de los sets estándar esté modelado o en esa lista.
+- `SEARCH_SETTINGS.statusModel` (1) enciende lo de la fase 24 en el nivel 3; con 0, las mismas decisiones que antes (huellas de `arena:perf`). El nivel 2 lo usa siempre.
 
 ## Generador de equipos (`@colleja/teamgen`)
 
@@ -140,7 +142,7 @@ Resultados de referencia (fases 4, 9 y 10): en el [CHANGELOG](../../CHANGELOG.md
 
 Referencia en espejo (`--fixed`, 1 200 combates por modo): nivel 3 contra nivel 2, **≈ 83,4 %** en dobles (4 contra 4, con la valoración aprendida desde la fase 19; antes 81,0 % ± 2,1) y **64,2 % ± 2,4** en individuales (3 contra 3). El espejo apenas baja el ruido de una diferencia (en cuanto las decisiones divergen, la suerte también): compara variantes con dos tandas de semillas distintas.
 
-**Variantes del nivel 3** (`--a-settings`, fase 19): `npm run arena -- --a 3 --b 2 --mode doubles --fixed --a-settings '{"learnedWeight":0}'` juega el nivel 3 con esos ajustes sobre `SEARCH_SETTINGS` (solo claves numéricas existentes; también en `arena:perf`). Para 1 200 combates, lanza ≈ 15 arenas en paralelo de 80 combates con semillas `t1-0`…`t1-14` (≈ 9 min por variante en 16 núcleos) y suma los pares de sus `--json`.
+**Variantes del nivel 3** (`--a-settings`, fase 19; `--b-settings` para el bot B, fase 24): `npm run arena -- --a 3 --b 2 --mode doubles --fixed --a-settings '{"learnedWeight":0}'` juega el nivel 3 con esos ajustes sobre `SEARCH_SETTINGS` (solo claves numéricas existentes; también en `arena:perf`). Para 1 200 combates, lanza ≈ 15 arenas en paralelo de 80 combates con semillas `t1-0`…`t1-14` (≈ 9 min por variante en 16 núcleos) y suma los pares de sus `--json`.
 
 ### Velocidad (`npm run arena:perf`)
 
