@@ -307,6 +307,33 @@ describe('BattleView types', () => {
     expect(greninja.typeChange).toBeNull();
     expect(currentTypes(greninja)).toEqual(['Water', 'Dark']);
   });
+
+  it('follows Focus Energy and Dragon Cheer until the Pokémon leaves', () => {
+    const view = BattleView.from([
+      '|switch|p1a: Sirfetch’d|Sirfetch’d, L50, M|169/169',
+      '|switch|p1b: Archaludon|Archaludon, L50, M|165/165',
+      '|switch|p2a: Dragonite|Dragonite, L50, M|100/100',
+      '|switch|p2b: Gengar|Gengar, L50, M|100/100',
+    ]);
+    const sirfetchd = view.getPokemon('p1: Sirfetch’d');
+    const dragonite = view.getPokemon('p2: Dragonite');
+    const gengar = view.getPokemon('p2: Gengar');
+    if (!sirfetchd || !dragonite || !gengar) throw new Error('missing Pokémon');
+    expect(sirfetchd.critBoost).toBe(0);
+
+    view.applyAll([
+      '|-start|p1a: Sirfetch’d|move: Dragon Cheer',
+      '|-start|p2a: Dragonite|move: Dragon Cheer',
+      '|-start|p2b: Gengar|move: Focus Energy',
+    ]);
+    expect(sirfetchd.critBoost).toBe(1);
+    expect(dragonite.critBoost).toBe(2);
+    expect(gengar.critBoost).toBe(2);
+
+    view.apply('|switch|p2b: Talonflame|Talonflame, L50, M|100/100');
+    expect(gengar.critBoost).toBe(0);
+    expect(sirfetchd.critBoost).toBe(1);
+  });
 });
 
 describe('SeededRandom', () => {

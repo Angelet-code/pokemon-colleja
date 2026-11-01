@@ -46,6 +46,11 @@ export interface ViewPokemon {
    * changes form; `null` = the species' own types (see `currentTypes`).
    */
   typeChange: TypeName[] | null;
+  /**
+   * Critical-hit stages from Focus Energy (+2) or Dragon Cheer (+1, +2 for Dragon types)
+   * until it leaves the field; 0 = none.
+   */
+  critBoost: number;
 }
 
 /** The types a Pokémon has right now: a type change, or those of its current species. */
@@ -168,6 +173,7 @@ export class BattleView {
       }
       case '-start':
         this.startTypeChange(a, b, c, args);
+        this.startCritBoost(a, b);
         break;
       case '-end': {
         const pokemon = this.getPokemon(a);
@@ -355,6 +361,7 @@ export class BattleView {
         lastMove: null,
         lastMoveTurn: null,
         typeChange: null,
+        critBoost: 0,
       };
       viewSide.pokemon.push(pokemon);
     }
@@ -363,6 +370,7 @@ export class BattleView {
       previous.position = null;
       previous.boosts = {};
       previous.typeChange = null;
+      previous.critBoost = 0;
     }
     if (previous !== pokemon) {
       pokemon.switchedInTurn = this.turn;
@@ -391,6 +399,20 @@ export class BattleView {
     if (types.length === 0) return;
     pokemon.typeChange =
       effect === 'typeadd' ? [...new Set([...currentTypes(pokemon), ...types])] : types;
+  }
+
+  /**
+   * `-start|POKEMON|move: Focus Energy` or `move: Dragon Cheer` (Dragon Cheer reads the types
+   * when it starts, like Showdown). The two never stack: each fails on the other.
+   */
+  private startCritBoost(ident: string, effect: string): void {
+    const pokemon = this.getPokemon(ident);
+    if (!pokemon) return;
+    const id = toId(effect.replace(/^move: /, ''));
+    if (id === 'focusenergy') pokemon.critBoost = 2;
+    else if (id === 'dragoncheer') {
+      pokemon.critBoost = currentTypes(pokemon).includes('Dragon') ? 2 : 1;
+    }
   }
 
   private updateCondition(ident: string, condition: string): void {

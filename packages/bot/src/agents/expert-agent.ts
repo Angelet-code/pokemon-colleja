@@ -98,6 +98,7 @@ export class ExpertAgent extends TacticalAgent {
     const situation = new Situation(context, {
       ...this.priorOptions(),
       statusModel: this.settings(context.mode).statusModel !== 0,
+      critModel: this.settings(context.mode).critModel !== 0,
       ...(infer ? { beliefs: 'infer' as const } : {}),
     });
     this.lastSituation = situation;

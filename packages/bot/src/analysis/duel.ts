@@ -323,6 +323,17 @@ export function withBoosts(
   });
 }
 
+/**
+ * Copy of a combatant after a critical-hit move lands on it (Focus Energy: +2, Dragon Cheer:
+ * +1, or +2 on a Dragon type); unchanged if it already has one (memoised).
+ */
+export function withCritBoost(combatant: Combatant, move: MoveId): Combatant {
+  if (combatant.critBoost) return combatant;
+  const dragon = typesOf(combatant).includes('Dragon');
+  const critBoost = move === 'focusenergy' || dragon ? 2 : 1;
+  return variant(combatant, `crit:${critBoost}`, () => ({ ...combatant, critBoost }));
+}
+
 /** Copy of a combatant that has (or has not) moved since entering (memoised). */
 export function withFreshness(combatant: Combatant, fresh: boolean): Combatant {
   if ((combatant.fresh ?? true) === fresh) return combatant;

@@ -18,10 +18,11 @@ import {
   typesOf,
   weatherOf,
 } from './combatant';
-import { attackDamage, withAbility, withBoosts, withStatus } from './duel';
+import { attackDamage, withAbility, withBoosts, withCritBoost, withStatus } from './duel';
 import { KO_BONUS } from './evaluation';
 import {
   ABILITY_MOVES,
+  CRIT_BOOST_MOVES,
   DROP_REACTIONS,
   FIRST_TURN_MOVES,
   FIXED_ABILITIES,
@@ -126,6 +127,8 @@ export class DoublesSim {
   private situation: Situation;
   /** Fase 24 status moves and entry abilities (`Situation.statusModel`). */
   private readonly statusModel: boolean;
+  /** Fase 26 critical-hit moves (`Situation.critModel`). */
+  private readonly critModel: boolean;
   /** Turn being played (1 = the planned one). */
   private turnNumber = 0;
 
@@ -136,6 +139,7 @@ export class DoublesSim {
   ) {
     this.situation = situation;
     this.statusModel = situation.statusModel;
+    this.critModel = situation.critModel;
     const { field, me, foe } = situation;
     this.tailwind = {
       mine: 'tailwind' in field.conditions[me],
@@ -433,6 +437,9 @@ export class DoublesSim {
       this.followMe[side] = unit;
     } else if (move === 'reflect' || move === 'lightscreen' || move === 'auroraveil') {
       this.screens[side].add(move);
+    } else if (this.critModel && CRIT_BOOST_MOVES[move]) {
+      const receiver = CRIT_BOOST_MOVES[move] === 'self' ? unit : this.allyOf(unit);
+      if (receiver) receiver.combatant = withCritBoost(receiver.combatant, move);
     } else if (this.statusModel) {
       this.modelledStatus(unit, move, target, plan);
     }

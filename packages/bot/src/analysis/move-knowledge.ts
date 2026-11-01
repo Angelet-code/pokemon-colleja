@@ -176,7 +176,6 @@ export const UNMODELLED_STATUS_MOVES: Record<MoveId, string> = {
   transform: 'needs the copied set',
   destinybond: 'needs knowing who KOs it',
   leechseed: 'small end-of-turn drain',
-  focusenergy: 'critical hits are not in the expected damage',
   stockpile: 'small defensive boost over turns',
   revivalblessing: 'revives a fainted member',
   afteryou: 'turn order of the ally',
@@ -207,6 +206,17 @@ export const UNMODELLED_STATUS_MOVES: Record<MoveId, string> = {
   quash: 'turn order of the target',
   shelter: 'defensive boost',
   instruct: 'repeats the ally move',
+};
+
+// ── Fase 26: critical hits ──────────────────────────────────────────────
+
+/**
+ * Moves that raise critical-hit stages, of the user or of the ally. Neither works on a
+ * Pokémon that already has one of them (Showdown fails the second).
+ */
+export const CRIT_BOOST_MOVES: Record<MoveId, 'self' | 'ally'> = {
+  focusenergy: 'self',
+  dragoncheer: 'ally',
 };
 
 /** Self-KO moves: the bots only use them as a last resort. */

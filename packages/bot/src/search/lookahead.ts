@@ -86,6 +86,11 @@ export interface SearchSettings {
    * before it (measuring hook). Doubles only.
    */
   statusModel: number;
+  /**
+   * 1: expected damage counts critical hits from stage 1 up and level 2 plays Focus Energy
+   * and Dragon Cheer (fase 26); 0: the model before it (measuring hook).
+   */
+  critModel: number;
 }
 
 export const SEARCH_SETTINGS: Record<'singles' | 'doubles', SearchSettings> = {
@@ -104,6 +109,7 @@ export const SEARCH_SETTINGS: Record<'singles' | 'doubles', SearchSettings> = {
     pruneAfter: 2,
     pruneMargin: 30,
     statusModel: 1,
+    critModel: 1,
   },
   doubles: {
     assumptions: 2,
@@ -121,6 +127,7 @@ export const SEARCH_SETTINGS: Record<'singles' | 'doubles', SearchSettings> = {
     pruneAfter: 1,
     pruneMargin: 30,
     statusModel: 1,
+    critModel: 1,
   },
 };
 
@@ -428,6 +435,7 @@ function rankRivalReplies(
   if (!request || requestKind(request) !== 'move') return { request: null, options: [] };
   const rival = new Situation(rivalContext(situation, request, [], assumption), {
     statusModel: situation.statusModel,
+    critModel: situation.critModel,
   });
   const count = Math.max(
     tools.settings.rivalReplies,
@@ -590,6 +598,7 @@ function positionValue(
     rivalBrought: situation.rivalBrought,
     rivalSets: situation.rivalSets,
     statusModel: situation.statusModel,
+    critModel: situation.critModel,
   });
   const { materialWeight, positionWeight, chainWeight, learnedWeight } = tools.settings;
   let value = materialWeight * material;

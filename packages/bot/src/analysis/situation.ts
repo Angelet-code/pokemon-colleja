@@ -87,6 +87,12 @@ export interface SituationOptions {
    * (measuring hook, `SearchSettings.statusModel`).
    */
   statusModel?: boolean;
+  /**
+   * Expected damage counts critical hits from stage 1 up, and Focus Energy and Dragon Cheer
+   * are played (fase 26). Default true; false is the model before it (measuring hook,
+   * `SearchSettings.critModel`).
+   */
+  critModel?: boolean;
 }
 
 export class Situation {
@@ -108,6 +114,8 @@ export class Situation {
   readonly rivalSets: readonly PokemonSet[] | null;
   /** See `SituationOptions.statusModel`. */
   readonly statusModel: boolean;
+  /** See `SituationOptions.critModel`. */
+  readonly critModel: boolean;
   private readonly damageCache = new WeakMap<
     Combatant,
     WeakMap<Combatant, Map<MoveId, DamageEstimate>>
@@ -127,6 +135,7 @@ export class Situation {
     this.rivalBrought = options.rivalBrought ?? null;
     this.rivalSets = options.rivalSets ?? null;
     this.statusModel = options.statusModel ?? true;
+    this.critModel = options.critModel ?? true;
     if (this.rivalBrought) narrowPreview(this.view, this.foe, this.rivalBrought);
     this.model = new OpponentModel(
       context.mode,
@@ -235,7 +244,9 @@ export class Situation {
     }
     let estimate = byMove.get(move);
     if (!estimate) {
-      estimate = estimateDamage(attacker, defender, move, this.field);
+      estimate = estimateDamage(attacker, defender, move, this.field, {
+        critChance: this.critModel,
+      });
       byMove.set(move, estimate);
     }
     return estimate;
@@ -276,6 +287,7 @@ export class Situation {
         moves: pokemon.moves,
         fresh: !(pokemon.active && view?.movedSinceSwitch),
         ...choiceLock(pokemon.item, pokemon.active ? view : undefined),
+        critBoost: pokemon.active ? view?.critBoost : 0,
       }),
       active: pokemon.active,
       fainted: condition.fainted,
@@ -299,6 +311,7 @@ export class Situation {
       moves: set.moves,
       fresh: !(pokemon.position !== null && pokemon.movedSinceSwitch),
       ...choiceLock(item, pokemon.position !== null ? pokemon : undefined),
+      critBoost: pokemon.critBoost,
     });
   }
 

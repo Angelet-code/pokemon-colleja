@@ -34,6 +34,8 @@ export interface Combatant {
   fresh?: boolean;
   /** Move it is locked into by a Choice item. */
   lockedMove?: MoveId;
+  /** Critical-hit stages from Focus Energy or Dragon Cheer (`ViewPokemon.critBoost`). */
+  critBoost?: number;
 }
 
 export interface CombatantInit {
@@ -51,6 +53,7 @@ export interface CombatantInit {
   moves?: MoveId[];
   fresh?: boolean;
   lockedMove?: MoveId;
+  critBoost?: number;
 }
 
 export function makeCombatant(init: CombatantInit): Combatant {
@@ -73,6 +76,7 @@ export function makeCombatant(init: CombatantInit): Combatant {
     stats,
     fresh: init.fresh ?? true,
     ...(init.lockedMove ? { lockedMove: init.lockedMove } : {}),
+    ...(init.critBoost ? { critBoost: init.critBoost } : {}),
   };
 }
 

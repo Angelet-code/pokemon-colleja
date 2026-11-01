@@ -171,6 +171,7 @@ describe('status move coverage', () => {
     knowledge.GUARD_MOVES,
     knowledge.HEAL_TARGET_MOVES,
     knowledge.LOCK_MOVES,
+    knowledge.CRIT_BOOST_MOVES,
   ];
   const ids = (table: unknown) =>
     (table instanceof Set ? [...table] : Object.keys(table as object)) as string[];
@@ -189,7 +190,7 @@ describe('status move coverage', () => {
     expect([...missing]).toEqual([]);
   });
 
-  it('the fase 24 tables only name moves of Champions', () => {
+  it('the fase 24 and 26 tables only name moves of Champions', () => {
     const fase24 = [
       knowledge.TARGET_BOOST_MOVES,
       knowledge.ABILITY_MOVES,
@@ -197,6 +198,7 @@ describe('status move coverage', () => {
       knowledge.GUARD_MOVES,
       knowledge.HEAL_TARGET_MOVES,
       knowledge.LOCK_MOVES,
+      knowledge.CRIT_BOOST_MOVES,
       knowledge.UNMODELLED_STATUS_MOVES,
     ];
     const unknown = fase24.flatMap(ids).filter((id) => !getMove(id));

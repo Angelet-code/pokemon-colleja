@@ -16,9 +16,11 @@ import {
   type Opening,
   simulateDuel,
   withBoosts,
+  withCritBoost,
   withStatus,
 } from './duel';
 import {
+  CRIT_BOOST_MOVES,
   FIRST_TURN_MOVES,
   HAZARD_MOVES,
   POWDER_MOVES,
@@ -240,6 +242,13 @@ function openingFor(
           utility: false,
         }
       : { opening: { move: null, priority }, chance: 1, utility: false };
+  }
+  if (situation.critModel && CRIT_BOOST_MOVES[moveId] === 'self') {
+    return {
+      opening: { move: null, priority, mineAfter: withCritBoost(attacker, moveId) },
+      chance: 1,
+      utility: false,
+    };
   }
   const boosts = SETUP_MOVES[moveId];
   if (boosts) {

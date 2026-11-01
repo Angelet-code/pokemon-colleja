@@ -47,6 +47,35 @@ export type SideBoost = 'helpinghand' | 'friendguard';
 export interface DamageOptions {
   /** The hit is a critical hit. */
   crit?: boolean;
+  /**
+   * Mix in critical hits by their chance (`critChance`) from stage 1 up (fase 26). The base
+   * 1/24 chance stays out: it would double the calc's work for a few points of damage.
+   */
+  critChance?: boolean;
+}
+
+/** Chance of a critical hit by stage (Gen 7+): 1/24, 1/8, 1/2, then always. */
+const CRIT_CHANCES = [1 / 24, 1 / 8, 1 / 2, 1];
+/** Below this chance the estimate ignores critical hits (stage 0). */
+const MIN_CRIT_CHANCE = 1 / 8;
+/** Species that the Leek gives two critical-hit stages. */
+const LEEK_USERS = new Set(['farfetchd', 'farfetchdgalar', 'sirfetchd']);
+/** Abilities that stop critical hits against their holder. */
+const NO_CRIT_ABILITIES = new Set(['battlearmor', 'shellarmor']);
+
+/**
+ * Chance that `move` from `attacker` lands a critical hit on `defender`, like Showdown: the
+ * move's ratio, Focus Energy or Dragon Cheer (`critBoost`), Scope Lens, the Leek and Super
+ * Luck. Moves that always crit (Wicked Blow…) the calc already handles.
+ */
+export function critChance(attacker: Combatant, defender: Combatant, moveId: MoveId): number {
+  const move = getMove(moveId);
+  if (!move || move.category === 'Status' || NO_CRIT_ABILITIES.has(defender.ability)) return 0;
+  let stage = (move.critRatio ?? 1) - 1 + (attacker.critBoost ?? 0);
+  if (attacker.item === 'scopelens') stage += 1;
+  if (attacker.item === 'leek' && LEEK_USERS.has(attacker.set.species)) stage += 2;
+  if (attacker.ability === 'superluck') stage += 1;
+  return CRIT_CHANCES[Math.min(Math.max(stage, 0), CRIT_CHANCES.length - 1)] ?? 0;
 }
 
 export function fieldFromView(view: BattleView): FieldState {
@@ -193,7 +222,8 @@ export function estimateDamage(
 ): DamageEstimate {
   const move = getMove(moveId);
   if (!move || move.category === 'Status' || defender.hp <= 0) return NO_DAMAGE;
-  const rest = `|${moveId}${options.crit ? '!' : ''}|${fieldKey(field, attacker.side, defender.side)}`;
+  const crit = options.crit ? '!' : options.critChance ? '~' : '';
+  const rest = `|${moveId}${crit}|${fieldKey(field, attacker.side, defender.side)}`;
   const key = `${calcKey(attacker)}${attacker.hp}>${calcKey(defender)}${defender.hp}${rest}`;
   const cached = estimateCache.get(key);
   if (cached) return cached;
@@ -205,7 +235,7 @@ export function estimateDamage(
   if (rolls) {
     estimate = { ...rolls, koChance: koChance(rolls.rolls, defender.hp) };
   } else {
-    estimate = calculateEstimate(attacker, defender, move, field, options);
+    estimate = mixedEstimate(attacker, defender, move, field, options);
     if (rollsCache.size >= MAX_CACHED_ESTIMATES) rollsCache.clear();
     rollsCache.set(rollsKey, estimate);
   }
@@ -261,7 +291,7 @@ function calcKey(combatant: Combatant): string {
     const stages = Object.entries(boosts)
       .map(([stat, stage]) => `${stat}${stage}`)
       .join(',');
-    key = `${combatant.species}/${set.nature}/${points}/${stages}/${combatant.ability}/${combatant.item ?? ''}/${combatant.status ?? ''}/`;
+    key = `${combatant.species}/${set.nature}/${points}/${stages}/${combatant.ability}/${combatant.item ?? ''}/${combatant.status ?? ''}/${combatant.critBoost ?? ''}/`;
     keyCache.set(combatant, key);
   }
   return key;
@@ -314,6 +344,36 @@ function calculateEstimate(
   }
 }
 
+/**
+ * The estimate with critical hits mixed in by their chance (`DamageOptions.critChance`): the
+ * normal rolls repeated so that the critical ones weigh what their chance says (1/8 → seven
+ * normal sets and one critical, 1/2 → one and one, always → only critical).
+ */
+function mixedEstimate(
+  attacker: Combatant,
+  defender: Combatant,
+  move: NonNullable<ReturnType<typeof getMove>>,
+  field: FieldState,
+  options: DamageOptions,
+): DamageEstimate {
+  const chance = options.critChance && !options.crit ? critChance(attacker, defender, move.id) : 0;
+  if (chance < MIN_CRIT_CHANCE) return calculateEstimate(attacker, defender, move, field, options);
+  const critical = calculateEstimate(attacker, defender, move, field, { crit: true });
+  if (chance >= 1) return critical;
+  const normal = calculateEstimate(attacker, defender, move, field, {});
+  const rolls: number[] = [];
+  for (let i = 1; i < Math.round(1 / chance); i++) rolls.push(...normal.rolls);
+  rolls.push(...critical.rolls);
+  return {
+    rolls,
+    min: normal.min,
+    max: critical.max,
+    avg: normal.avg * (1 - chance) + critical.avg * chance,
+    koChance: koChance(rolls, defender.hp),
+    accuracy: normal.accuracy,
+  };
+}
+
 /** Fraction of `rolls` that knock out a defender with `hp` left. */
 function koChance(rolls: readonly number[], hp: number): number {
   let knockouts = 0;
@@ -334,7 +394,7 @@ export function estimateDamageUncached(
 ): DamageEstimate {
   const move = getMove(moveId);
   if (!move || move.category === 'Status' || defender.hp <= 0) return NO_DAMAGE;
-  return calculateEstimate(attacker, defender, move, field, options);
+  return mixedEstimate(attacker, defender, move, field, options);
 }
 
 /**
