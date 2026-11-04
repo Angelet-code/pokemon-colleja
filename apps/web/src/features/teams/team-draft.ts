@@ -227,6 +227,25 @@ export function megaStonesOf(species: SpeciesId): ItemData[] {
   return listItems().filter((item) => item.category === 'mega-stone' && itemAllowed(item, species));
 }
 
+/** The species that Mega Evolves into `mega` and the stone it needs, if `mega` is a Mega. */
+export function megaSource(mega: SpeciesId): { species: SpeciesId; stone: ItemData } | null {
+  for (const stone of listItems()) {
+    const evolution = stone.megaEvolutions.find((option) => option.to === mega);
+    if (evolution) return { species: evolution.from, stone };
+  }
+  return null;
+}
+
+/**
+ * The set as the species that reaches `mega`, holding its stone (picking «Mega-Charizard Y»
+ * gives Charizard with Charizardite Y). The set is unchanged if `mega` is not a Mega.
+ */
+export function withMegaSpecies(set: PokemonSet, mega: SpeciesId): PokemonSet {
+  const source = megaSource(mega);
+  if (!source) return set;
+  return { ...changeSpecies(set, source.species), item: source.stone.id };
+}
+
 // ── Problems ───────────────────────────────────────────────────────────────
 
 export interface DraftIssues {

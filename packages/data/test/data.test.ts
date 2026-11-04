@@ -12,6 +12,7 @@ import {
   getSpecies,
   getStandardSets,
   getTypeEffectiveness,
+  hitRange,
   listItems,
   listSpecies,
   listStandardSets,
@@ -76,6 +77,14 @@ describe('Champions-specific mechanics data', () => {
     expect(getMove('protect')?.pp).toBe(8);
     expect(getMove('earthquake')?.pp).toBe(12);
     expect(getMove('nightslash')?.pp).toBe(20);
+  });
+
+  it('knows which multi-hit moves can land a variable number of hits', () => {
+    expect(hitRange('populationbomb')).toEqual([1, 10]);
+    expect(hitRange('tripleaxel')).toEqual([1, 3]);
+    expect(hitRange('bulletseed')).toEqual([2, 5]);
+    expect(hitRange('doublehit')).toBeNull();
+    expect(hitRange('earthquake')).toBeNull();
   });
 
   it('only contains items available in Champions', () => {

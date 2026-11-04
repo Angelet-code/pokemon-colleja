@@ -1,19 +1,24 @@
 /** The damage of every attacker move against the defender, live or saved in the history. */
-import { getMove, type Locale } from '@colleja/data';
+import { getMove, hitRange, type Locale, type MoveId } from '@colleja/data';
 import { moveName } from '@colleja/narration';
 import type { CalcResponse } from '@colleja/protocol';
 import { TypeBadge } from '../../components/TypeBadge';
 import type { MoveResult } from './calc-history';
-import type { CalcSide } from './calc-store';
+import { type CalcSide, hitsOf } from './calc-store';
 
 export function ResultsTable({
   results,
+  attacker,
   defender,
   locale,
+  onHits,
 }: {
   results: MoveResult[];
+  attacker: CalcSide;
   defender: CalcSide;
   locale: Locale;
+  /** Chooses the hits of a multi-hit move whose hits vary. */
+  onHits: (move: MoveId, hits: number) => void;
 }) {
   if (results.length === 0) {
     return <p className="p-4 text-sm text-muted">El atacante no tiene movimientos.</p>;
@@ -39,6 +44,12 @@ export function ResultsTable({
                   <span className="flex items-center gap-3">
                     {data && <TypeBadge type={data.type} locale={locale} />}
                     <span className="font-semibold">{moveName(move, locale)}</span>
+                    <HitsSelect
+                      move={move}
+                      hits={hitsOf(attacker, move)}
+                      locale={locale}
+                      onChange={(hits) => onHits(move, hits)}
+                    />
                   </span>
                 </th>
                 {result && result.max > 0 ? (
@@ -72,6 +83,40 @@ export function ResultsTable({
         </tbody>
       </table>
     </div>
+  );
+}
+
+/** Hits of a multi-hit move whose hits vary (Population Bomb 1–10, Bullet Seed 2–5). */
+function HitsSelect({
+  move,
+  hits,
+  locale,
+  onChange,
+}: {
+  move: MoveId;
+  hits: number | null;
+  locale: Locale;
+  onChange: (hits: number) => void;
+}) {
+  const range = hitRange(move);
+  if (!range || hits === null) return null;
+  const [min, max] = range;
+  return (
+    <label className="flex h-8 items-center gap-1.5 rounded-sm border border-line pl-2">
+      <span className="eyebrow text-faint">Golpes</span>
+      <select
+        value={hits}
+        aria-label={`Golpes de ${moveName(move, locale)}`}
+        onChange={(event) => onChange(Number(event.target.value))}
+        className="h-full cursor-pointer appearance-none bg-transparent pr-2 font-display text-sm font-semibold tabular-nums focus:outline-none"
+      >
+        {Array.from({ length: max - min + 1 }, (_, i) => min + i).map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 

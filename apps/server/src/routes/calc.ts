@@ -10,7 +10,7 @@ import {
   megaEvolved,
 } from '@colleja/bot';
 import type { SideId } from '@colleja/core';
-import { getMove, type MoveId } from '@colleja/data';
+import { getMove, hitRange, type MoveId } from '@colleja/data';
 import {
   API_PREFIX,
   type CalcPokemon,
@@ -51,8 +51,12 @@ export function registerCalcRoutes(app: FastifyInstance): void {
         p2: body.field.friendGuard ? ['friendguard'] : [],
       };
     }
+    const range = hitRange(body.move as MoveId);
     const estimate = estimateDamage(attacker, defender, body.move as MoveId, field, {
       crit: body.crit ?? false,
+      ...(range && body.hits !== undefined
+        ? { hits: Math.min(range[1], Math.max(range[0], body.hits)) }
+        : {}),
     });
     const percent = (damage: number) => Math.round((damage / defender.maxhp) * 1000) / 10;
     const response: CalcResponse = {

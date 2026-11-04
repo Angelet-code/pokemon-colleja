@@ -52,6 +52,11 @@ export interface DamageOptions {
    * 1/24 chance stays out: it would double the calc's work for a few points of damage.
    */
   critChance?: boolean;
+  /**
+   * Hits a multi-hit move lands (calculator only). By default, the calc's: all of them if each
+   * hit can miss, 3 of 2–5 (5 with Skill Link).
+   */
+  hits?: number;
 }
 
 /** Chance of a critical hit by stage (Gen 7+): 1/24, 1/8, 1/2, then always. */
@@ -223,7 +228,7 @@ export function estimateDamage(
   const move = getMove(moveId);
   if (!move || move.category === 'Status' || defender.hp <= 0) return NO_DAMAGE;
   const crit = options.crit ? '!' : options.critChance ? '~' : '';
-  const rest = `|${moveId}${crit}|${fieldKey(field, attacker.side, defender.side)}`;
+  const rest = `|${moveId}${crit}${options.hits ?? ''}|${fieldKey(field, attacker.side, defender.side)}`;
   const key = `${calcKey(attacker)}${attacker.hp}>${calcKey(defender)}${defender.hp}${rest}`;
   const cached = estimateCache.get(key);
   if (cached) return cached;
@@ -331,7 +336,7 @@ function calculateEstimate(
       GEN,
       toCalcPokemon(attacker),
       toCalcPokemon(defender),
-      new Move(GEN, move.name, options.crit ? { isCrit: true } : undefined),
+      new Move(GEN, move.name, moveOptions(options)),
       toCalcField(field, attacker.side, defender.side),
     );
     const rolls = damageRolls(result.damage);
@@ -358,9 +363,10 @@ function mixedEstimate(
 ): DamageEstimate {
   const chance = options.critChance && !options.crit ? critChance(attacker, defender, move.id) : 0;
   if (chance < MIN_CRIT_CHANCE) return calculateEstimate(attacker, defender, move, field, options);
-  const critical = calculateEstimate(attacker, defender, move, field, { crit: true });
+  const hits = options.hits !== undefined ? { hits: options.hits } : {};
+  const critical = calculateEstimate(attacker, defender, move, field, { crit: true, ...hits });
   if (chance >= 1) return critical;
-  const normal = calculateEstimate(attacker, defender, move, field, {});
+  const normal = calculateEstimate(attacker, defender, move, field, hits);
   const rolls: number[] = [];
   for (let i = 1; i < Math.round(1 / chance); i++) rolls.push(...normal.rolls);
   rolls.push(...critical.rolls);
@@ -371,6 +377,14 @@ function mixedEstimate(
     avg: normal.avg * (1 - chance) + critical.avg * chance,
     koChance: koChance(rolls, defender.hp),
     accuracy: normal.accuracy,
+  };
+}
+
+function moveOptions(options: DamageOptions): ConstructorParameters<typeof Move>[2] {
+  if (!options.crit && options.hits === undefined) return undefined;
+  return {
+    ...(options.crit ? { isCrit: true } : {}),
+    ...(options.hits !== undefined ? { hits: options.hits } : {}),
   };
 }
 

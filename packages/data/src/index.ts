@@ -96,6 +96,17 @@ export function listMoves(): MoveData[] {
   return Object.values(moves);
 }
 
+/**
+ * Hits a multi-hit move can land, when they vary: 2–5 (Bullet Seed) or, if each hit can miss,
+ * 1 to all (Population Bomb 1–10). `null` for moves that always hit the same times.
+ */
+export function hitRange(id: MoveId): [number, number] | null {
+  const multihit = moves[id]?.multihit;
+  if (Array.isArray(multihit)) return multihit;
+  if (typeof multihit === 'number' && moves[id]?.multiaccuracy) return [1, multihit];
+  return null;
+}
+
 export function getAbility(id: AbilityId): AbilityData | undefined {
   return abilities[id];
 }

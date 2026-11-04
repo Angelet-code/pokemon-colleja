@@ -95,6 +95,8 @@ export interface MoveData {
   /** Highest chance (%) among secondary effects, if any. */
   secondaryChance: number | null;
   multihit: number | [number, number] | null;
+  /** Each hit of a multi-hit move checks accuracy on its own (Population Bomb, Triple Axel). */
+  multiaccuracy: boolean;
   /** [numerator, denominator] of damage dealt healed back. */
   drain: [number, number] | null;
   /** [numerator, denominator] of damage dealt taken as recoil. */

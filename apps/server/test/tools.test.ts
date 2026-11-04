@@ -140,6 +140,41 @@ describe('POST /api/calc', () => {
     );
   });
 
+  it('lands the chosen hits of a multi-hit move, and ignores them for any other', async () => {
+    const maushold: PokemonSet = {
+      species: 'maushold',
+      ability: 'technician',
+      nature: 'jolly',
+      statPoints: { hp: 2, atk: 32, def: 0, spa: 0, spd: 0, spe: 32 },
+      moves: ['populationbomb'],
+    };
+    const bomb = async (hits?: number) =>
+      (
+        await calc({
+          attacker: { set: maushold },
+          defender: { set: INCINEROAR },
+          move: 'populationbomb',
+          ...(hits !== undefined ? { hits } : {}),
+          field: { doubles: false },
+        })
+      ).json<CalcResponse>();
+    const all = await bomb();
+    const four = await bomb(4);
+    expect(await bomb(10)).toEqual(all);
+    expect(four.max).toBeLessThan(all.max);
+    expect(four.max).toBeGreaterThan((all.max * 3) / 10);
+
+    const earthquake = (hits?: number) =>
+      calc({
+        attacker: { set: GARCHOMP },
+        defender: { set: INCINEROAR },
+        move: 'earthquake',
+        ...(hits !== undefined ? { hits } : {}),
+        field: { doubles: false },
+      }).then((response) => response.json<CalcResponse>());
+    expect(await earthquake(3)).toEqual(await earthquake());
+  });
+
   it('answers status moves with no damage and rejects unknown moves', async () => {
     const status = (
       await calc({

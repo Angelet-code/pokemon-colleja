@@ -37,6 +37,7 @@ import {
   natureOptions,
   ownedSpeciesOptions,
   speciesOptions,
+  speciesWithMegaOptions,
   standardSetLabel,
 } from '../options';
 import {
@@ -49,6 +50,7 @@ import {
   setMoveAt,
   setStatPointOf,
   type TeamDraft,
+  withMegaSpecies,
 } from '../team-draft';
 import { FieldProblems, StatPointsEditor } from './StatPointsEditor';
 import { ExportDialog, ImportDialog } from './TextDialogs';
@@ -64,6 +66,9 @@ export function SetEditor({
   onRemove,
   megaEvolved,
   ownedSpecies,
+  statsLast = false,
+  onSpeciesPick,
+  maxMoves = MAX_MOVES,
 }: {
   draft: TeamDraft;
   index: number;
@@ -79,11 +84,27 @@ export function SetEditor({
   megaEvolved?: boolean;
   /** When given, the species picker only offers these (the «PC de Bill» filter). */
   ownedSpecies?: readonly string[];
+  /**
+   * The Stat Points at the bottom, under the moves (the calculator: its damage table goes right
+   * below them).
+   */
+  statsLast?: boolean;
+  /**
+   * When given, the species picker also offers the Megas (the calculator): picking one equips
+   * its stone and calls this with `mega` on; picking a species, with it off.
+   */
+  onSpeciesPick?: (set: PokemonSet, mega: boolean) => void;
+  /** Move slots (the calculator has fewer than a team). */
+  maxMoves?: number;
 }) {
   const set = draft.members[index];
   const mode: GameMode = draft.mode;
   const [dialog, setDialog] = useState<'export' | 'import' | null>(null);
-  const allSpecies = useMemo(() => speciesOptions(locale), [locale]);
+  const withMegas = Boolean(onSpeciesPick);
+  const allSpecies = useMemo(
+    () => (withMegas ? speciesWithMegaOptions(locale) : speciesOptions(locale)),
+    [locale, withMegas],
+  );
   const currentSpecies = draft.members[index]?.species;
   const speciesChoices: ComboOption[] = useMemo(
     () =>
@@ -117,9 +138,14 @@ export function SetEditor({
             <div>
               <Combobox
                 label="Especie"
-                value={set.species}
+                value={onSpeciesPick && mega ? mega : set.species}
                 options={speciesChoices}
-                onChange={(id) => id && onChange(changeSpecies(set, id))}
+                onChange={(id) => {
+                  if (!id) return;
+                  if (!onSpeciesPick) return onChange(changeSpecies(set, id));
+                  const isMega = getSpecies(id)?.kind === 'mega';
+                  onSpeciesPick(isMega ? withMegaSpecies(set, id) : changeSpecies(set, id), isMega);
+                }}
                 invalid={Boolean(problems.species)}
               />
               {problems.species && <FieldProblems messages={problems.species} />}
@@ -238,18 +264,28 @@ export function SetEditor({
         </div>
       </div>
 
-      <div className="grid gap-x-10 gap-y-7 @4xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
-        <StatPointsEditor
+      <div
+        className={`grid gap-x-10 gap-y-7 ${statsLast ? '' : '@4xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]'}`}
+      >
+        <div className={statsLast ? 'order-last' : ''}>
+          <StatPointsEditor
+            set={set}
+            mode={mode}
+            mega={mega}
+            locale={locale}
+            problems={problems.statPoints}
+            onChange={(stat: StatId, value: number) =>
+              onChange(setStatPointOf(set, stat, value, mode))
+            }
+          />
+        </div>
+        <MoveSlots
           set={set}
-          mode={mode}
-          mega={mega}
           locale={locale}
-          problems={problems.statPoints}
-          onChange={(stat: StatId, value: number) =>
-            onChange(setStatPointOf(set, stat, value, mode))
-          }
+          problems={problems.moves}
+          maxMoves={maxMoves}
+          onChange={onChange}
         />
-        <MoveSlots set={set} locale={locale} problems={problems.moves} onChange={onChange} />
       </div>
 
       {dialog === 'export' && (
@@ -307,11 +343,13 @@ function MoveSlots({
   set,
   locale,
   problems,
+  maxMoves,
   onChange,
 }: {
   set: PokemonSet;
   locale: Locale;
   problems?: string[];
+  maxMoves: number;
   onChange: (set: PokemonSet) => void;
 }) {
   const options = useMemo(
@@ -319,13 +357,13 @@ function MoveSlots({
     [set.species, locale, set.moves],
   );
   // One empty slot after the filled ones (slots stay compact).
-  const slots = Math.min(MAX_MOVES, set.moves.length + 1);
+  const slots = Math.min(maxMoves, set.moves.length + 1);
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-end justify-between">
         <h3 className="eyebrow text-muted">Movimientos</h3>
         <span className="eyebrow text-faint">
-          {set.moves.length}/{MAX_MOVES}
+          {set.moves.length}/{maxMoves}
         </span>
       </div>
       <div className="flex flex-col gap-2">

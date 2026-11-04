@@ -1,7 +1,8 @@
 /**
  * Damage calculator (`/calculadora`): attacker and defender edited with the teambuilder's
  * sheet, their battle state (Mega, HP, status, stat changes) and the field. The damage of
- * every attacker move is computed by the server with the same code the bot uses.
+ * every attacker move is computed by the server with the same code the bot uses, and shown
+ * right under the sheets' Stat Points (what changes most while calculating).
  */
 import type { PokemonSet } from '@colleja/core';
 import type { Locale } from '@colleja/data';
@@ -27,6 +28,7 @@ import { CalcHistoryDialog } from './CalcHistoryDialog';
 import { ResultsTable } from './CalcResults';
 import { type MoveResult, useCalcHistory } from './calc-history';
 import {
+  CALC_MOVES,
   type CalcBoostStat,
   type CalcSide,
   type CalcStatus,
@@ -34,6 +36,7 @@ import {
   canMegaEvolve,
   fromSet,
   useCalc,
+  withHits,
   withMega,
   withSet,
 } from './calc-store';
@@ -75,19 +78,6 @@ export function CalculatorPage() {
         </Button>
       </PageHeader>
 
-      <Panel
-        title="Daño"
-        actions={
-          <Checkbox
-            label="Crítico"
-            checked={calc.field.crit}
-            onChange={(crit) => calc.updateField({ crit })}
-          />
-        }
-      >
-        <ResultsTable results={results} defender={calc.defender} locale={locale} />
-      </Panel>
-
       <FieldControls />
 
       <div className="grid items-start gap-4 xl:grid-cols-2">
@@ -115,6 +105,25 @@ export function CalculatorPage() {
           </section>
         ))}
       </div>
+
+      <Panel
+        title="Daño"
+        actions={
+          <Checkbox
+            label="Crítico"
+            checked={calc.field.crit}
+            onChange={(crit) => calc.updateField({ crit })}
+          />
+        }
+      >
+        <ResultsTable
+          results={results}
+          attacker={calc.attacker}
+          defender={calc.defender}
+          locale={locale}
+          onHits={(move, hits) => calc.updateSide('attacker', withHits(calc.attacker, move, hits))}
+        />
+      </Panel>
 
       {historyOpen && (
         <CalcHistoryDialog
@@ -378,6 +387,9 @@ function SideEditor({ side, locale }: { side: 'attacker' | 'defender'; locale: L
         problems={{}}
         megaEvolved={state.mega}
         onChange={(set) => updateSide(side, withSet(state, set))}
+        onSpeciesPick={(set, mega) => updateSide(side, { ...withSet(state, set), mega })}
+        maxMoves={CALC_MOVES}
+        statsLast
       />
     </div>
   );

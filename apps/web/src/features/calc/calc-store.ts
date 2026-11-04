@@ -3,7 +3,15 @@
  * state) and the field. The damage itself comes from the server (`POST /api/calc`).
  */
 import type { PokemonSet } from '@colleja/core';
-import { type GameMode, getMove, getStandardSets, type SpeciesId } from '@colleja/data';
+import {
+  type GameMode,
+  getMove,
+  getSpecies,
+  getStandardSets,
+  hitRange,
+  type MoveId,
+  type SpeciesId,
+} from '@colleja/data';
 import type { CALC_STATUSES, CalcPokemon, CalcRequest } from '@colleja/protocol';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
@@ -22,6 +30,8 @@ export interface CalcSide {
   hpPercent: number;
   status: CalcStatus | null;
   boosts: Partial<Record<CalcBoostStat, number>>;
+  /** Hits chosen for its multi-hit moves whose hits vary (by default, `defaultHits`). */
+  hits?: Partial<Record<MoveId, number>>;
 }
 
 export interface CalcFieldState {
@@ -39,6 +49,26 @@ export interface CalcFieldState {
   gravity: boolean;
   magicRoom: boolean;
   wonderRoom: boolean;
+}
+
+/** Move slots of each Pokémon in the calculator (fewer than in a team, so both sheets match). */
+export const CALC_MOVES = 2;
+
+/**
+ * The set with at most `CALC_MOVES` moves: the attacking ones first, in their order (a set
+ * from a team or a battle brings four).
+ */
+export function withCalcMoves(set: PokemonSet): PokemonSet {
+  if (set.moves.length <= CALC_MOVES) return set;
+  const attacks = set.moves.filter((move) => getMove(move)?.category !== 'Status');
+  const others = set.moves.filter((move) => getMove(move)?.category === 'Status');
+  return { ...set, moves: [...attacks, ...others].slice(0, CALC_MOVES) };
+}
+
+/** The side with its set fitted to the calculator's move slots. */
+function fitSide(side: CalcSide): CalcSide {
+  const set = withCalcMoves(side.set);
+  return set === side.set ? side : { ...side, set };
 }
 
 /** Field without weather, terrain or effects. */
@@ -87,9 +117,15 @@ export function standardSide(species: SpeciesId, mode: GameMode = 'singles'): Ca
   return fromSet(set);
 }
 
-/** A side for a set (Mega Evolved when it holds its stone). */
+/** A side for a set (Mega Evolved when it holds its stone), with its moves fitted. */
 export function fromSet(set: PokemonSet): CalcSide {
-  return { set, mega: megaOf(set) !== null, hpPercent: 100, status: null, boosts: {} };
+  return {
+    set: withCalcMoves(set),
+    mega: megaOf(set) !== null,
+    hpPercent: 100,
+    status: null,
+    boosts: {},
+  };
 }
 
 /** Whether the species can Mega Evolve at all (with some stone). */
@@ -124,10 +160,11 @@ export const useCalc = create<CalcState>()(
       defender: standardSide('incineroar'),
       field: emptyCalcField(),
       updateSide: (side, change) =>
-        set((state) => ({ [side]: { ...state[side], ...change } }) as Partial<CalcState>),
+        set((state) => ({ [side]: fitSide({ ...state[side], ...change }) }) as Partial<CalcState>),
       updateField: (change) => set((state) => ({ field: { ...state.field, ...change } })),
       swap: () => set((state) => ({ attacker: state.defender, defender: state.attacker })),
-      load: (setup) => set(setup),
+      load: (setup) =>
+        set({ ...setup, attacker: fitSide(setup.attacker), defender: fitSide(setup.defender) }),
     }),
     {
       name: 'colleja:calc',
@@ -135,11 +172,40 @@ export const useCalc = create<CalcState>()(
       // Older saves lack the newer field effects: keep the defaults for them.
       merge: (persisted, current) => {
         const saved = (persisted ?? {}) as Partial<CalcSetup>;
-        return { ...current, ...saved, field: { ...current.field, ...saved.field } };
+        return {
+          ...current,
+          ...saved,
+          attacker: fitSide(saved.attacker ?? current.attacker),
+          defender: fitSide(saved.defender ?? current.defender),
+          field: { ...current.field, ...saved.field },
+        };
       },
     },
   ),
 );
+
+/**
+ * Hits the move lands unless chosen, as the calc counts them: all if each hit can miss, 3 of
+ * 2–5 or 5 with Skill Link. `null` for moves whose hits do not vary.
+ */
+export function defaultHits(side: CalcSide, move: MoveId): number | null {
+  const range = hitRange(move);
+  if (!range) return null;
+  if (getMove(move)?.multiaccuracy) return range[1];
+  const mega = side.mega ? megaOf(side.set) : null;
+  const ability = mega ? getSpecies(mega)?.abilities[0] : side.set.ability;
+  return ability === 'skilllink' ? range[1] : range[0] + 1;
+}
+
+/** Hits of `move` for the side: the chosen ones or the default. */
+export function hitsOf(side: CalcSide, move: MoveId): number | null {
+  return hitRange(move) ? (side.hits?.[move] ?? defaultHits(side, move)) : null;
+}
+
+/** The side with `hits` chosen for `move`. */
+export function withHits(side: CalcSide, move: MoveId, hits: number): CalcSide {
+  return { ...side, hits: { ...side.hits, [move]: hits } };
+}
 
 /** The request for one move of the attacker. */
 export function calcRequest(
@@ -149,11 +215,13 @@ export function calcRequest(
   move: string,
 ): CalcRequest {
   const doubles = field.mode === 'doubles';
+  const hits = hitRange(move) ? attacker.hits?.[move] : undefined;
   return {
     attacker: toCalcPokemon(attacker),
     defender: toCalcPokemon(defender),
     move,
     ...(field.crit ? { crit: true } : {}),
+    ...(hits !== undefined ? { hits } : {}),
     field: {
       doubles,
       ...(field.weather ? { weather: field.weather } : {}),

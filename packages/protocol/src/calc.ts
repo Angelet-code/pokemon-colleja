@@ -54,6 +54,11 @@ export const CalcRequestSchema = z.object({
   move: z.string().regex(/^[a-z0-9]{1,40}$/, 'Movimiento no válido.'),
   /** The hit is a critical hit. */
   crit: z.boolean().optional(),
+  /**
+   * Hits of a multi-hit move whose hits vary (`hitRange` of `@colleja/data`); ignored for
+   * any other move. By default, the calc's (all if each hit can miss, 3 of 2–5).
+   */
+  hits: z.number().int().min(1).max(10).optional(),
   field: CalcFieldSchema,
 });
 

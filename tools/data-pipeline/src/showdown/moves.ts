@@ -43,6 +43,7 @@ export function extractMoves({ dex, battle }: ShowdownContext, ids: Set<string>)
       secondaryChance:
         secondaries.length > 0 ? Math.max(...secondaries.map((s) => s.chance ?? 100)) : null,
       multihit: (move.multihit as MoveData['multihit']) ?? null,
+      multiaccuracy: Boolean(move.multiaccuracy),
       drain: (move.drain as MoveData['drain']) ?? null,
       recoil: (move.recoil as MoveData['recoil']) ?? null,
       selfSwitch: Boolean(move.selfSwitch),

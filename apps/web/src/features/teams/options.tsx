@@ -23,7 +23,7 @@ import { ItemIcon } from '../../components/ItemIcon';
 import { PokemonIcon } from '../../components/PokemonIcon';
 import { TypeBadge } from '../../components/TypeBadge';
 import { CATEGORY_LABEL } from '../../lib/move-labels';
-import type { ItemChoice } from './team-draft';
+import { type ItemChoice, megaStonesOf } from './team-draft';
 
 const other = (locale: Locale): Locale => (locale === 'es' ? 'en' : 'es');
 
@@ -34,26 +34,52 @@ function names(kind: Parameters<typeof getName>[0], id: string, locale: Locale) 
 
 export function speciesOptions(locale: Locale): ComboOption[] {
   return listSpecies('standard')
-    .map((species) => {
-      const { label, search } = names('species', species.id, locale);
-      return {
-        value: species.id,
-        label,
-        search: `${search} ${species.num}`,
-        render: (
-          <span className="flex items-center gap-2">
-            <PokemonIcon species={species.id} size={32} />
-            <span className="flex-1 truncate">{label}</span>
-            <span className="flex gap-1">
-              {species.types.map((type) => (
-                <TypeBadge key={type} type={type} locale={locale} />
-              ))}
-            </span>
-          </span>
-        ),
-      };
-    })
+    .map((species) => speciesOption(species.id, locale))
     .sort((a, b) => a.label.localeCompare(b.label, locale));
+}
+
+/**
+ * The species plus their Megas, each Mega right after its species («Charizard», «Mega-Charizard
+ * X», «Mega-Charizard Y»). A Mega matches the species' names too, so «charizard» finds all three.
+ */
+export function speciesWithMegaOptions(locale: Locale): ComboOption[] {
+  return speciesOptions(locale).flatMap((option) => {
+    const megas = megaStonesOf(option.value).flatMap((stone) =>
+      stone.megaEvolutions.filter((mega) => mega.from === option.value).map((mega) => mega.to),
+    );
+    return [
+      option,
+      ...megas.map((mega) => {
+        const megaOption = speciesOption(mega, locale);
+        return {
+          ...megaOption,
+          search: `${megaOption.search} ${option.label} ${option.search} mega`,
+        };
+      }),
+    ];
+  });
+}
+
+/** One species row: its icon, its name and its types. */
+function speciesOption(id: SpeciesId, locale: Locale): ComboOption {
+  const species = getSpecies(id);
+  const { label, search } = names('species', id, locale);
+  return {
+    value: id,
+    label,
+    search: `${search} ${species?.num ?? ''}`,
+    render: (
+      <span className="flex items-center gap-2">
+        <PokemonIcon species={id} size={32} />
+        <span className="flex-1 truncate">{label}</span>
+        <span className="flex gap-1">
+          {species?.types.map((type) => (
+            <TypeBadge key={type} type={type} locale={locale} />
+          ))}
+        </span>
+      </span>
+    ),
+  };
 }
 
 /**
