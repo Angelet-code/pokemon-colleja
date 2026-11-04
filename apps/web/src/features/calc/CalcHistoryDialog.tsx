@@ -1,11 +1,11 @@
 /** Comparisons recorded by the calculator: one row per pair, a click opens it again. */
 import { getName, type Locale } from '@colleja/data';
 import { useMemo, useState } from 'react';
-import { normalizeSearch } from '../../components/Combobox';
 import { Dialog } from '../../components/Dialog';
 import { IconTrash } from '../../components/icons';
 import { PokemonIcon } from '../../components/PokemonIcon';
 import { IconButton, TextInput } from '../../components/ui';
+import { normalizeSearch } from '../../lib/search';
 import { useSettings } from '../../stores/settings';
 import { type CalcHistoryEntry, useCalcHistory } from './calc-history';
 import type { CalcSetup, CalcSide } from './calc-store';

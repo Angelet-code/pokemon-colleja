@@ -1,9 +1,11 @@
 /**
  * Searchable select (ARIA combobox + listbox): type to filter, arrows to move, Enter to pick,
  * Esc to cancel. Options match by every word of the query against their `search` text, without
- * accents, so "lanzal" finds "Lanzallamas" and "flameth" finds "Flamethrower".
+ * accents, so "lanzal" finds "Lanzallamas" and "flameth" finds "Flamethrower"; with no such
+ * match, a typo or two is forgiven ("ploriferacion" finds "Proliferación", see `lib/search`).
  */
 import { type KeyboardEvent, type ReactNode, useId, useMemo, useRef, useState } from 'react';
+import { indexForSearch, searchIndex } from '../lib/search';
 import { IconChevronDown } from './icons';
 import { inputClass } from './ui';
 
@@ -20,14 +22,6 @@ export interface ComboOption {
 
 /** Rows rendered at most; typing narrows the rest. */
 const MAX_VISIBLE = 80;
-
-export function normalizeSearch(text: string): string {
-  return text
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9 ]+/g, '');
-}
 
 export function Combobox({
   label,
@@ -60,18 +54,11 @@ export function Combobox({
 
   const selected = options.find((option) => option.value === value) ?? null;
   const indexed = useMemo(
-    () =>
-      options.map((option) => ({
-        option,
-        text: normalizeSearch(`${option.label} ${option.search ?? ''}`),
-      })),
+    () => indexForSearch(options, (option) => `${option.label} ${option.search ?? ''}`),
     [options],
   );
   const rows = useMemo(() => {
-    const words = normalizeSearch(query).split(' ').filter(Boolean);
-    const matches = indexed
-      .filter(({ text }) => words.every((word) => text.includes(word)))
-      .map(({ option }) => option);
+    const matches = searchIndex(indexed, query);
     const clear: ComboOption[] = clearLabel && !query ? [{ value: '', label: clearLabel }] : [];
     return [...clear, ...matches];
   }, [indexed, query, clearLabel]);
