@@ -17,6 +17,8 @@ export interface ComboOption {
   search?: string;
   /** Row content in the list (defaults to the label). */
   render?: ReactNode;
+  /** Small icon before the label, in the list and in the input once picked. */
+  icon?: ReactNode;
   disabled?: boolean;
 }
 
@@ -33,6 +35,8 @@ export function Combobox({
   invalid = false,
   hideLabel = false,
   clearLabel,
+  clearIcon,
+  trailing,
 }: {
   label: string;
   value: string | null;
@@ -44,6 +48,13 @@ export function Combobox({
   hideLabel?: boolean;
   /** When set, the first row clears the value (e.g. "Sin objeto"). */
   clearLabel?: string;
+  /** Icon of the clearing row (e.g. «Sano»). */
+  clearIcon?: ReactNode;
+  /**
+   * Details of the picked value shown right after its name, inside the box, while it is
+   * closed (a move's type and figures). Typing hides them.
+   */
+  trailing?: ReactNode;
 }) {
   const id = useId();
   const listId = `${id}-list`;
@@ -59,9 +70,12 @@ export function Combobox({
   );
   const rows = useMemo(() => {
     const matches = searchIndex(indexed, query);
-    const clear: ComboOption[] = clearLabel && !query ? [{ value: '', label: clearLabel }] : [];
+    const clear: ComboOption[] =
+      clearLabel && !query ? [{ value: '', label: clearLabel, icon: clearIcon }] : [];
     return [...clear, ...matches];
-  }, [indexed, query, clearLabel]);
+  }, [indexed, query, clearLabel, clearIcon]);
+  // The icon shown in the input: the picked option's, or the clearing row's when empty.
+  const shownIcon = open ? null : selected ? selected.icon : value === null ? clearIcon : null;
   const visible = rows.slice(0, MAX_VISIBLE);
 
   function openList() {
@@ -96,6 +110,7 @@ export function Combobox({
   }
 
   const activeId = open && visible[active] ? `${id}-opt-${active}` : undefined;
+  const showTrailing = Boolean(trailing) && !open && selected !== null && !shownIcon;
 
   return (
     <div className="relative flex min-w-0 flex-col gap-1.5">
@@ -113,7 +128,7 @@ export function Combobox({
         aria-invalid={invalid}
         autoComplete="off"
         spellCheck={false}
-        value={open ? query : (selected?.label ?? '')}
+        value={open ? query : (selected?.label ?? (clearIcon ? clearLabel : undefined) ?? '')}
         placeholder={open ? (selected?.label ?? placeholder) : placeholder}
         onFocus={openList}
         onClick={() => !open && openList()}
@@ -127,8 +142,24 @@ export function Combobox({
           setActive(0);
         }}
         onKeyDown={onKeyDown}
-        className={`${inputClass} pr-7`}
+        className={`${inputClass} pr-7 ${shownIcon ? 'pl-9' : ''} ${showTrailing ? 'text-transparent' : ''}`}
       />
+      {showTrailing && (
+        // Closed with details: the name and its details are drawn over the input (whose own
+        // text is hidden), so the details follow the name whatever its length.
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute right-8 bottom-0 left-3 flex h-9 items-center gap-2.5 overflow-hidden text-sm"
+        >
+          <span className="shrink-0">{selected?.label}</span>
+          {trailing}
+        </span>
+      )}
+      {shownIcon && (
+        <span className="pointer-events-none absolute bottom-0 left-2.5 flex h-9 items-center">
+          {shownIcon}
+        </span>
+      )}
       <IconChevronDown
         size={14}
         className={`pointer-events-none absolute right-2.5 bottom-[11px] text-faint transition-transform ${open ? 'rotate-180' : ''}`}
@@ -161,7 +192,15 @@ export function Combobox({
                 option.value === value ? 'font-semibold' : ''
               }`}
             >
-              {option.render ?? option.label}
+              {option.render ??
+                (option.icon ? (
+                  <span className="flex items-center gap-2">
+                    {option.icon}
+                    {option.label}
+                  </span>
+                ) : (
+                  option.label
+                ))}
             </div>
           ))}
           {visible.length === 0 && <p className="px-3 py-2 text-sm text-muted">{emptyText}</p>}

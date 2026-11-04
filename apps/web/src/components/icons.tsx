@@ -1,6 +1,7 @@
 /**
- * Line icons of the interface (24×24 grid, 1.75 stroke, `currentColor`). Decorative: the
- * control that holds one always has its own text or `aria-label`.
+ * Line icons of the interface (24×24 grid, 1.75 stroke, `currentColor`), and a few solid ones
+ * (`solidIcon`, the status conditions). Decorative: the control that holds one always has its
+ * own text or `aria-label`.
  */
 import type { ReactNode, SVGProps } from 'react';
 
@@ -91,3 +92,98 @@ export const IconMotion = icon(
 );
 /** Skip forward to the end. */
 export const IconSkip = icon(<path d="M5 6l8 6-8 6V6zM18 5v14" />);
+
+// Weather (calculator field).
+/** Rain: a cloud with falling drops. */
+export const IconRain = icon(
+  <path d="M7 14a4 4 0 0 1-.5-8A5.5 5.5 0 0 1 17 6.5a3.75 3.75 0 0 1 0 7.5H7zM8 17l-1 3M12 17l-1 3M16 17l-1 3" />,
+);
+/** Sandstorm: gusts with blown grains. */
+export const IconSandstorm = icon(
+  <>
+    <path d="M3 8h11a2.5 2.5 0 1 0-2.5-2.5M3 12h15a2.5 2.5 0 1 1-2.5 2.5M3 16h8" />
+    <path d="M18 7h.01M20 18h.01M14 19h.01" strokeWidth={2.5} />
+  </>,
+);
+/** Snow: a six-armed flake. */
+export const IconSnow = icon(
+  <path d="M12 2v20M3.3 7l17.4 10M3.3 17l17.4-10M9.5 3.5L12 6l2.5-2.5M9.5 20.5L12 18l2.5 2.5" />,
+);
+
+/** Solid icons (24×24, filled with `currentColor`): status conditions, small and coloured. */
+function solidIcon(paths: ReactNode) {
+  return function Icon({ size = 16, className = '', ...props }: IconProps) {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        width={size}
+        height={size}
+        fill="currentColor"
+        fillRule="evenodd"
+        aria-hidden="true"
+        className={`shrink-0 ${className}`}
+        {...props}
+      >
+        {paths}
+      </svg>
+    );
+  };
+}
+
+// Status conditions (calculator).
+/** Healthy: a heart. */
+export const IconHealthy = solidIcon(
+  <path d="M12 21s-9-5-9-11.3A5 5 0 0 1 12 6.6a5 5 0 0 1 9 3.1C21 16 12 21 12 21z" />,
+);
+/** Burn: a flame. */
+export const IconBurn = solidIcon(
+  <path d="M12.5 2c.9 4 6.5 6.3 6.5 12a7 7 0 0 1-14 0c0-3.2 1.7-5.3 3.2-6.5.2 2 1 3.3 2.4 4.1.8-3.9-.6-6.8 1.9-9.6z" />,
+);
+/** Paralysis: a bolt. */
+export const IconParalysis = solidIcon(<path d="M14 1.5L3.5 14H11l-1.5 8.5L20.5 10H13l1-8.5z" />);
+/** Poison: bubbles. */
+export const IconPoison = solidIcon(
+  <>
+    <circle cx="9" cy="15" r="6" />
+    <circle cx="17" cy="6.5" r="3.5" />
+    <circle cx="19" cy="17" r="2.5" />
+  </>,
+);
+/** Bad poison (Toxic): a skull with hollow eyes. */
+export const IconToxic = solidIcon(
+  <path d="M12 2a8 8 0 0 0-8 8c0 2.8 1.4 5 3.5 6.2V20h2v2h2v-2h1v2h2v-2h2v-3.8C18.6 15 20 12.8 20 10a8 8 0 0 0-8-8zM9 9a1.9 1.9 0 1 0 0 3.8A1.9 1.9 0 0 0 9 9zm6 0a1.9 1.9 0 1 0 0 3.8A1.9 1.9 0 0 0 15 9z" />,
+);
+/** Sleep: Zz. */
+export const IconSleep = solidIcon(
+  <path d="M11 2h10v2.5L15.2 11H21v2.5H11V11l5.8-6.5H11V2zM2 12h8v2.2l-4.6 5.1H10V22H2v-2.2l4.6-5.1H2V12z" />,
+);
+/** Freeze: a snowflake of thick arms. */
+export const IconFrozen = solidIcon(
+  <path
+    d="M12 2v20M3.3 7l17.4 10M3.3 17l17.4-10M9 3.5L12 6.5l3-3M9 20.5l3-3 3 3"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2.75}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  />,
+);
+
+// Terrains (calculator field): the ground line with what grows on it.
+/** Electric Terrain: a bolt over the ground. */
+export const IconElectricTerrain = icon(<path d="M3 20h18M13 3l-5 8h4l-1 6 5-8h-4l1-6z" />);
+/** Grassy Terrain: blades of grass. */
+export const IconGrassyTerrain = icon(
+  <path d="M3 20h18M6 20c0-4-1-7-3-9M10 20c0-6 1-10 4-13M14 20c0-4 1.5-7 4-8M18 20c0-2 .5-3.5 2-4.5" />,
+);
+/** Psychic Terrain: an eye over the ground. */
+export const IconPsychicTerrain = icon(
+  <>
+    <path d="M3 20h18M2.5 10.5S6 5 12 5s9.5 5.5 9.5 5.5S18 16 12 16s-9.5-5.5-9.5-5.5z" />
+    <circle cx="12" cy="10.5" r="2.25" />
+  </>,
+);
+/** Misty Terrain: layers of mist. */
+export const IconMistyTerrain = icon(
+  <path d="M3 20h18M4 15.5c2.5-1.5 5-1.5 8 0s5.5 1.5 8 0M4 11c2.5-1.5 5-1.5 8 0s5.5 1.5 8 0M7 6.5c2-1 3.5-1 5 0s3 1 5 0" />,
+);

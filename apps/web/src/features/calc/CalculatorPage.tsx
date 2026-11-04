@@ -5,25 +5,57 @@
  * right under the sheets' Stat Points (what changes most while calculating).
  */
 import type { PokemonSet } from '@colleja/core';
-import type { Locale } from '@colleja/data';
-import { abilityName, boostShort, moveName, statusName, weatherName } from '@colleja/narration';
+import { getName, type Locale } from '@colleja/data';
+import {
+  abilityName,
+  boostName,
+  boostShort,
+  moveName,
+  statusName,
+  weatherName,
+} from '@colleja/narration';
 import { CALC_SCREENS, CALC_STATUSES, CALC_TERRAINS, CALC_WEATHERS } from '@colleja/protocol';
-import { useEffect, useMemo, useState } from 'react';
-import { IconHistory, IconSwap, IconUpload } from '../../components/icons';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
+import { Combobox } from '../../components/Combobox';
+import {
+  IconBurn,
+  IconDownload,
+  IconElectricTerrain,
+  IconFrozen,
+  IconGrassyTerrain,
+  IconHealthy,
+  IconHistory,
+  IconMistyTerrain,
+  IconParalysis,
+  IconPoison,
+  IconPsychicTerrain,
+  IconRain,
+  IconSandstorm,
+  IconSave,
+  IconSleep,
+  IconSnow,
+  IconSun,
+  IconSwap,
+  IconToxic,
+  IconUpload,
+} from '../../components/icons';
 import {
   Button,
   Checkbox,
   Field,
+  IconChoice,
   PageHeader,
   Panel,
   Segmented,
-  Select,
   TextInput,
+  ToneIcon,
 } from '../../components/ui';
 import { api } from '../../lib/api';
+import { TYPE_COLORS } from '../../lib/type-colors';
 import { useSettings } from '../../stores/settings';
 import { SetEditor } from '../teams/components/SetEditor';
-import { newDraft, replaceMembers } from '../teams/team-draft';
+import { ExportDialog, ImportDialog } from '../teams/components/TextDialogs';
+import { exportMember, importText, newDraft, replaceMembers } from '../teams/team-draft';
 import { CalcHistoryDialog } from './CalcHistoryDialog';
 import { ResultsTable } from './CalcResults';
 import { type MoveResult, useCalcHistory } from './calc-history';
@@ -32,6 +64,8 @@ import {
   type CalcBoostStat,
   type CalcSide,
   type CalcStatus,
+  type CalcTerrain,
+  type CalcWeather,
   calcRequest,
   canMegaEvolve,
   fromSet,
@@ -44,6 +78,10 @@ import { LoadSetDialog } from './LoadSetDialog';
 
 const BOOST_STATS: CalcBoostStat[] = ['atk', 'def', 'spa', 'spd', 'spe'];
 const BOOST_VALUES = [6, 5, 4, 3, 2, 1, 0, -1, -2, -3, -4, -5, -6];
+/** `2` → `+2`, `0` → `0`, `-1` → `-1`. */
+function formatStage(stage: number): string {
+  return stage > 0 ? `+${stage}` : String(stage);
+}
 const SCREEN_LABEL: Record<(typeof CALC_SCREENS)[number], string> = {
   reflect: 'Reflejo',
   lightscreen: 'Pantalla de Luz',
@@ -55,6 +93,39 @@ const TERRAIN_LABEL: Record<(typeof CALC_TERRAINS)[number], string> = {
   psychicterrain: 'Campo Psíquico',
   mistyterrain: 'Campo de Niebla',
 };
+/** Terrain names on the buttons, under the «Campo» legend. */
+const TERRAIN_SHORT: Record<(typeof CALC_TERRAINS)[number], string> = {
+  electricterrain: 'Eléctrico',
+  grassyterrain: 'Hierba',
+  psychicterrain: 'Psíquico',
+  mistyterrain: 'Niebla',
+};
+/** Icon and colour (the type it powers up) of each weather and terrain button. */
+interface FieldLook {
+  icon: ReactNode;
+  color: string;
+}
+/** Icon and colour (the type it brings to mind) of each status condition. */
+const STATUS_LOOK: Record<CalcStatus, FieldLook> = {
+  brn: { icon: <IconBurn size={15} />, color: TYPE_COLORS.Fire },
+  par: { icon: <IconParalysis size={15} />, color: TYPE_COLORS.Electric },
+  psn: { icon: <IconPoison size={15} />, color: TYPE_COLORS.Poison },
+  tox: { icon: <IconToxic size={15} />, color: TYPE_COLORS.Poison },
+  slp: { icon: <IconSleep size={15} />, color: TYPE_COLORS.Normal },
+  frz: { icon: <IconFrozen size={15} />, color: TYPE_COLORS.Ice },
+};
+const WEATHER_LOOK: Record<CalcWeather, FieldLook> = {
+  sunnyday: { icon: <IconSun size={18} />, color: TYPE_COLORS.Fire },
+  raindance: { icon: <IconRain size={18} />, color: TYPE_COLORS.Water },
+  sandstorm: { icon: <IconSandstorm size={18} />, color: TYPE_COLORS.Rock },
+  snowscape: { icon: <IconSnow size={18} />, color: TYPE_COLORS.Ice },
+};
+const TERRAIN_LOOK: Record<CalcTerrain, FieldLook> = {
+  electricterrain: { icon: <IconElectricTerrain size={18} />, color: TYPE_COLORS.Electric },
+  grassyterrain: { icon: <IconGrassyTerrain size={18} />, color: TYPE_COLORS.Grass },
+  psychicterrain: { icon: <IconPsychicTerrain size={18} />, color: TYPE_COLORS.Psychic },
+  mistyterrain: { icon: <IconMistyTerrain size={18} />, color: TYPE_COLORS.Fairy },
+};
 
 export function CalculatorPage() {
   const calc = useCalc();
@@ -63,6 +134,12 @@ export function CalculatorPage() {
   const results = useMoveResults(calc.attacker, calc.defender, calc.field);
   const historyCount = useCalcHistory((state) => state.entries.length);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [textDialog, setTextDialog] = useState<{
+    side: 'attacker' | 'defender';
+    kind: 'import' | 'export';
+  } | null>(null);
+  const textSet = textDialog ? calc[textDialog.side].set : null;
+  const textName = textSet ? getName('species', textSet.species, locale) : '';
 
   return (
     <div className="mx-auto flex max-w-[1440px] flex-col gap-5">
@@ -96,10 +173,28 @@ export function CalculatorPage() {
                 />
                 {side === 'attacker' ? 'Atacante' : 'Defensor'}
               </h2>
-              <Button size="sm" variant="ghost" onClick={() => setLoading(side)}>
-                <IconUpload size={14} />
-                Cargar de mis equipos
-              </Button>
+              <div className="flex flex-wrap justify-end gap-1">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setTextDialog({ side, kind: 'import' })}
+                >
+                  <IconUpload size={14} />
+                  Importar
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setTextDialog({ side, kind: 'export' })}
+                >
+                  <IconDownload size={14} />
+                  Exportar
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setLoading(side)}>
+                  <IconSave size={14} />
+                  Cargar de mis equipos
+                </Button>
+              </div>
             </header>
             <SideEditor side={side} locale={locale} />
           </section>
@@ -124,6 +219,29 @@ export function CalculatorPage() {
           onHits={(move, hits) => calc.updateSide('attacker', withHits(calc.attacker, move, hits))}
         />
       </Panel>
+
+      {textDialog?.kind === 'export' && textSet && (
+        <ExportDialog
+          title={`Exportar ${textName}`}
+          text={exportMember(textSet)}
+          onClose={() => setTextDialog(null)}
+        />
+      )}
+      {textDialog?.kind === 'import' && (
+        <ImportDialog
+          title={`Sustituir a ${textName}`}
+          hint="Pokémon en formato de Showdown"
+          onClose={() => setTextDialog(null)}
+          onImport={(text) => {
+            const { members, notes } = importText(text, calc.field.mode);
+            const [first] = members;
+            if (!first) return notes.length > 0 ? notes : ['No se ha leído ningún Pokémon.'];
+            calc.updateSide(textDialog.side, fromSet(first));
+            setTextDialog(null);
+            return undefined;
+          }}
+        />
+      )}
 
       {historyOpen && (
         <CalcHistoryDialog
@@ -232,36 +350,27 @@ function FieldControls() {
           { value: 'doubles', label: 'Dobles', title: 'Los movimientos múltiples hacen el 75 %' },
         ]}
       />
-      <Field label="Clima" className="w-40">
-        <Select
-          value={field.weather ?? ''}
-          onChange={(event) =>
-            updateField({ weather: (event.target.value || null) as typeof field.weather })
-          }
-        >
-          <option value="">Ninguno</option>
-          {CALC_WEATHERS.map((weather) => (
-            <option key={weather} value={weather}>
-              {weatherName(weather, locale)}
-            </option>
-          ))}
-        </Select>
-      </Field>
-      <Field label="Campo" className="w-44">
-        <Select
-          value={field.terrain ?? ''}
-          onChange={(event) =>
-            updateField({ terrain: (event.target.value || null) as typeof field.terrain })
-          }
-        >
-          <option value="">Ninguno</option>
-          {CALC_TERRAINS.map((terrain) => (
-            <option key={terrain} value={terrain}>
-              {TERRAIN_LABEL[terrain]}
-            </option>
-          ))}
-        </Select>
-      </Field>
+      <IconChoice
+        label="Clima"
+        value={field.weather}
+        onChange={(weather) => updateField({ weather })}
+        options={CALC_WEATHERS.map((weather) => ({
+          value: weather,
+          label: weatherName(weather, locale),
+          ...WEATHER_LOOK[weather],
+        }))}
+      />
+      <IconChoice
+        label="Campo"
+        value={field.terrain}
+        onChange={(terrain) => updateField({ terrain })}
+        options={CALC_TERRAINS.map((terrain) => ({
+          value: terrain,
+          label: TERRAIN_SHORT[terrain],
+          title: TERRAIN_LABEL[terrain],
+          ...TERRAIN_LOOK[terrain],
+        }))}
+      />
       <fieldset className="flex flex-wrap items-center gap-x-5 gap-y-2 pb-2">
         <legend className="eyebrow mb-2.5 text-faint">Pantallas del defensor</legend>
         {CALC_SCREENS.map((screen) => (
@@ -305,9 +414,10 @@ function SideEditor({ side, locale }: { side: 'attacker' | 'defender'; locale: L
 
   return (
     <div className="flex flex-col">
-      <div className="flex flex-wrap items-end gap-x-5 gap-y-3 border-b border-line bg-surface-2/50 px-5 py-3.5">
-        <div className="pb-2" title={canMega ? undefined : 'No tiene Mega Evolución'}>
+      <div className="flex flex-wrap items-end gap-x-4 gap-y-3 border-b border-line bg-surface-2/50 px-5 py-3.5">
+        <div title={canMega ? undefined : 'No tiene Mega Evolución'}>
           <Checkbox
+            stacked
             label="Mega"
             checked={state.mega && canMega}
             onChange={(mega) => canMega && updateSide(side, withMega(state, mega))}
@@ -329,49 +439,63 @@ function SideEditor({ side, locale }: { side: 'attacker' | 'defender'; locale: L
             className="font-display text-base font-semibold tabular-nums"
           />
         </Field>
-        <Field label="Estado" className="w-36">
-          <Select
-            value={state.status ?? ''}
-            aria-label={`Estado del ${label}`}
-            onChange={(event) =>
-              updateSide(side, { status: (event.target.value || null) as CalcStatus | null })
-            }
-          >
-            <option value="">Sano</option>
-            {CALC_STATUSES.map((status) => (
-              <option key={status} value={status}>
-                {statusName(status, locale)}
-              </option>
-            ))}
-          </Select>
-        </Field>
+        <div className="w-44">
+          <Combobox
+            label="Estado"
+            value={state.status}
+            onChange={(status) => updateSide(side, { status: status as CalcStatus | null })}
+            clearLabel="Sano"
+            clearIcon={<IconHealthy size={15} className="text-good" />}
+            options={CALC_STATUSES.map((status) => {
+              const look = STATUS_LOOK[status];
+              return {
+                value: status,
+                label: statusName(status, locale),
+                icon: <ToneIcon color={look.color}>{look.icon}</ToneIcon>,
+              };
+            })}
+          />
+        </div>
         <fieldset className="flex flex-wrap gap-1.5">
           <legend className="eyebrow mb-1.5 text-faint">Cambios</legend>
           {BOOST_STATS.map((stat) => {
             const value = state.boosts[stat] ?? 0;
+            const name = boostName(stat, locale);
+            // The closed control shows the short name and the stage; the invisible select over
+            // it opens a list that names the stat («Ataque +2»), wide enough to read.
             return (
               <label
                 key={stat}
-                className={`flex h-9 items-center gap-1.5 rounded-sm border pl-2 ${
+                className={`relative flex h-9 cursor-pointer items-center gap-1.5 rounded-sm border px-2 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent-fg ${
                   value > 0 ? 'border-good/50' : value < 0 ? 'border-bad/50' : 'border-line'
                 }`}
               >
                 <span className="eyebrow text-faint">{boostShort(stat, locale)}</span>
+                <span
+                  aria-hidden="true"
+                  className={`font-display text-sm font-semibold tabular-nums ${
+                    value > 0 ? 'text-good' : value < 0 ? 'text-bad' : ''
+                  }`}
+                >
+                  {formatStage(value)}
+                </span>
                 <select
                   value={value}
-                  aria-label={`${boostShort(stat, locale)} del ${label}`}
+                  aria-label={`${name} del ${label}`}
                   onChange={(event) =>
                     updateSide(side, {
                       boosts: { ...state.boosts, [stat]: Number(event.target.value) },
                     })
                   }
-                  className={`h-full cursor-pointer appearance-none bg-transparent pr-2 font-display text-sm font-semibold tabular-nums focus:outline-none ${
-                    value > 0 ? 'text-good' : value < 0 ? 'text-bad' : ''
-                  }`}
+                  // Sized to the box: with its own width (the longest option) it would push the
+                  // row onto two lines although nothing shows.
+                  // The list takes its colours from the select and its options: without them it
+                  // opens white with the dark theme's pale text.
+                  className="absolute inset-0 size-full cursor-pointer appearance-none bg-surface text-text opacity-0"
                 >
                   {BOOST_VALUES.map((option) => (
-                    <option key={option} value={option}>
-                      {option > 0 ? `+${option}` : option}
+                    <option key={option} value={option} className="bg-surface px-3 py-1 text-text">
+                      {name} {formatStage(option)}
                     </option>
                   ))}
                 </select>
@@ -390,6 +514,7 @@ function SideEditor({ side, locale }: { side: 'attacker' | 'defender'; locale: L
         onSpeciesPick={(set, mega) => updateSide(side, { ...withSet(state, set), mega })}
         maxMoves={CALC_MOVES}
         statsLast
+        calculator
       />
     </div>
   );

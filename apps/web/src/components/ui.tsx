@@ -5,6 +5,8 @@
  */
 import {
   type ButtonHTMLAttributes,
+  type ChangeEvent,
+  type CSSProperties,
   type InputHTMLAttributes,
   type ReactNode,
   type SelectHTMLAttributes,
@@ -171,25 +173,38 @@ export function Checkbox({
   label,
   hint,
   className = '',
+  stacked = false,
 }: {
   checked: boolean;
   onChange: (checked: boolean) => void;
   label: ReactNode;
   hint?: string;
   className?: string;
+  /** Label above the switch, like a `Field` (fits in a row of fields). */
+  stacked?: boolean;
 }) {
+  const change = (event: ChangeEvent<HTMLInputElement>) => onChange(event.target.checked);
+  const toggle = (
+    <span
+      aria-hidden="true"
+      className="relative h-4 w-7 shrink-0 rounded-full bg-surface-3 ring-1 ring-line-strong transition-colors peer-checked:bg-accent peer-checked:ring-accent peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent-fg after:absolute after:top-0.5 after:left-0.5 after:size-3 after:rounded-full after:bg-muted after:transition-transform peer-checked:after:translate-x-3 peer-checked:after:bg-on-accent"
+    />
+  );
+  if (stacked) {
+    return (
+      <label className={`flex cursor-pointer flex-col gap-1.5 ${className}`}>
+        <span className="eyebrow text-faint">{label}</span>
+        <span className="flex h-9 items-center">
+          <input type="checkbox" checked={checked} onChange={change} className="peer sr-only" />
+          {toggle}
+        </span>
+      </label>
+    );
+  }
   return (
     <label className={`group flex cursor-pointer items-center gap-2.5 ${className}`}>
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(event) => onChange(event.target.checked)}
-        className="peer sr-only"
-      />
-      <span
-        aria-hidden="true"
-        className="relative h-4 w-7 shrink-0 rounded-full bg-surface-3 ring-1 ring-line-strong transition-colors peer-checked:bg-accent peer-checked:ring-accent peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent-fg after:absolute after:top-0.5 after:left-0.5 after:size-3 after:rounded-full after:bg-muted after:transition-transform peer-checked:after:translate-x-3 peer-checked:after:bg-on-accent"
-      />
+      <input type="checkbox" checked={checked} onChange={change} className="peer sr-only" />
+      {toggle}
       <span className="min-w-0">
         <span className="block text-sm font-medium">{label}</span>
         {hint && <span className="block text-xs text-faint">{hint}</span>}
@@ -203,6 +218,81 @@ export const inputClass =
 
 export const textareaClass =
   'w-full resize-y rounded-sm border border-line bg-surface-2 px-3 py-2.5 font-mono text-xs leading-relaxed text-text placeholder:text-faint transition-colors hover:border-line-strong focus:border-accent-fg focus:outline-none aria-[invalid=true]:border-bad/70';
+
+/**
+ * Sets `--tone` (a type colour) and `--tone-ink`, the colour to draw with it: the light theme
+ * darkens it towards the text colour so the pale ones (Ice, Electric) still read.
+ */
+const TONE =
+  '[--tone-ink:color-mix(in_srgb,var(--tone)_62%,var(--color-text))] dark:[--tone-ink:var(--tone)]';
+
+/** An icon drawn in a type colour (weather, terrain, status). */
+export function ToneIcon({ color, children }: { color: string; children: ReactNode }) {
+  return (
+    <span
+      style={{ '--tone': color } as CSSProperties}
+      className={`flex shrink-0 text-(--tone-ink) ${TONE}`}
+    >
+      {children}
+    </span>
+  );
+}
+
+export interface IconChoiceOption<T extends string> {
+  value: T;
+  /** Text beside the icon. */
+  label: string;
+  /** Full name (tooltip), when `label` is a short form. */
+  title?: string;
+  icon: ReactNode;
+  /** Colour of the icon, and of its frame while picked (a type colour, see `ToneIcon`). */
+  color: string;
+}
+
+/**
+ * A row of buttons with an icon and a name where at most one is picked: clicking the picked
+ * one clears it.
+ */
+export function IconChoice<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: T | null;
+  options: IconChoiceOption<T>[];
+  onChange: (value: T | null) => void;
+}) {
+  return (
+    <fieldset className="flex flex-col gap-1.5">
+      <legend className="eyebrow mb-1.5 text-faint">{label}</legend>
+      <div className="flex flex-wrap gap-1">
+        {options.map((option) => {
+          const selected = option.value === value;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              aria-pressed={selected}
+              title={option.title}
+              onClick={() => onChange(selected ? null : option.value)}
+              style={{ '--tone': option.color } as CSSProperties}
+              className={`inline-flex h-9 items-center gap-1.5 rounded-sm border pr-3 pl-2 text-sm whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-accent-fg ${TONE} ${
+                selected
+                  ? 'border-(--tone-ink) bg-[color-mix(in_srgb,var(--tone)_18%,transparent)] text-text'
+                  : 'border-line text-muted hover:border-line-strong hover:bg-surface-3 hover:text-text'
+              }`}
+            >
+              <span className="text-(--tone-ink)">{option.icon}</span>
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+    </fieldset>
+  );
+}
 
 /** A labelled control: small condensed label above. */
 export function Field({

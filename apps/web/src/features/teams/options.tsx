@@ -134,6 +134,8 @@ export function itemOptions(
         value: item.id,
         label,
         search: `${search} ${ITEM_CATEGORY[item.category]}`,
+        // Shown in the input once picked (the list rows draw their own, in `render`).
+        icon: <ItemIcon item={item.id} size={22} />,
         render: (
           <span className="flex items-center gap-2">
             <ItemIcon item={item.id} reserve />
