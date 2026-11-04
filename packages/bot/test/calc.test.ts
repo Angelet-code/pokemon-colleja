@@ -54,6 +54,36 @@ describe('@smogon/calc for Champions', () => {
     }
   });
 
+  it('passes the gender, so Rivalry depends on it', () => {
+    const blank = { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
+    const luxray: PokemonSet = {
+      species: 'luxray',
+      ability: 'rivalry',
+      nature: 'serious',
+      gender: 'M',
+      statPoints: blank,
+      moves: ['crunch'],
+    };
+    const target = (gender: 'M' | 'F'): PokemonSet => ({
+      species: 'snorlax',
+      ability: 'thickfat',
+      nature: 'serious',
+      gender,
+      statPoints: blank,
+      moves: [],
+    });
+    const field = emptyField(false);
+    const hit = (gender: 'M' | 'F') =>
+      estimateDamage(
+        makeCombatant({ side: 'p1', set: luxray }),
+        makeCombatant({ side: 'p2', set: target(gender) }),
+        'crunch',
+        field,
+      ).max;
+    // Same gender: ×1.25; opposite: ×0.75.
+    expect(hit('M')).toBeGreaterThan(hit('F'));
+  });
+
   it('predicts the damage the engine deals (first hits of real battles)', async () => {
     let checked = 0;
     const misses: string[] = [];

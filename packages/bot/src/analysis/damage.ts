@@ -183,6 +183,8 @@ export function toCalcPokemon(combatant: Combatant): Pokemon {
   if (combatant.status && STATUSES.has(combatant.status)) {
     options.status = combatant.status as CalcPokemonOptions['status'];
   }
+  // Rivalry depends on it; without it the calc takes the species' fixed gender or male.
+  if (set.gender) options.gender = set.gender;
   const pokemon = new Pokemon(GEN, speciesName(combatant.species), options);
   pokemonCache.set(combatant, pokemon);
   return pokemon;
@@ -296,7 +298,7 @@ function calcKey(combatant: Combatant): string {
     const stages = Object.entries(boosts)
       .map(([stat, stage]) => `${stat}${stage}`)
       .join(',');
-    key = `${combatant.species}/${set.nature}/${points}/${stages}/${combatant.ability}/${combatant.item ?? ''}/${combatant.status ?? ''}/${combatant.critBoost ?? ''}/`;
+    key = `${combatant.species}/${set.nature}/${points}/${stages}/${combatant.ability}/${combatant.item ?? ''}/${combatant.status ?? ''}/${combatant.critBoost ?? ''}/${set.gender ?? ''}/`;
     keyCache.set(combatant, key);
   }
   return key;
