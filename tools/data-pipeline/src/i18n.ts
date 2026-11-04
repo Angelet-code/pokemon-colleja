@@ -14,6 +14,7 @@ import {
   TYPE_NAMES,
   toId,
 } from '@colleja/data/schema';
+import type { OfficialTexts } from './game-text/official-texts';
 import { spanishSpeciesName } from './pokeapi/species-map';
 import type { Entity, PokeApiTables, PokemonEntity } from './pokeapi/tables';
 import type { ShowdownTexts } from './showdown/texts';
@@ -52,6 +53,13 @@ export interface I18nResult {
   descriptions: Record<Locale, LocaleDescriptions>;
   /** Ids without an official Spanish name, per kind (English is used at runtime). */
   missing: Partial<Record<NameKind, string[]>>;
+  /** Spanish descriptions taken from each game text dump (`OfficialTexts`), per dump. */
+  fromGameText: Record<string, number>;
+  /**
+   * Ids still without a Spanish description, per kind: no official text, or an effect that
+   * Champions changed (its English Champions text is shown).
+   */
+  missingDescriptions: Record<DescriptionKind, string[]>;
 }
 
 /** Spanish texts by Showdown id, looked up through a PokeAPI identifier index. */
@@ -74,7 +82,8 @@ function pokeApiTexts(
  * Builds both locales:
  *  - English: names and mechanical short descriptions from Showdown (Champions-aware).
  *  - Spanish names: PokeAPI (official), then Showdown's Spanish translation as a fallback.
- *  - Spanish descriptions: PokeAPI in-game text, except for effects that Champions changed
+ *  - Spanish descriptions: PokeAPI in-game text, then the official text of the game dumps
+ *    (`official`, matched by Spanish name), except for effects that Champions changed
  *    (mainline text would be wrong there, so the English Champions text is used instead).
  *
  * Spanish files only hold real translations; the runtime falls back to English for the rest.
@@ -83,6 +92,7 @@ export function buildI18n(
   input: I18nInput,
   tables: PokeApiTables,
   texts: ShowdownTexts,
+  official: OfficialTexts = { sources: [] },
 ): I18nResult {
   const missing: Partial<Record<NameKind, string[]>> = {};
   const flagMissing = (kind: NameKind, id: string) => {
@@ -171,21 +181,42 @@ export function buildI18n(
     stats: { ...ENGLISH_STATS },
   };
 
-  const spanishDescriptions = (kind: DescriptionKind, index: Map<string, Entity>) =>
-    sortedRecord(
-      [...pokeApiTexts(ids[kind], index, tables.spanishFlavor[kind])].filter(
-        ([id]) => !texts.championsSpecific[kind].has(id),
-      ),
-    );
+  const fromGameText: Record<string, number> = {};
+  const missingDescriptions: Record<DescriptionKind, string[]> = {
+    moves: [],
+    abilities: [],
+    items: [],
+  };
+  const spanishDescriptions = (kind: DescriptionKind, index: Map<string, Entity>) => {
+    const fromPokeApi = pokeApiTexts(ids[kind], index, tables.spanishFlavor[kind]);
+    const out: [string, string][] = [];
+    for (const id of ids[kind]) {
+      if (texts.championsSpecific[kind].has(id)) {
+        missingDescriptions[kind].push(id);
+        continue;
+      }
+      let text = fromPokeApi.get(id);
+      const name = es[kind][id];
+      for (const source of official.sources) {
+        if (text || !name) break;
+        text = source.descriptions[kind].get(name);
+        if (text) fromGameText[source.label] = (fromGameText[source.label] ?? 0) + 1;
+      }
+      if (text) out.push([id, text]);
+      else missingDescriptions[kind].push(id);
+    }
+    return sortedRecord(out);
+  };
+  const esDescriptions: LocaleDescriptions = {
+    moves: spanishDescriptions('moves', tables.moves),
+    abilities: spanishDescriptions('abilities', tables.abilities),
+    items: spanishDescriptions('items', tables.items),
+  };
 
   return {
     names: { es, en },
     descriptions: {
-      es: {
-        moves: spanishDescriptions('moves', tables.moves),
-        abilities: spanishDescriptions('abilities', tables.abilities),
-        items: spanishDescriptions('items', tables.items),
-      },
+      es: esDescriptions,
       en: {
         moves: sortedRecord(Object.entries(texts.englishDescriptions.moves)),
         abilities: sortedRecord(Object.entries(texts.englishDescriptions.abilities)),
@@ -193,5 +224,7 @@ export function buildI18n(
       },
     },
     missing,
+    fromGameText,
+    missingDescriptions,
   };
 }

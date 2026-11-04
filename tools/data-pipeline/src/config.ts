@@ -17,6 +17,10 @@ export const POKEAPI_SPANISH = 7;
 interface Sources {
   pokeapi: { repo: string; commit: string; csvPath: string };
   sprites: { repo: string; commit: string };
+  /** Scarlet/Violet text dump: official Spanish descriptions PokeAPI lacks. */
+  svText: { repo: string; commit: string; file: string };
+  /** Legends: Z-A text dump: official Spanish descriptions of its Mega Stones and abilities. */
+  zaText: { repo: string; commit: string; dir: string };
 }
 
 /** Pinned external sources (tools/data-pipeline/sources.json). */

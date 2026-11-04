@@ -8,7 +8,7 @@ Decisión de arquitectura: [ADR-0002](../adr/0002-pipeline-de-datos.md).
 
 | Comando | Qué hace |
 |---|---|
-| `npm run data:build` | Regenera `packages/data/generated/` (≈2 s; la primera vez descarga los CSV de PokeAPI a una caché local) |
+| `npm run data:build` | Regenera `packages/data/generated/` (≈2 s; la primera vez descarga los CSV de PokeAPI y los textos de los juegos a una caché local) |
 | `npm run data:sprites` | Descarga los sprites a `assets/sprites/` (no versionado). Incluye los shiny (`-- --no-shiny` los omite). Admite `-- --force` |
 
 Después de un `data:build`, revisa siempre el diff de `packages/data/generated/`: refleja exactamente qué ha cambiado en los datos del juego.
@@ -20,6 +20,8 @@ Después de un `data:build`, revisa siempre el diff de `packages/data/generated/
 | Showdown, mod `champions` | Submódulo `vendor/pokemon-showdown` | Legalidad, stats, movimientos, objetos, learnsets, formatos, sets aleatorios, textos en inglés, nombres de respaldo en español |
 | PokeAPI (CSV en GitHub) | `tools/data-pipeline/sources.json` | Nombres oficiales y descripciones del juego en español, ids de sprites |
 | PokeAPI/sprites | `tools/data-pipeline/sources.json` | Renders de Champions (128 px), iconos y sprites de objetos |
+| Textos de Escarlata/Púrpura ([Pokemon-Project-com/sv-text](https://github.com/Pokemon-Project-com/sv-text)) | `tools/data-pipeline/sources.json` (`svText`) | Descripciones oficiales en español que PokeAPI no tiene (juego base, 2022) |
+| Textos de Leyendas Z-A ([CPokemon/plza-text](https://github.com/CPokemon/plza-text)) | `tools/data-pipeline/sources.json` (`zaText`) | Descripciones oficiales en español de sus megapiedras y habilidades (no de movimientos: Z-A los describe con su propio sistema de combate) |
 | Hoja de objetos de Showdown | `SHOWDOWN_ITEM_SHEET` (`tools/data-pipeline/src/config.ts`) | Iconos de los objetos que faltan en PokeAPI (sin fijar: Showdown solo sirve la actual) |
 
 ## Ficheros generados
@@ -70,7 +72,9 @@ En el resto de tipos de nombre: PokeAPI, luego la traducción de Showdown (`data
 
 **Descripciones.**
 - En inglés salen de Showdown, resueltas para Champions; ahí hay 20 efectos con texto propio de Champions.
-- En español se usa el texto del juego de PokeAPI, **excepto** en esos 20 efectos que Champions cambia (Fiebre Dorada, Sorpresa…). En esos casos el texto de los juegos principales sería falso, así que se muestra el inglés.
+- En español se usa el texto del juego de PokeAPI y, si no lo tiene, el **texto oficial** de los volcados de Escarlata/Púrpura y después de Leyendas Z-A (`game-text/official-texts.ts`). Se empareja por **nombre oficial en español**: cada volcado guarda el nombre y la descripción en el mismo índice, así que no depende de que los números internos coincidan con los de Showdown. Los nombres repetidos con textos distintos y los textos con variables (`[VAR …]`) se descartan.
+- **Excepto** en esos 20 efectos que Champions cambia (Fiebre Dorada, Sorpresa…): el texto de los juegos principales sería falso, así que se muestra el inglés.
+- **Nunca se traduce a mano**: lo que no tenga texto oficial se muestra en inglés y el build lo avisa (`⚠ Sin descripción oficial en español`). Hoy quedan así los movimientos del DLC de Escarlata/Púrpura y las megapiedras de Mega Dimensión, que no están en los volcados.
 
 ## Sprites (`npm run data:sprites`)
 

@@ -7,5 +7,15 @@
   "sprites": {
     "repo": "PokeAPI/sprites",
     "commit": "d72f64eb74912747cb5c5579061ced4842ba0a98"
+  },
+  "svText": {
+    "repo": "Pokemon-Project-com/sv-text",
+    "commit": "b05d9fbce6c06940e08e8cc35be174b6a5729e7f",
+    "file": "common/common_esp.txt"
+  },
+  "zaText": {
+    "repo": "CPokemon/plza-text",
+    "commit": "3f149c41285b9fb290ab0b303d578545f569b663",
+    "dir": "spanish/common"
   }
 }

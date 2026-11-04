@@ -11,6 +11,7 @@ import { rmSync } from 'node:fs';
 import { join } from 'node:path';
 import type { DataMeta, GameMode } from '@colleja/data/schema';
 import { GENERATED_DIR, REGULATION, SOURCES } from './config';
+import { loadOfficialTexts } from './game-text/official-texts';
 import { buildI18n } from './i18n';
 import {
   applyBattleTextOverrides,
@@ -75,10 +76,15 @@ async function main(): Promise<void> {
     items: items.map((i) => i.id),
   };
   const texts = loadShowdownTexts(ctx, effectIds);
+  log(
+    `Leyendo los textos oficiales de Escarlata/Púrpura ${SOURCES.svText.commit.slice(0, 7)} y Leyendas Z-A ${SOURCES.zaText.commit.slice(0, 7)}…`,
+  );
+  const official = await loadOfficialTexts();
   const i18n = buildI18n(
     { species, pokemonBySpecies, moves, abilities, items, natures },
     tables,
     texts,
+    official,
   );
   const nameOverrides = applySpanishNameOverrides(i18n.names.es, i18n.missing);
   log('Extrayendo las plantillas de mensajes de combate (es/en)…');
@@ -152,6 +158,12 @@ async function main(): Promise<void> {
     log(`⚠ Sin correspondencia en PokeAPI (sin sprite): ${listSample(noSprite)}`);
   for (const [kind, ids] of Object.entries(meta.missingSpanishNames)) {
     if (ids?.length) log(`⚠ Sin nombre oficial en español (${kind}): ${listSample(ids)}`);
+  }
+  const fromGame = Object.entries(i18n.fromGameText).map(([game, n]) => `${game} ${n}`);
+  if (fromGame.length)
+    log(`Descripciones en español de los textos del juego: ${fromGame.join(' · ')}`);
+  for (const [kind, ids] of Object.entries(i18n.missingDescriptions)) {
+    if (ids.length) log(`⚠ Sin descripción oficial en español (${kind}): ${listSample(ids)}`);
   }
   if (nameOverrides) log(`Nombres en español corregidos por overrides: ${nameOverrides}`);
   if (textOverrides) log(`Mensajes de combate en español añadidos por overrides: ${textOverrides}`);
